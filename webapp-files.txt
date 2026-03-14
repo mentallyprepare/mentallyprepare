@@ -1,3 +1,4 @@
+# List of all files and folders needed for deployment on Railway or any Node.js platform
 README.md
 package.json
 package-lock.json
