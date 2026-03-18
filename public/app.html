@@ -695,6 +695,11 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .problem-float-word:nth-child(1){top:10%;left:-20px;animation:floatSlow 5s ease-in-out infinite}
 .problem-float-word:nth-child(2){top:50%;right:-40px;animation:floatSlow 6s ease-in-out .5s infinite}
 .problem-float-word:nth-child(3){bottom:15%;left:0;animation:floatSlow 5.5s ease-in-out 1s infinite}
+.problem-float-word{opacity:0}
+@keyframes wordCycle{0%,100%{opacity:0}15%,35%{opacity:1}50%,99%{opacity:0}}
+.problem-float-word:nth-child(1){top:10%;left:-20px;animation:floatSlow 5s ease-in-out infinite,wordCycle 9s ease-in-out infinite}
+.problem-float-word:nth-child(2){top:50%;right:-40px;animation:floatSlow 6s ease-in-out infinite,wordCycle 9s ease-in-out 3s infinite}
+.problem-float-word:nth-child(3){bottom:15%;left:0;animation:floatSlow 5.5s ease-in-out infinite,wordCycle 9s ease-in-out 6s infinite}
 .problem-stats{display:flex;flex-direction:column;gap:20px}
 .problem-stat{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;position:relative;overflow:hidden;transition:all .4s}
 .problem-stat:hover{border-color:rgba(212,133,154,.2);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
@@ -968,7 +973,6 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
           <span class="problem-float-word">unseen</span>
           <span class="problem-float-word">performing</span>
           <span class="problem-float-word">misunderstood</span>
-        .problem-float-word:nth-child(4){bottom:40%;right:0;animation:floatSlow 5.5s ease-in-out 1.5s infinite}
         </div>
       </div>
       <div class="problem-stats">
