@@ -20,7 +20,6 @@ const webpush = require('web-push');
 const app = express();
 // Trust the first proxy (for Railway, Vercel, Heroku, etc.)
 app.set('trust proxy', 1);
-app.set('trust proxy', 1); // Enable trust proxy for Railway deployment
 const PORT = process.env.PORT || 3000;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -342,7 +341,6 @@ const authLimiter = rateLimit({
   message: { error: 'Too many attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false
-  ,validate: { xForwardedForHeader: false }
 });
 
 const apiLimiter = rateLimit({
@@ -351,7 +349,6 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests, slow down' },
   standardHeaders: true,
   legacyHeaders: false
-  ,validate: { xForwardedForHeader: false }
 });
 
 // ─── Prompts ────────────────────────────
