@@ -1,3 +1,7 @@
+// Serve terms.html
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Backend Server v2
 // SQLite · Push Notifications · Razorpay · Stripe
@@ -1527,6 +1531,46 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
     res.status(500).json({ error: 'Failed to save email' });
   }
 });
+
+// ═══════════════════════════════════════
+// ADMIN ROUTES
+// ═══════════════════════════════════════
+// Serve admin panel
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Simple admin auth (replace with real auth in production)
+function requireAdmin(req, res, next) {
+  // For now, allow all. Add real authentication as needed.
+  next();
+}
+
+// Send announcement (POST /admin/announce)
+app.post('/admin/announce', requireAdmin, express.json(), (req, res) => {
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message required' });
+  // TODO: Broadcast to users (push/email/etc). For now, just log.
+  console.log('[ADMIN ANNOUNCEMENT]', message);
+  res.json({ ok: true });
+});
+
+// Get recent reports (GET /admin/reports)
+app.get('/admin/reports', requireAdmin, (req, res) => {
+  try {
+    const rows = db.prepare('SELECT id, reporter_id, day, reason, created_at FROM reports ORDER BY created_at DESC LIMIT 20').all();
+    res.json(rows.map(r => ({
+      id: r.id,
+      reporter_id: r.reporter_id,
+      day: r.day,
+      reason: r.reason,
+      date: r.created_at
+    })));
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load reports' });
+  }
+});
+
 app.get('/privacy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
 });

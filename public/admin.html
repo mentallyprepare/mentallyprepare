@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="/public/index.css">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f8f8fa; margin: 0; padding: 0; }
+    .admin-container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); padding: 32px; }
+    h1 { font-size: 2rem; margin-bottom: 24px; }
+    .admin-section { margin-bottom: 32px; }
+    label { display: block; margin-bottom: 8px; font-weight: 500; }
+    input, textarea, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 16px; }
+    button { background: #7b5ea7; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #5a437c; }
+    .admin-logs { background: #f3f0fa; border-radius: 8px; padding: 16px; font-size: 0.95rem; max-height: 200px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <h1>Admin Panel</h1>
+    <div class="admin-section">
+      <h2>Send Announcement</h2>
+      <form id="announcement-form">
+        <label for="announcement">Message</label>
+        <textarea id="announcement" rows="3" required></textarea>
+        <button type="submit">Send</button>
+      </form>
+    </div>
+    <div class="admin-section">
+      <h2>Recent Reports</h2>
+      <div id="reports" class="admin-logs">Loading...</div>
+    </div>
+  </div>
+  <script>
+    // Handle announcement form
+    document.getElementById('announcement-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const msg = document.getElementById('announcement').value.trim();
+      if (!msg) return alert('Message required.');
+      const res = await fetch('/admin/announce', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+      if (res.ok) {
+        alert('Announcement sent!');
+        document.getElementById('announcement').value = '';
+      } else {
+        alert('Failed to send.');
+      }
+    });
+    // Fetch recent reports
+    async function loadReports() {
+      const res = await fetch('/admin/reports');
+      const el = document.getElementById('reports');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length) {
+          el.innerHTML = data.map(r => `<div><b>${r.date || ''}</b>: ${r.text} <i>(${r.reason})</i></div>`).join('');
+        } else {
+          el.textContent = 'No reports.';
+        }
+      } else {
+        el.textContent = 'Failed to load reports.';
+      }
+    }
+    loadReports();
+  </script>
+</body>
+</html>

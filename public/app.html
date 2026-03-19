@@ -1317,6 +1317,10 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
       <h2 class="slide-h">A few things<br/><em>before you begin.</em></h2>
       <p class="slide-p">Turn on notifications so you don't miss your partner's entry unsealing at midnight.</p>
     </div>
+    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:10px;">
+      <input type="checkbox" id="ageCheckbox" style="margin-top:3px;accent-color:var(--rose);width:16px;height:16px;flex-shrink:0;"/>
+      <span style="font-size:11.5px;color:var(--ink-m);line-height:1.6;">I am 18 or older, or have parental/guardian consent to use this service.</span>
+    </label>
     <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:16px;">
       <input type="checkbox" id="consentCheckbox" style="margin-top:3px;accent-color:var(--rose);width:16px;height:16px;flex-shrink:0;"/>
       <span style="font-size:11.5px;color:var(--ink-m);line-height:1.6;">I agree to the <a href="/privacy" target="_blank" style="color:var(--rose-l);text-decoration:underline;">Privacy Policy</a>. My entries are shared with my matched partner only. I can delete my account and data anytime.</span>
@@ -1727,7 +1731,9 @@ async function register() {
   if (!email) { toast('Please enter your email'); return; }
   if (!password || password.length < 8) { toast('Password must be at least 8 characters'); return; }
 
+  const ageChecked = document.getElementById('ageCheckbox').checked;
   const consentGiven = document.getElementById('consentCheckbox').checked;
+  if (!ageChecked) { toast('You must confirm you are 18+ or have guardian consent'); return; }
   if (!consentGiven) { toast('Please accept the Privacy Policy to continue'); return; }
 
   try {
