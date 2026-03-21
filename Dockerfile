@@ -1,6 +1,6 @@
 # Dockerfile for Node.js app
 FROM node:18-alpine
-RUN apk add --no-cache python3 make g++ py3-setuptools
+RUN apk add --no-cache python3 make g++ py3-setuptools py3-distutils
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --production
