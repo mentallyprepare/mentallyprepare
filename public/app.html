@@ -4,6 +4,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <title>Mentally Prepare</title>
+<meta property="og:title" content="Mentally Prepare — Anonymous 21-Day Journal"/>
+<meta property="og:description" content="Write anonymously for 21 days. A stranger from another college writes back. On Day 21 — reveal or stay unknown."/>
+<meta property="og:url" content="https://mentallyprepare.online"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Mentally Prepare"/>
+<meta name="twitter:description" content="21-day anonymous emotional journal for college students."/>
 <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.svg">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,500&family=Lora:ital,wght@0,400;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
@@ -967,12 +973,11 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
           <span class="problem-float-word">disconnected</span>
           <span class="problem-float-word">unseen</span>
           <span class="problem-float-word">performing</span>
-          <span class="problem-float-word">misunderstood</span>
         </div>
       </div>
       <div class="problem-stats">
         <div class="problem-stat reveal delay-1">
-          <div class="problem-stat-n" data-target="73" data-suffix="%">0%</div>
+          <div class="problem-stat-n">73%</div>
           <div class="problem-stat-label">of Indian college students report feeling emotionally isolated — even with friends around.</div>
         </div>
         <div class="problem-stat reveal delay-2">
@@ -980,7 +985,7 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
           <div class="problem-stat-label">students say they have no one they can be fully honest with about how they actually feel.</div>
         </div>
         <div class="problem-stat reveal delay-3">
-          <div class="problem-stat-n" data-target="89" data-suffix="%">0%</div>
+          <div class="problem-stat-n">89%</div>
           <div class="problem-stat-label">say writing their feelings helped more than talking — but they never have a reason to write.</div>
         </div>
       </div>
@@ -1143,7 +1148,7 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
     <div class="moon-base" style="width:60px;height:60px;box-shadow:0 0 30px rgba(201,169,110,.4);margin-bottom:24px;"></div>
     <div class="eyebrow">New password</div>
     <h2 style="font-family:'Playfair Display',serif;font-size:24px;font-weight:400;line-height:1.2;margin-bottom:8px;">Enter the reset <em style="font-style:italic;color:var(--rose-l);">code.</em></h2>
-    <p style="font-size:12px;color:var(--ink-s);margin-bottom:20px;">Check the server console for your 6-digit code (in production this would be emailed).</p>
+    <p style="font-size:12px;color:var(--ink-s);margin-bottom:20px;">Enter the reset code sent to your email. Didn't receive it? Contact us at privacy@mentallyprepare.in</p>
     <div style="width:100%;text-align:left;">
       <div class="input-block">
         <label class="input-label">6-digit code</label>
@@ -1490,9 +1495,10 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
     </div>
     <div class="site-footer-links">
       <a href="/">Home</a>
-      <a href="/#how">How It Works</a>
-      <a href="/#archetypes">Archetypes</a>
+      <a href="/app#how">How It Works</a>
+      <a href="/app#l-archetypes">Archetypes</a>
       <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
       <a href="https://instagram.com/mentallyprepare.in" target="_blank" rel="noopener noreferrer">Instagram</a>
     </div>
     <div class="site-footer-copy">&copy; 2026 Mentally Prepare. Built with quiet intention.</div>
@@ -3116,7 +3122,6 @@ document.addEventListener('DOMContentLoaded', function() {
     {top:'10%',  left:'-20px',  right:'auto', bottom:'auto'},
     {top:'50%',  right:'-40px', left:'auto',  bottom:'auto'},
     {bottom:'15%',left:'0',     right:'auto', top:'auto'},
-    {top:'30%',  right:'-60px', left:'auto',  bottom:'auto'},
   ];
   words.forEach(function(w, i) {
     var p = positions[i] || positions[0];
