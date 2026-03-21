@@ -10,6 +10,7 @@ app.get('/terms', (req, res) => {
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+// Ensure connect-sqlite3 is imported at the top
 const SQLiteStore = require('connect-sqlite3')(session);
 const helmet = require('helmet');
 const crypto = require('crypto');
@@ -21,7 +22,6 @@ const webpush = require('web-push');
 
 const app = express();
 app.set('trust proxy', 1); // Trust Railway/Heroku/Vercel proxy for correct IP handling
-console.log('TRUST PROXY IS SET - server.js loaded:', new Date().toISOString());
 const PORT = process.env.PORT || 3000;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
