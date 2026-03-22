@@ -1,72 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel</title>
-  <link rel="stylesheet" href="/public/index.css">
-  <style>
-    body { font-family: 'Inter', sans-serif; background: #f8f8fa; margin: 0; padding: 0; }
-    .admin-container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); padding: 32px; }
-    h1 { font-size: 2rem; margin-bottom: 24px; }
-    .admin-section { margin-bottom: 32px; }
-    label { display: block; margin-bottom: 8px; font-weight: 500; }
-    input, textarea, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 16px; }
-    button { background: #7b5ea7; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
-    button:hover { background: #5a437c; }
-    .admin-logs { background: #f3f0fa; border-radius: 8px; padding: 16px; font-size: 0.95rem; max-height: 200px; overflow-y: auto; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mentally Prepare - Founder Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#070510;--bg2:#0d0a1a;--card:#100d1f;--line:rgba(248,242,255,.08);--line2:rgba(248,242,255,.14);--ink:#f8f2ff;--muted:rgba(248,242,255,.62);--soft:rgba(248,242,255,.35);--rose:#d4859a;--rose2:#9b4f66;--purple:#7b5ea7;--green:#4ade80;--amber:#fbbf24;--red:#f87171}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#140f27 0,#070510 45%);color:var(--ink);font:300 14px/1.45 'DM Sans',sans-serif}
+button,input,textarea{font:inherit}button{cursor:pointer}
+#login-overlay{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:10}
+.login-card,.panel,.stat,.danger{background:rgba(16,13,31,.92);border:1px solid var(--line);border-radius:20px}
+.login-card{width:min(420px,calc(100vw - 32px));padding:36px}.brand{font:italic 700 22px 'Playfair Display',serif;color:#f1b3c5}.sub{margin:8px 0 24px;color:var(--soft);text-transform:uppercase;letter-spacing:.18em;font-size:11px}
+.input,.textarea{width:100%;background:var(--bg2);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;color:var(--ink);outline:none}
+.input:focus,.textarea:focus{border-color:rgba(212,133,154,.4)}
+.btn{border:0;border-radius:999px;padding:12px 16px;background:linear-gradient(135deg,var(--rose2),var(--purple));color:#fff}
+.btn.secondary{background:rgba(248,242,255,.06);border:1px solid var(--line2);color:var(--muted)}
+.btn.warn{background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.2);color:var(--amber)}
+.btn.danger{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.2);color:var(--red)}
+.error{display:none;margin-top:10px;color:var(--red);font-size:12px}
+#dashboard{display:none;min-height:100vh}.topbar{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;gap:16px;align-items:center;padding:16px 24px;background:rgba(7,5,16,.9);backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+.topbar-left,.topbar-right,.row{display:flex;align-items:center;gap:12px}.badge{padding:4px 10px;border-radius:999px;border:1px solid var(--line2);font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--soft)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 6px rgba(74,222,128,.12)}.status-dot.dead{background:var(--red);box-shadow:0 0 0 6px rgba(248,113,113,.12)}
+.wrap{max-width:1400px;margin:0 auto;padding:24px}.alerts{display:grid;gap:12px;margin-bottom:20px}.alert{padding:14px 16px;border-radius:14px;border:1px solid var(--line2)}.alert.red{color:var(--red);background:rgba(248,113,113,.08)}.alert.amber{color:var(--amber);background:rgba(251,191,36,.08)}.alert.green{color:var(--green);background:rgba(74,222,128,.08)}
+.grid4,.grid2,.grid3{display:grid;gap:16px}.grid4{grid-template-columns:repeat(4,1fr);margin-bottom:24px}.grid2{grid-template-columns:1.1fr .9fr;margin-bottom:24px}.grid3{grid-template-columns:2fr 1fr;margin-bottom:24px}
+.stat{padding:18px}.label{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--soft);margin-bottom:8px}.value{font:700 34px/1 'Playfair Display',serif}.note,.tiny{color:var(--soft)}.tiny{font-size:12px}
+.panel h3,.danger h3{margin:0;font-size:14px;font-weight:400}.panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}.panel-body{padding:18px 20px}
+.bar-row,.feed-item,.wait-item{display:grid;gap:10px;align-items:center}.bar-row{grid-template-columns:100px 1fr 28px;margin:12px 0}.bar-track{height:7px;background:rgba(248,242,255,.07);border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,var(--rose2),var(--purple));border-radius:999px}
+.feed-item,.wait-item{grid-template-columns:auto 1fr auto;padding:10px 0;border-bottom:1px solid var(--line)}.feed-item:last-child,.wait-item:last-child{border-bottom:0}.mono{font-family:'JetBrains Mono',monospace}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left}.table th{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--soft);font-weight:400}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;border:1px solid var(--line2);font-size:11px}.chip.green{color:var(--green)}.chip.amber{color:var(--amber)}.chip.rose{color:#efb4c3}.chip.purple{color:#c5b8df}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.textarea{min-height:96px;resize:vertical}.danger{padding:18px;margin-top:24px}.danger-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+#toast{position:fixed;right:24px;bottom:24px;max-width:320px;padding:12px 16px;border-radius:12px;background:#17132a;border:1px solid var(--line2);opacity:0;transform:translateY(8px);transition:.25s}#toast.show{opacity:1;transform:none}
+@media (max-width:1100px){.grid4{grid-template-columns:repeat(2,1fr)}.grid2,.grid3,.danger-grid{grid-template-columns:1fr}}
+@media (max-width:700px){.topbar{flex-direction:column;align-items:flex-start}.grid4{grid-template-columns:1fr}.wrap{padding:16px}.split{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-  <div class="admin-container">
-    <h1>Admin Panel</h1>
-    <div class="admin-section">
-      <h2>Send Announcement</h2>
-      <form id="announcement-form">
-        <label for="announcement">Message</label>
-        <textarea id="announcement" rows="3" required></textarea>
-        <button type="submit">Send</button>
-      </form>
-    </div>
-    <div class="admin-section">
-      <h2>Recent Reports</h2>
-      <div id="reports" class="admin-logs">Loading...</div>
-    </div>
+<div id="login-overlay"><div class="login-card"><div class="brand">mentally prepare</div><div class="sub">Founder Dashboard</div><input class="input mono" type="password" id="admin-key" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')tryLogin()"/><div style="height:14px"></div><button class="btn" style="width:100%" onclick="tryLogin()">Enter Dashboard</button><div class="error" id="login-error">Wrong password. Try again.</div></div></div>
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left"><div class="brand" style="font-size:18px">mentally prepare</div><div class="badge">Founder Dashboard</div></div>
+    <div class="topbar-right"><div class="row"><div id="live-dot" class="status-dot"></div><div id="server-status" class="tiny">Connecting...</div></div><div id="last-refresh" class="tiny mono">-</div><button class="btn secondary" onclick="loadAll()">Refresh</button></div>
   </div>
-  <script>
-    // Handle announcement form
-    document.getElementById('announcement-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const msg = document.getElementById('announcement').value.trim();
-      if (!msg) return alert('Message required.');
-      const res = await fetch('/admin/announce', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg })
-      });
-      if (res.ok) {
-        alert('Announcement sent!');
-        document.getElementById('announcement').value = '';
-      } else {
-        alert('Failed to send.');
-      }
-    });
-    // Fetch recent reports
-    async function loadReports() {
-      const res = await fetch('/admin/reports');
-      const el = document.getElementById('reports');
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.length) {
-          el.innerHTML = data.map(r => `<div><b>${r.date || ''}</b>: ${r.text} <i>(${r.reason})</i></div>`).join('');
-        } else {
-          el.textContent = 'No reports.';
-        }
-      } else {
-        el.textContent = 'Failed to load reports.';
-      }
-    }
-    loadReports();
-  </script>
+  <div class="wrap">
+    <div id="alert-bar" class="alerts"></div>
+    <div class="grid4">
+      <div class="stat"><div class="label">Total Users</div><div class="value" id="s-users" style="color:#efb4c3">-</div><div class="tiny">Registered accounts</div></div>
+      <div class="stat"><div class="label">Active Matches</div><div class="value" id="s-matches" style="color:var(--green)">-</div><div class="tiny">Currently in a 21-day cycle</div></div>
+      <div class="stat"><div class="label">Waiting for Match</div><div class="value" id="s-waiting" style="color:var(--amber)">-</div><div class="tiny">Manual pairing if over 48hrs</div></div>
+      <div class="stat"><div class="label">Entries Today</div><div class="value" id="s-entries" style="color:#c5b8df">-</div><div class="tiny">Journal entries written today</div></div>
+      <div class="stat"><div class="label">Reached Day 21</div><div class="value" id="s-day21" style="color:#e8d0a0">-</div><div class="tiny">Completed the full journey</div></div>
+      <div class="stat"><div class="label">Both Revealed</div><div class="value" id="s-revealed" style="color:#efb4c3">-</div><div class="tiny">Mutual yes on Day 21</div></div>
+      <div class="stat"><div class="label">Open Reports</div><div class="value" id="s-reports" style="color:var(--red)">-</div><div class="tiny">Needs your review</div></div>
+      <div class="stat"><div class="label">Server Uptime</div><div class="value" id="s-uptime" style="font-size:24px;color:var(--green)">-</div><div class="tiny">Since last restart</div></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><div class="panel-head"><h3>🧬 Archetype Distribution</h3><div id="arch-balance-badge" class="badge">Balanced</div></div><div class="panel-body">
+        <div class="bar-row"><div>🌑 Protector</div><div class="bar-track"><div id="bar-protector" class="bar-fill" style="width:0%"></div></div><div id="ct-protector" class="mono tiny">-</div></div>
+        <div class="bar-row"><div>🌒 Connector</div><div class="bar-track"><div id="bar-connector" class="bar-fill" style="width:0%;background:linear-gradient(90deg,#c9a96e,#d4859a)"></div></div><div id="ct-connector" class="mono tiny">-</div></div>
+        <div class="bar-row"><div>🌓 Performer</div><div class="bar-track"><div id="bar-performer" class="bar-fill" style="width:0%;background:linear-gradient(90deg,#7b5ea7,#b09fcc)"></div></div><div id="ct-performer" class="mono tiny">-</div></div>
+        <div class="bar-row"><div>🌔 Disconnector</div><div class="bar-track"><div id="bar-disconnector" class="bar-fill" style="width:0%;background:linear-gradient(90deg,#4ade80,#059669)"></div></div><div id="ct-disconnector" class="mono tiny">-</div></div>
+        <div class="bar-row"><div class="tiny">No scan yet</div><div class="bar-track"><div id="bar-noscan" class="bar-fill" style="width:0%;background:rgba(248,242,255,.22)"></div></div><div id="ct-noscan" class="mono tiny">-</div></div>
+        <div class="tiny" style="margin-top:12px">Matching works best when Protector≈Connector and Performer≈Disconnector.</div>
+      </div></div>
+      <div class="panel"><div class="panel-head"><h3>⚡ Activity Feed</h3><div id="feed-count" class="badge">Live</div></div><div id="activity-feed" class="panel-body"><div class="tiny">Loading activity...</div></div></div>
+    </div>
+    <div class="grid3">
+      <div class="panel"><div class="panel-head"><h3>⚑ Safety Reports</h3><div id="reports-badge" class="badge">0</div></div><div id="reports-body" class="panel-body"><div class="tiny">No open reports</div></div></div>
+      <div class="panel"><div class="panel-head"><h3>⏳ Waiting for Match</h3><div id="waiting-badge" class="badge">0</div></div><div id="waiting-body" class="panel-body"><div class="tiny">Everyone is matched</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>👥 All Users</h3><div class="row"><input id="user-search" class="input" style="width:220px;padding:8px 12px" placeholder="Search by name or college..." oninput="filterUsers(this.value)"/><div id="users-badge" class="badge">0</div></div></div>
+      <div class="table-wrap"><table class="table"><thead><tr><th>ID</th><th>Name</th><th>College</th><th>Year</th><th>Archetype</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="users-tbody"><tr><td colspan="8" class="tiny">Loading users...</td></tr></tbody></table></div>
+    </div>
+    <div class="grid2" style="margin-top:24px">
+      <div class="panel"><div class="panel-head"><h3>🔗 Manual Match</h3><div class="badge">Founder Only</div></div><div class="panel-body"><div class="tiny" style="margin-bottom:12px">Use this when the algorithm cannot find a pair. Choose users from different colleges with complementary archetypes.</div><div class="split"><input id="match-user-a" class="input" placeholder="User A - ID or Email"/><input id="match-user-b" class="input" placeholder="User B - ID or Email"/></div><div class="tiny" style="margin:12px 0">Different colleges. Complementary archetypes. Both scanned.</div><button class="btn" style="width:100%" onclick="createManualMatch()">Create Match</button></div></div>
+      <div class="grid2" style="grid-template-columns:1fr;gap:16px;margin:0">
+        <div class="panel"><div class="panel-head"><h3>📢 Send Announcement</h3></div><div class="panel-body"><div class="tiny" style="margin-bottom:12px">This logs the message server-side. Hook delivery later if needed.</div><textarea id="announce-text" class="textarea" placeholder="e.g. We're running maintenance tonight from 11pm-12am IST..."></textarea><div style="height:12px"></div><button class="btn" style="width:100%" onclick="sendAnnouncement()">Send Announcement</button></div></div>
+        <div class="panel"><div class="panel-head"><h3>🖥 Server Health</h3></div><div class="panel-body"><div class="grid4" style="grid-template-columns:repeat(3,1fr);margin:0"><div class="stat"><div class="label">Status</div><div id="h-status" class="mono">-</div></div><div class="stat"><div class="label">Uptime</div><div id="h-uptime" class="mono">-</div></div><div class="stat"><div class="label">Database</div><div id="h-db" class="mono">-</div></div><div class="stat"><div class="label">Environment</div><div id="h-env" class="mono">-</div></div><div class="stat"><div class="label">Version</div><div id="h-ver" class="mono">-</div></div><div class="stat"><div class="label">Total Users</div><div id="h-users" class="mono">-</div></div></div></div></div>
+      </div>
+    </div>
+    <div class="danger"><h3>⚠ Danger Zone</h3><div class="danger-grid" style="margin-top:14px"><div><div class="tiny">Remove User</div><div class="tiny" style="margin:6px 0 12px">Deletes a user and all related data permanently.</div><input id="danger-user-id" class="input" placeholder="User ID or email"/><div style="height:10px"></div><button class="btn danger" style="width:100%" onclick="removeUser()">Delete User</button></div><div><div class="tiny">End a Match Early</div><div class="tiny" style="margin:6px 0 12px">Removes the current cycle data for both users.</div><input id="danger-match-id" class="input" placeholder="Match ID"/><div style="height:10px"></div><button class="btn danger" style="width:100%" onclick="endMatch()">End Match</button></div><div><div class="tiny">Export All Data</div><div class="tiny" style="margin:6px 0 12px">Downloads a full JSON snapshot for backup.</div><div style="height:42px"></div><button class="btn warn" style="width:100%" onclick="exportData()">Export Backup</button></div></div></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+let ADMIN_KEY='',allUsers=[],refreshTimer=null;
+const archetypeEmoji={protector:'🌑',connector:'🌒',performer:'🌓',disconnector:'🌔'};
+function escHtml(str){if(str===null||str===undefined)return'';const d=document.createElement('div');d.textContent=String(str);return d.innerHTML}
+function toast(msg,type='info'){const t=document.getElementById('toast');t.textContent=msg;t.style.color=type==='error'?'#f87171':type==='success'?'#4ade80':'#d8cce7';t.style.borderColor=type==='error'?'rgba(248,113,113,.3)':type==='success'?'rgba(74,222,128,.3)':'rgba(248,242,255,.14)';t.classList.add('show');clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('show'),3000)}
+function timeAgo(s){if(!s)return'-';const diff=Math.floor((Date.now()-new Date(s).getTime())/1000);if(diff<60)return diff+'s ago';if(diff<3600)return Math.floor(diff/60)+'m ago';if(diff<86400)return Math.floor(diff/3600)+'h ago';return Math.floor(diff/86400)+'d ago'}
+function formatUptime(secs){const d=Math.floor(secs/86400),h=Math.floor((secs%86400)/3600),m=Math.floor((secs%3600)/60);if(d>0)return d+'d '+h+'h';if(h>0)return h+'h '+m+'m';return m+'m'}
+function adminFetch(url,opts={}){return fetch(url,{...opts,headers:{'x-admin-key':ADMIN_KEY,'Content-Type':'application/json',...(opts.headers||{})}}).then(async r=>{const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Request failed');return data})}
+function tryLogin(){const key=document.getElementById('admin-key').value.trim(),err=document.getElementById('login-error');err.style.display='none';if(!key)return;ADMIN_KEY=key;fetch('/api/health').then(r=>r.json()).then(h=>{if(h.status!=='ok')throw new Error('offline');return fetch('/admin/reports',{headers:{'x-admin-key':ADMIN_KEY}})}).then(r=>{if(r.status===401){ADMIN_KEY='';err.style.display='block';return}document.getElementById('login-overlay').style.display='none';document.getElementById('dashboard').style.display='block';loadAll();clearInterval(refreshTimer);refreshTimer=setInterval(loadAll,30000)}).catch(()=>{err.textContent='Cannot reach server. Is it running?';err.style.display='block'})}
+function showAlerts(reports,waiting,health){const bar=document.getElementById('alert-bar'),alerts=[];if(!health||health.status!=='ok')alerts.push(['red','Server is down or unhealthy']);if(reports?.length)alerts.push(['red',reports.length+' safety report'+(reports.length>1?'s':'')+' need review']);if(waiting?.length>=5)alerts.push(['amber',waiting.length+' users are waiting for a match']);if(health?.users>100)alerts.push(['green',health.users+' users registered']);bar.innerHTML=alerts.map(a=>`<div class="alert ${a[0]}">${a[1]}</div>`).join('');bar.style.display=alerts.length?'grid':'none'}
+async function loadHealth(){try{const h=await fetch('/api/health').then(r=>r.json());document.getElementById('live-dot').className='status-dot'+(h.status==='ok'?'':' dead');document.getElementById('server-status').textContent=h.status==='ok'?'Server online':'Server issue';document.getElementById('s-users').textContent=h.users??'-';document.getElementById('s-uptime').textContent=h.uptime?formatUptime(h.uptime):'-';document.getElementById('h-status').textContent=h.status==='ok'?'OK':'Error';document.getElementById('h-status').style.color=h.status==='ok'?'#4ade80':'#f87171';document.getElementById('h-uptime').textContent=h.uptime?formatUptime(h.uptime):'-';document.getElementById('h-db').textContent=h.db??'-';document.getElementById('h-env').textContent=h.env??'unknown';document.getElementById('h-env').style.color=h.env==='production'?'#4ade80':'#fbbf24';document.getElementById('h-ver').textContent='v'+(h.version??'?');document.getElementById('h-users').textContent=h.users??'-';document.getElementById('last-refresh').textContent='Updated '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});return h}catch{return null}}
+async function loadReports(){try{const reports=await adminFetch('/admin/reports'),badge=document.getElementById('reports-badge'),body=document.getElementById('reports-body');document.getElementById('s-reports').textContent=Array.isArray(reports)?reports.length:'-';if(!reports.length){badge.textContent='0';body.innerHTML='<div class="tiny">No open reports</div>';return[]}badge.textContent=reports.length;body.innerHTML=`<div class="table-wrap"><table class="table"><thead><tr><th>ID</th><th>Reporter</th><th>Day</th><th>Reason</th><th>Date</th><th>Actions</th></tr></thead><tbody>${reports.map(r=>`<tr><td class="mono">#${r.id}</td><td>${r.reporter_name?escHtml(r.reporter_name)+' ':''}<span class="mono">#${r.reporter_id}</span></td><td>${r.day||'-'}</td><td>${escHtml(r.reason)}</td><td class="mono">${timeAgo(r.date||r.created_at)}</td><td><div class="actions"><button class="btn secondary" onclick="dismissReport(${r.id})">Ignore</button><button class="btn danger" onclick="removeUserFromReport(${r.reporter_id})">Remove User</button></div></td></tr>`).join('')}</tbody></table></div>`;return reports}catch{return[]}}
+async function loadStats(){try{const data=await adminFetch('/admin/stats');document.getElementById('s-matches').textContent=data.activeMatches??'-';document.getElementById('s-waiting').textContent=data.waitingForMatch??'-';document.getElementById('s-entries').textContent=data.entriesToday??'-';document.getElementById('s-day21').textContent=data.reachedDay21??'-';document.getElementById('s-revealed').textContent=data.bothRevealed??'-';const archetypes=data.archetypes||{},total=Object.values(archetypes).reduce((s,v)=>s+v,0)||1;['protector','connector','performer','disconnector','noscan'].forEach(a=>{document.getElementById('bar-'+a).style.width=Math.round(((archetypes[a]||0)/total)*100)+'%';document.getElementById('ct-'+a).textContent=archetypes[a]||0});const p=archetypes.protector||0,c=archetypes.connector||0,pf=archetypes.performer||0,d=archetypes.disconnector||0,imbalanced=Math.abs(p-c)>5||Math.abs(pf-d)>5;document.getElementById('arch-balance-badge').textContent=imbalanced?'Imbalanced':'Balanced';const waiting=data.waitingUsers||[];document.getElementById('waiting-badge').textContent=waiting.length;document.getElementById('waiting-body').innerHTML=waiting.length?waiting.map(u=>`<div class="wait-item"><div>${archetypeEmoji[u.archetype]||'✦'}</div><div><div>${escHtml(u.name)}</div><div class="tiny">${escHtml(u.college)} · ${escHtml(u.year||'-')} · #${u.id}</div></div><div class="mono tiny">${u.waitDays||0}d</div></div>`).join(''):'<div class="tiny">Everyone is matched</div>';return data}catch{return null}}
+async function loadUsers(){try{const data=await adminFetch('/admin/users');allUsers=Array.isArray(data)?data:[];document.getElementById('users-badge').textContent=allUsers.length;document.getElementById('s-users').textContent=allUsers.length;renderUsersTable(allUsers)}catch{document.getElementById('users-tbody').innerHTML='<tr><td colspan="8" class="tiny">Could not load users</td></tr>'}}
+function renderUsersTable(users){const tbody=document.getElementById('users-tbody');if(!users.length){tbody.innerHTML='<tr><td colspan="8" class="tiny">No users yet</td></tr>';return}tbody.innerHTML=users.map(u=>{const arch=u.archetype?`<span class="chip rose">${archetypeEmoji[u.archetype]||'✦'} ${escHtml(u.archetype)}</span>`:'<span class="chip purple">No scan</span>';const status=u.has_match?'<span class="chip green">Matched</span>':u.archetype?'<span class="chip amber">Waiting</span>':'<span class="chip purple">New</span>';return `<tr><td class="mono">#${u.id}</td><td>${escHtml(u.name)}</td><td>${escHtml(u.college)}</td><td>${escHtml(u.year||'-')}</td><td>${arch}</td><td>${status}</td><td class="mono">${timeAgo(u.created_at)}</td><td><div class="actions"><button class="btn secondary" onclick="viewUser(${u.id})">View</button><button class="btn danger" onclick="confirmRemoveUser(${u.id},${JSON.stringify(String(u.name||''))})">Remove</button></div></td></tr>`}).join('')}
+function filterUsers(q){q=(q||'').toLowerCase();renderUsersTable(!q?allUsers:allUsers.filter(u=>u.name?.toLowerCase().includes(q)||u.college?.toLowerCase().includes(q)||u.email?.toLowerCase().includes(q)))}
+async function loadActivityFeed(){try{const data=await adminFetch('/admin/activity'),feed=document.getElementById('activity-feed'),icons={register:'✨',match:'🔗',entry:'✍️',reveal:'🌕',report:'⚑',delete:'🗑️'};if(!data.length){feed.innerHTML='<div class="tiny">No recent activity</div>';return}feed.innerHTML=data.map(item=>`<div class="feed-item"><div>${icons[item.type]||'●'}</div><div>${escHtml(item.message)}</div><div class="mono tiny">${timeAgo(item.created_at)}</div></div>`).join('');document.getElementById('feed-count').textContent=data.length+' events'}catch{document.getElementById('activity-feed').innerHTML='<div class="tiny">Could not load activity</div>'}}
+async function createManualMatch(){const a=document.getElementById('match-user-a').value.trim(),b=document.getElementById('match-user-b').value.trim();if(!a||!b)return toast('Enter both user IDs','error');if(!confirm(`Create a match between "${a}" and "${b}"?`))return;try{await adminFetch('/admin/manual-match',{method:'POST',body:JSON.stringify({user1_id:a,user2_id:b})});toast('Match created','success');document.getElementById('match-user-a').value='';document.getElementById('match-user-b').value='';loadAll()}catch(e){toast(e.message,'error')}}
+async function sendAnnouncement(){const msg=document.getElementById('announce-text').value.trim();if(!msg)return toast('Write a message first','error');try{await adminFetch('/admin/announce',{method:'POST',body:JSON.stringify({message:msg})});document.getElementById('announce-text').value='';toast('Announcement sent','success')}catch(e){toast(e.message,'error')}}
+function confirmRemoveUser(id,name){if(confirm(`Remove user "${name}" (#${id})?\n\nThis permanently deletes the account and all related data.`))removeUserById(id)}
+async function removeUserById(id){try{await adminFetch('/admin/remove-user',{method:'POST',body:JSON.stringify({user_id:id})});toast('User removed','success');loadAll()}catch(e){toast(e.message,'error')}}
+async function removeUser(){const id=document.getElementById('danger-user-id').value.trim();if(!id)return toast('Enter user ID or email','error');if(!confirm(`Permanently delete "${id}"? This cannot be undone.`))return;await removeUserById(id)}
+async function endMatch(){const id=document.getElementById('danger-match-id').value.trim();if(!id)return toast('Enter match ID','error');if(!confirm(`Force-end match #${id}? Current cycle data will be removed.`))return;try{await adminFetch('/admin/end-match',{method:'POST',body:JSON.stringify({match_id:id})});toast('Match ended','success');loadAll()}catch(e){toast(e.message,'error')}}
+async function exportData(){try{const r=await fetch('/admin/export',{headers:{'x-admin-key':ADMIN_KEY}});if(!r.ok)throw new Error('Export failed');const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='mentally-prepare-admin-export.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);toast('Export downloaded','success')}catch(e){toast(e.message,'error')}}
+async function dismissReport(id){try{await adminFetch('/admin/dismiss-report',{method:'POST',body:JSON.stringify({report_id:id})});toast('Report dismissed','success');loadAll()}catch(e){toast(e.message,'error')}}
+function removeUserFromReport(id){confirmRemoveUser(id,'user #'+id)}
+function viewUser(id){const user=allUsers.find(u=>u.id===id);if(!user)return;alert(`User #${user.id}\nName: ${user.name}\nEmail: ${user.email}\nCollege: ${user.college} · ${user.year}\nArchetype: ${user.archetype||'No scan'}\nJoined: ${user.created_at}\nMatched: ${user.has_match?'Yes':'No'}`)}
+async function loadAll(){const [health,reports,stats]=await Promise.all([loadHealth(),loadReports(),loadStats()]);await loadUsers();await loadActivityFeed();showAlerts(reports,stats?.waitingUsers||[],health)}
+</script>
 </body>
 </html>

@@ -238,11 +238,17 @@ const stmts = {
     ON CONFLICT(user_id, match_id, day) DO UPDATE SET text = excluded.text, updated_at = datetime('now')
   `),
   deleteUserComments: db.prepare('DELETE FROM comments WHERE user_id = ?'),
+  deleteMatchComments: db.prepare('DELETE FROM comments WHERE match_id = ?'),
 
   insertReport: db.prepare("INSERT INTO reports (reporter_id, day, reason, created_at) VALUES (?, ?, ?, datetime('now'))"),
   deleteUserReports: db.prepare('DELETE FROM reports WHERE reporter_id = ?'),
+  deleteReportById: db.prepare('DELETE FROM reports WHERE id = ?'),
 
   deleteUserMatches: db.prepare('DELETE FROM matches WHERE user1_id = ? OR user2_id = ?'),
+  deleteMatchEntries: db.prepare('DELETE FROM entries WHERE match_id = ?'),
+  deleteMatchReveals: db.prepare('DELETE FROM reveals WHERE match_id = ?'),
+  deleteMatchById: db.prepare('DELETE FROM matches WHERE id = ?'),
+  deleteUserPayments: db.prepare('DELETE FROM payments WHERE user_id = ?'),
 
   insertDeletionLog: db.prepare('INSERT INTO deletion_log (anonymised_id, reason) VALUES (?, ?)'),
 
@@ -612,6 +618,36 @@ function getMatchDay(startedAt) {
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   return Math.min(Math.max(Math.floor((today - startDay) / 86400000) + 1, 1), 21);
 }
+
+function findUserByIdentifier(identifier) {
+  if (identifier === undefined || identifier === null) return null;
+  const raw = String(identifier).trim();
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return parseUser(stmts.getUserById.get(Number(raw)));
+  return parseUser(stmts.getUserByEmail.get(raw.toLowerCase()));
+}
+
+function deleteMatchData(matchId) {
+  stmts.deleteMatchEntries.run(matchId);
+  stmts.deleteMatchComments.run(matchId);
+  stmts.deleteMatchReveals.run(matchId);
+  stmts.deleteMatchById.run(matchId);
+}
+
+const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
+  const matches = db.prepare('SELECT id FROM matches WHERE user1_id = ? OR user2_id = ?').all(userId, userId);
+  for (const match of matches) deleteMatchData(match.id);
+  stmts.insertDeletionLog.run(
+    crypto.createHash('sha256').update(String(userId)).digest('hex').slice(0, 16),
+    reason
+  );
+  stmts.deleteUserEntries.run(userId);
+  stmts.deleteUserReveals.run(userId);
+  stmts.deleteUserComments.run(userId);
+  stmts.deleteUserReports.run(userId);
+  stmts.deleteUserPayments.run(userId);
+  stmts.deleteUser.run(userId);
+});
 
 function getPartnerId(match, userId) {
   return match.user1_id === userId ? match.user2_id : match.user1_id;
@@ -1194,19 +1230,7 @@ app.delete('/api/account', apiLimiter, requireAuth, async (req, res) => {
     const passwordValid = await bcrypt.compare(password, user.password);
     if (!passwordValid) return res.status(401).json({ error: 'Incorrect password. Account not deleted.' });
 
-    const deleteAll = db.transaction(() => {
-      stmts.insertDeletionLog.run(
-        crypto.createHash('sha256').update(String(userId)).digest('hex').slice(0, 16),
-        'user_requested'
-      );
-      stmts.deleteUserEntries.run(userId);
-      stmts.deleteUserReveals.run(userId);
-      stmts.deleteUserComments.run(userId);
-      stmts.deleteUserReports.run(userId);
-      stmts.deleteUserMatches.run(userId, userId);
-      stmts.deleteUser.run(userId);
-    });
-    deleteAll();
+    deleteUserDataTx(userId, 'user_requested');
 
     req.session.destroy(() => {
       res.json({ ok: true, message: 'Your account and all associated data has been permanently deleted.' });
@@ -1476,6 +1500,7 @@ app.get('/api/health', (req, res) => {
       uptime: Math.floor(process.uptime()),
       users: check.c,
       db: 'sqlite',
+      env: process.env.NODE_ENV || 'development',
       version: '2.0.0'
     });
   } catch (e) {
@@ -1546,11 +1571,67 @@ app.get('/admin', (req, res) => {
 
 function requireAdmin(req, res, next) {
   const adminPassword = process.env.ADMIN_PASSWORD;
-  const pw = req.headers['x-admin-password'];
+  const pw = req.headers['x-admin-password'] || req.headers['x-admin-key'] || req.query.key;
   if (!adminPassword || !pw || pw !== adminPassword) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
+}
+
+function getAdminStats() {
+  const totalUsers = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+  const activeMatches = db.prepare('SELECT COUNT(*) as c FROM matches').get().c;
+  const entriesToday = db.prepare(`
+    SELECT COUNT(*) as c
+    FROM entries
+    WHERE date(created_at, '+5 hours', '+30 minutes') = date('now', '+5 hours', '+30 minutes')
+  `).get().c;
+  const openReports = db.prepare('SELECT COUNT(*) as c FROM reports').get().c;
+  const reachedDay21 = db.prepare('SELECT started_at FROM matches').all()
+    .filter(match => getMatchDay(match.started_at) >= 21).length;
+  const bothRevealed = db.prepare(`
+    SELECT COUNT(*) as c
+    FROM (
+      SELECT match_id
+      FROM reveals
+      WHERE choice = 'yes'
+      GROUP BY match_id
+      HAVING COUNT(*) = 2
+    )
+  `).get().c;
+
+  const archetypeRows = db.prepare(`
+    SELECT COALESCE(archetype, 'noscan') as archetype, COUNT(*) as count
+    FROM users
+    GROUP BY COALESCE(archetype, 'noscan')
+  `).all();
+  const archetypes = { protector: 0, connector: 0, performer: 0, disconnector: 0, noscan: 0 };
+  for (const row of archetypeRows) {
+    if (row.archetype in archetypes) archetypes[row.archetype] = row.count;
+  }
+
+  const waitingUsers = db.prepare(`
+    SELECT u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at
+    FROM users u
+    LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
+    WHERE m.id IS NULL AND u.archetype IS NOT NULL
+    ORDER BY u.created_at ASC
+  `).all().map(user => ({
+    ...user,
+    waitDays: Math.max(Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000), 0)
+  }));
+
+  return {
+    totalUsers,
+    activeMatches,
+    waitingForMatch: waitingUsers.length,
+    entriesToday,
+    reachedDay21,
+    bothRevealed,
+    openReports,
+    archetypes,
+    waitingUsers
+  };
 }
 
 // Send announcement (POST /admin/announce)
@@ -1565,16 +1646,182 @@ app.post('/admin/announce', requireAdmin, express.json(), (req, res) => {
 // Get recent reports (GET /admin/reports)
 app.get('/admin/reports', requireAdmin, (req, res) => {
   try {
-    const rows = db.prepare('SELECT id, reporter_id, day, reason, created_at FROM reports ORDER BY created_at DESC LIMIT 20').all();
+    const rows = db.prepare(`
+      SELECT r.id, r.reporter_id, r.day, r.reason, r.created_at, u.name as reporter_name
+      FROM reports r
+      LEFT JOIN users u ON u.id = r.reporter_id
+      ORDER BY r.created_at DESC
+      LIMIT 20
+    `).all();
     res.json(rows.map(r => ({
       id: r.id,
       reporter_id: r.reporter_id,
+      reporter_name: r.reporter_name,
       day: r.day,
       reason: r.reason,
       date: r.created_at
     })));
   } catch (e) {
     res.status(500).json({ error: 'Failed to load reports' });
+  }
+});
+
+app.get('/admin/users', requireAdmin, (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT
+        u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at,
+        EXISTS (
+          SELECT 1 FROM matches m WHERE m.user1_id = u.id OR m.user2_id = u.id
+        ) as has_match
+      FROM users u
+      ORDER BY u.created_at DESC
+    `).all();
+    res.json(rows.map(row => ({ ...row, has_match: !!row.has_match })));
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load users' });
+  }
+});
+
+app.get('/admin/stats', requireAdmin, (req, res) => {
+  try {
+    res.json(getAdminStats());
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load stats' });
+  }
+});
+
+app.get('/admin/activity', requireAdmin, (req, res) => {
+  try {
+    const activity = [
+      ...db.prepare(`
+        SELECT created_at, 'register' as type, name || ' joined from ' || college as message
+        FROM users
+        ORDER BY created_at DESC
+        LIMIT 8
+      `).all(),
+      ...db.prepare(`
+        SELECT m.started_at as created_at, 'match' as type, u1.name || ' matched with ' || u2.name as message
+        FROM matches m
+        JOIN users u1 ON u1.id = m.user1_id
+        JOIN users u2 ON u2.id = m.user2_id
+        ORDER BY m.started_at DESC
+        LIMIT 8
+      `).all(),
+      ...db.prepare(`
+        SELECT e.created_at, 'entry' as type, u.name || ' wrote Day ' || e.day || ' in match #' || e.match_id as message
+        FROM entries e
+        JOIN users u ON u.id = e.user_id
+        ORDER BY e.created_at DESC
+        LIMIT 8
+      `).all(),
+      ...db.prepare(`
+        SELECT r.created_at, 'report' as type, 'Report from ' || COALESCE(u.name, 'user #' || r.reporter_id) || ': ' || r.reason as message
+        FROM reports r
+        LEFT JOIN users u ON u.id = r.reporter_id
+        ORDER BY r.created_at DESC
+        LIMIT 8
+      `).all(),
+      ...db.prepare(`
+        SELECT rv.created_at, 'reveal' as type, u.name || ' chose ' || rv.choice || ' on reveal day' as message
+        FROM reveals rv
+        JOIN users u ON u.id = rv.user_id
+        ORDER BY rv.created_at DESC
+        LIMIT 8
+      `).all(),
+      ...db.prepare(`
+        SELECT deleted_at as created_at, 'delete' as type, 'User data deleted (' || reason || ')' as message
+        FROM deletion_log
+        ORDER BY deleted_at DESC
+        LIMIT 5
+      `).all()
+    ]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 12);
+    res.json(activity);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load activity' });
+  }
+});
+
+app.post('/admin/manual-match', requireAdmin, express.json(), (req, res) => {
+  try {
+    const userA = findUserByIdentifier(req.body.user1_id);
+    const userB = findUserByIdentifier(req.body.user2_id);
+    if (!userA || !userB) return res.status(404).json({ error: 'Both users must exist' });
+    if (userA.id === userB.id) return res.status(400).json({ error: 'Choose two different users' });
+    if (!userA.archetype || !userB.archetype) return res.status(400).json({ error: 'Both users must complete the scan first' });
+    if (userA.college.trim().toLowerCase() === userB.college.trim().toLowerCase()) {
+      return res.status(400).json({ error: 'Users must be from different colleges' });
+    }
+    if (complementary[userA.archetype] !== userB.archetype) {
+      return res.status(400).json({ error: 'Archetypes are not complementary' });
+    }
+    if (stmts.getMatch.get(userA.id, userA.id) || stmts.getMatch.get(userB.id, userB.id)) {
+      return res.status(400).json({ error: 'One or both users are already matched' });
+    }
+    const result = stmts.insertMatch.run(userA.id, userB.id);
+    res.json({ ok: true, match_id: result.lastInsertRowid });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to create manual match' });
+  }
+});
+
+app.post('/admin/remove-user', requireAdmin, express.json(), (req, res) => {
+  try {
+    const user = findUserByIdentifier(req.body.user_id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    deleteUserDataTx(user.id, 'admin_removed');
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to remove user' });
+  }
+});
+
+app.post('/admin/end-match', requireAdmin, express.json(), (req, res) => {
+  try {
+    const matchId = Number(req.body.match_id);
+    if (!Number.isInteger(matchId) || matchId <= 0) return res.status(400).json({ error: 'Valid match ID required' });
+    const match = db.prepare('SELECT id FROM matches WHERE id = ?').get(matchId);
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+    db.transaction(() => deleteMatchData(matchId))();
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to end match' });
+  }
+});
+
+app.post('/admin/dismiss-report', requireAdmin, express.json(), (req, res) => {
+  try {
+    const reportId = Number(req.body.report_id);
+    if (!Number.isInteger(reportId) || reportId <= 0) return res.status(400).json({ error: 'Valid report ID required' });
+    const result = stmts.deleteReportById.run(reportId);
+    if (!result.changes) return res.status(404).json({ error: 'Report not found' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to dismiss report' });
+  }
+});
+
+app.get('/admin/export', requireAdmin, (req, res) => {
+  try {
+    const exportData = {
+      exported_at: new Date().toISOString(),
+      users: db.prepare('SELECT id, name, email, college, year, archetype, consent_given, created_at, last_active_date FROM users ORDER BY id').all(),
+      matches: db.prepare('SELECT * FROM matches ORDER BY id').all(),
+      entries: db.prepare('SELECT * FROM entries ORDER BY id').all(),
+      reveals: db.prepare('SELECT * FROM reveals ORDER BY id').all(),
+      comments: db.prepare('SELECT * FROM comments ORDER BY id').all(),
+      reports: db.prepare('SELECT * FROM reports ORDER BY id').all(),
+      payments: db.prepare('SELECT id, user_id, provider, provider_payment_id, provider_order_id, amount, currency, product, status, created_at, updated_at FROM payments ORDER BY id').all(),
+      deletion_log: db.prepare('SELECT * FROM deletion_log ORDER BY id').all()
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="mentally-prepare-admin-export.json"');
+    res.json(exportData);
+  } catch (e) {
+    console.error('Admin export error:', e);
+    res.status(500).json({ error: 'Failed to export data' });
   }
 });
 
