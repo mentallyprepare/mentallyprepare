@@ -118,12 +118,23 @@ db.exec(`
     updated_at TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS waitlist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    college TEXT NOT NULL,
+    year TEXT,
+    archetype TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_entries_user ON entries(user_id);
   CREATE INDEX IF NOT EXISTS idx_entries_match ON entries(match_id);
   CREATE INDEX IF NOT EXISTS idx_matches_user1 ON matches(user1_id);
   CREATE INDEX IF NOT EXISTS idx_matches_user2 ON matches(user2_id);
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   CREATE INDEX IF NOT EXISTS idx_users_archetype ON users(archetype);
+  CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at);
 `);
 
 // ─── Migrate from data.json if it exists ─
@@ -1827,6 +1838,57 @@ app.get('/admin/export', requireAdmin, (req, res) => {
 
 app.get('/privacy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+
+app.get('/waitlist', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'waitlist.html'));
+});
+
+app.get('/api/waitlist/count', apiLimiter, (req, res) => {
+  try {
+    const count = db.prepare('SELECT COUNT(*) as c FROM waitlist').get().c;
+    res.json({ count });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load waitlist count' });
+  }
+});
+
+app.post('/api/waitlist', apiLimiter, (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const college = String(req.body.college || '').trim();
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const year = String(req.body.year || '').trim();
+    const archetype = req.body.archetype ? String(req.body.archetype).trim().toLowerCase() : null;
+
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    if (!college) return res.status(400).json({ error: 'College is required' });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Valid email is required' });
+    }
+    if (!year) return res.status(400).json({ error: 'Year is required' });
+
+    const validArchetypes = ['protector', 'connector', 'performer', 'disconnector'];
+    if (archetype && !validArchetypes.includes(archetype)) {
+      return res.status(400).json({ error: 'Invalid archetype' });
+    }
+
+    const existing = db.prepare('SELECT id FROM waitlist WHERE email = ?').get(email);
+    if (existing) {
+      const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(existing.id).c;
+      return res.status(409).json({ error: 'This email is already on the waitlist', position });
+    }
+
+    const result = db.prepare(`
+      INSERT INTO waitlist (name, email, college, year, archetype)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(name, email, college, year, archetype);
+    const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(result.lastInsertRowid).c;
+    res.json({ ok: true, position });
+  } catch (e) {
+    console.error('Waitlist signup error:', e);
+    res.status(500).json({ error: 'Failed to join waitlist' });
+  }
 });
 
 app.get('/app', (req, res) => {
