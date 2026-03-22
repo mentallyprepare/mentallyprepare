@@ -27,7 +27,7 @@ button,input,textarea{font:inherit}button{cursor:pointer}
 .stat{padding:18px}.label{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--soft);margin-bottom:8px}.value{font:700 34px/1 'Playfair Display',serif}.note,.tiny{color:var(--soft)}.tiny{font-size:12px}
 .panel h3,.danger h3{margin:0;font-size:14px;font-weight:400}.panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}.panel-body{padding:18px 20px}
 .bar-row,.feed-item,.wait-item{display:grid;gap:10px;align-items:center}.bar-row{grid-template-columns:100px 1fr 28px;margin:12px 0}.bar-track{height:7px;background:rgba(248,242,255,.07);border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:linear-gradient(90deg,var(--rose2),var(--purple));border-radius:999px}
-.feed-item,.wait-item{grid-template-columns:auto 1fr auto;padding:10px 0;border-bottom:1px solid var(--line)}.feed-item:last-child,.wait-item:last-child{border-bottom:0}.mono{font-family:'JetBrains Mono',monospace}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left}.table th{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--soft);font-weight:400}
+.feed-item,.wait-item{grid-template-columns:auto 1fr auto;padding:10px 0;border-bottom:1px solid var(--line)}.feed-item:last-child,.wait-item:last-child{border-bottom:0}.mono{font-family:'JetBrains Mono',monospace}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left}.table th{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--soft);font-weight:400}.panel-header{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--line)}.panel-title{display:flex;align-items:center;gap:8px;font-size:14px}.panel-title-ico{color:var(--amber)}.panel-badge{padding:4px 10px;border-radius:999px;border:1px solid var(--line2);font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--soft)}.panel-badge.amber{color:var(--amber);border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.08)}.data-table{width:100%;border-collapse:collapse}.data-table th,.data-table td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left}.data-table th{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--soft);font-weight:400}.skeleton{height:22px;border-radius:999px;background:linear-gradient(90deg,rgba(248,242,255,.07),rgba(248,242,255,.14),rgba(248,242,255,.07))}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;border:1px solid var(--line2);font-size:11px}.chip.green{color:var(--green)}.chip.amber{color:var(--amber)}.chip.rose{color:#efb4c3}.chip.purple{color:#c5b8df}
 .actions{display:flex;gap:8px;flex-wrap:wrap}.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.textarea{min-height:96px;resize:vertical}.danger{padding:18px;margin-top:24px}.danger-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 #toast{position:fixed;right:24px;bottom:24px;max-width:320px;padding:12px 16px;border-radius:12px;background:#17132a;border:1px solid var(--line2);opacity:0;transform:translateY(8px);transition:.25s}#toast.show{opacity:1;transform:none}
@@ -73,6 +73,32 @@ button,input,textarea{font:inherit}button{cursor:pointer}
       <div class="panel-head"><h3>👥 All Users</h3><div class="row"><input id="user-search" class="input" style="width:220px;padding:8px 12px" placeholder="Search by name or college..." oninput="filterUsers(this.value)"/><div id="users-badge" class="badge">0</div></div></div>
       <div class="table-wrap"><table class="table"><thead><tr><th>ID</th><th>Name</th><th>College</th><th>Year</th><th>Archetype</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody id="users-tbody"><tr><td colspan="8" class="tiny">Loading users...</td></tr></tbody></table></div>
     </div>
+    <div class="panel" style="margin-bottom:28px;">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-ico">✦</span> Waitlist Signups
+        </div>
+        <div class="panel-badge amber" id="wl-badge">0</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>College</th>
+              <th>Year</th>
+              <th>Archetype</th>
+              <th>Joined</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="wl-tbody">
+            <tr><td colspan="7"><div class="skeleton"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     <div class="grid2" style="margin-top:24px">
       <div class="panel"><div class="panel-head"><h3>🔗 Manual Match</h3><div class="badge">Founder Only</div></div><div class="panel-body"><div class="tiny" style="margin-bottom:12px">Use this when the algorithm cannot find a pair. Choose users from different colleges with complementary archetypes.</div><div class="split"><input id="match-user-a" class="input" placeholder="User A - ID or Email"/><input id="match-user-b" class="input" placeholder="User B - ID or Email"/></div><div class="tiny" style="margin:12px 0">Different colleges. Complementary archetypes. Both scanned.</div><button class="btn" style="width:100%" onclick="createManualMatch()">Create Match</button></div></div>
       <div class="grid2" style="grid-template-columns:1fr;gap:16px;margin:0">
@@ -111,7 +137,37 @@ async function exportData(){try{const r=await fetch('/admin/export',{headers:{'x
 async function dismissReport(id){try{await adminFetch('/admin/dismiss-report',{method:'POST',body:JSON.stringify({report_id:id})});toast('Report dismissed','success');loadAll()}catch(e){toast(e.message,'error')}}
 function removeUserFromReport(id){confirmRemoveUser(id,'user #'+id)}
 function viewUser(id){const user=allUsers.find(u=>u.id===id);if(!user)return;alert(`User #${user.id}\nName: ${user.name}\nEmail: ${user.email}\nCollege: ${user.college} · ${user.year}\nArchetype: ${user.archetype||'No scan'}\nJoined: ${user.created_at}\nMatched: ${user.has_match?'Yes':'No'}`)}
-async function loadAll(){const [health,reports,stats]=await Promise.all([loadHealth(),loadReports(),loadStats()]);await loadUsers();await loadActivityFeed();showAlerts(reports,stats?.waitingUsers||[],health)}
+function waitlistRowAction(email){return email?`<a class="btn secondary" href="mailto:${encodeURIComponent(email)}">Email</a>`:'<span class="tiny">No email</span>'}
+async function loadAll(){const [health,reports,stats]=await Promise.all([loadHealth(),loadReports(),loadStats()]);await loadUsers();await loadWaitlist();await loadActivityFeed();showAlerts(reports,stats?.waitingUsers||[],health)}
+async function loadWaitlist() {
+  try {
+    const data = await adminFetch('/admin/waitlist');
+    if (!Array.isArray(data)) return;
+    document.getElementById('wl-badge').textContent = data.length;
+    const tbody = document.getElementById('wl-tbody');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-s, var(--soft));padding:20px;font-style:italic;">No signups yet — share the waitlist link</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map((entry, index) => {
+      const archetype = entry.archetype
+        ? `<span class="chip rose">${archetypeEmoji[entry.archetype]||'✦'} ${escHtml(entry.archetype)}</span>`
+        : '<span class="chip purple">Unknown</span>';
+      return `<tr>
+        <td class="mono">#${index + 1}</td>
+        <td>${escHtml(entry.name)}</td>
+        <td>${escHtml(entry.college)}</td>
+        <td>${escHtml(entry.year || '-')}</td>
+        <td>${archetype}</td>
+        <td class="mono">${timeAgo(entry.created_at)}</td>
+        <td>${waitlistRowAction(entry.email)}</td>
+      </tr>`;
+    }).join('');
+  } catch {
+    document.getElementById('wl-badge').textContent = '-';
+    document.getElementById('wl-tbody').innerHTML = '<tr><td colspan="7" class="tiny">Could not load waitlist</td></tr>';
+  }
+}
 </script>
 </body>
 </html>
