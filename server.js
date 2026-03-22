@@ -1848,8 +1848,8 @@ app.get('/api/waitlist/count', apiLimiter, (req, res) => {
   try {
     const count = db.prepare('SELECT COUNT(*) as c FROM waitlist').get().c;
     res.json({ count });
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to load waitlist count' });
+  } catch {
+    res.json({ count: 0 });
   }
 });
 
@@ -1861,12 +1861,12 @@ app.post('/api/waitlist', apiLimiter, (req, res) => {
     const year = String(req.body.year || '').trim();
     const archetype = req.body.archetype ? String(req.body.archetype).trim().toLowerCase() : null;
 
-    if (!name) return res.status(400).json({ error: 'Name is required' });
-    if (!college) return res.status(400).json({ error: 'College is required' });
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: 'Valid email is required' });
+    if (!name || !email || !college) {
+      return res.status(400).json({ error: 'Name, email and college are required' });
     }
-    if (!year) return res.status(400).json({ error: 'Year is required' });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Please enter a valid email' });
+    }
 
     const validArchetypes = ['protector', 'connector', 'performer', 'disconnector'];
     if (archetype && !validArchetypes.includes(archetype)) {
@@ -1876,18 +1876,35 @@ app.post('/api/waitlist', apiLimiter, (req, res) => {
     const existing = db.prepare('SELECT id FROM waitlist WHERE email = ?').get(email);
     if (existing) {
       const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(existing.id).c;
-      return res.status(409).json({ error: 'This email is already on the waitlist', position });
+      return res.json({ ok: true, position, alreadyExists: true });
     }
 
     const result = db.prepare(`
       INSERT INTO waitlist (name, email, college, year, archetype)
       VALUES (?, ?, ?, ?, ?)
-    `).run(name, email, college, year, archetype);
+    `).run(name, email, college, year || '', archetype || '');
     const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(result.lastInsertRowid).c;
+    console.log(`  ✦ Waitlist signup: ${name} from ${college} (#${position})`);
     res.json({ ok: true, position });
   } catch (e) {
-    console.error('Waitlist signup error:', e);
+    if (e.message.includes('UNIQUE')) {
+      const existing = db.prepare('SELECT id FROM waitlist WHERE email = ?').get(req.body.email?.toLowerCase().trim());
+      if (existing) {
+        const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(existing.id).c;
+        return res.json({ ok: true, position, alreadyExists: true });
+      }
+    }
+    console.error('Waitlist error:', e);
     res.status(500).json({ error: 'Failed to join waitlist' });
+  }
+});
+
+app.get('/admin/waitlist', requireAdmin, (req, res) => {
+  try {
+    const entries = db.prepare('SELECT * FROM waitlist ORDER BY created_at DESC').all();
+    res.json(entries);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to load waitlist' });
   }
 });
 
@@ -1896,6 +1913,23 @@ app.get('/app', (req, res) => {
 });
 app.get('/app/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'app.html'));
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  const base = 'https://mymentallyprepare.com';
+  res.header('Content-Type', 'application/xml');
+  res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${base}/</loc><priority>1.0</priority></url>
+  <url><loc>${base}/waitlist</loc><priority>0.9</priority></url>
+  <url><loc>${base}/privacy</loc><priority>0.5</priority></url>
+  <url><loc>${base}/terms</loc><priority>0.5</priority></url>
+</urlset>`);
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  res.send('User-agent: *\nAllow: /\nSitemap: https://mymentallyprepare.com/sitemap.xml');
 });
 
 // 404
