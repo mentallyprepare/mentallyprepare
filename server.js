@@ -1,7 +1,7 @@
-// ═══════════════════════════════════════
+﻿// ---------------------------------------
 // MENTALLY PREPARE — Backend Server v2
 // SQLite · Push Notifications · Razorpay · Stripe
-// ═══════════════════════════════════════
+// ---------------------------------------
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
@@ -13,13 +13,17 @@ const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const Database = require('better-sqlite3');
 const webpush = require('web-push');
+const { BASE_URL } = require('./lib/config');
+const { registerStaticRoutes } = require('./routes/static');
+const { registerWaitlistRoutes } = require('./routes/waitlist');
+const { registerAdminRoutes } = require('./routes/admin');
 
 const app = express();
 app.set('trust proxy', 1); // Trust Railway/Heroku/Vercel proxy for correct IP handling
 const PORT = process.env.PORT || 3000;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-// ─── SQLite Database ────────────────────
+// --- SQLite Database --------------------
 const DB_PATH = path.join(__dirname, 'mentally-prepare.db');
 const db = new Database(DB_PATH);
 
@@ -27,7 +31,7 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// ─── Schema ─────────────────────────────
+// --- Schema -----------------------------
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +67,7 @@ db.exec(`
     match_id INTEGER NOT NULL REFERENCES matches(id),
     day INTEGER NOT NULL,
     text TEXT NOT NULL,
-    mood TEXT DEFAULT '🌓',
+    mood TEXT DEFAULT '??',
     prompt TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(user_id, match_id, day)
@@ -137,20 +141,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at);
 `);
 
-// ─── Migrate from data.json if it exists ─
+// --- Migrate from data.json if it exists -
 (function migrateFromJson() {
   const jsonPath = path.join(__dirname, 'data.json');
   if (!fs.existsSync(jsonPath)) return;
 
   const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
   if (userCount > 0) {
-    console.log('  ✓ SQLite already has data, skipping JSON migration');
+    console.log('  ? SQLite already has data, skipping JSON migration');
     return;
   }
 
   try {
     const data = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-    console.log('  ⟳ Migrating data.json → SQLite...');
+    console.log('  ? Migrating data.json ? SQLite...');
 
     const insertUser = db.prepare(`
       INSERT INTO users (id, name, email, password, college, year, gender, match_gender_pref, match_year_pref, archetype, scores, consent_given, consent_date, last_active_date, switch_count, created_at)
@@ -188,13 +192,13 @@ db.exec(`
 
     // Rename old file so it doesn't re-migrate
     fs.renameSync(jsonPath, jsonPath + '.migrated');
-    console.log('  ✓ Migration complete! data.json → data.json.migrated');
+    console.log('  ? Migration complete! data.json ? data.json.migrated');
   } catch (e) {
-    console.error('  ✗ Migration failed:', e.message);
+    console.error('  ? Migration failed:', e.message);
   }
 })();
 
-// ─── Prepared Statements ────────────────
+// --- Prepared Statements ----------------
 const stmts = {
   getUserById: db.prepare('SELECT * FROM users WHERE id = ?'),
   getUserByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
@@ -278,13 +282,13 @@ const stmts = {
   `),
 };
 
-// ─── Helper: parse scores JSON ──────────
+// --- Helper: parse scores JSON ----------
 function parseUser(row) {
   if (!row) return null;
   return { ...row, scores: row.scores ? JSON.parse(row.scores) : null };
 }
 
-// ─── Middleware ──────────────────────────
+// --- Middleware --------------------------
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -340,7 +344,7 @@ app.use(session({
   }
 }));
 
-// ─── HTTPS redirect (production) ────────
+// --- HTTPS redirect (production) --------
 if (IS_PROD) {
   app.use((req, res, next) => {
     if (req.header('x-forwarded-proto') !== 'https') {
@@ -356,7 +360,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// ─── Rate Limiters ──────────────────────
+// --- Rate Limiters ----------------------
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -375,7 +379,7 @@ const apiLimiter = rateLimit({
   validate: { xForwardedForHeader: false }
 });
 
-// ─── Prompts ────────────────────────────
+// --- Prompts ----------------------------
 const prompts = [
   '"What\'s one thing you wish someone would just ask you about?"',
   '"What did you hide today because it felt too small to explain?"',
@@ -400,7 +404,7 @@ const prompts = [
   '"Would you like to know who has been writing to you?"'
 ];
 
-// ─── Safety Keywords ────────────────────
+// --- Safety Keywords --------------------
 const SAFETY_KEYWORDS = [
   'suicide','kill myself','end my life','want to die','self harm','self-harm',
   'cutting myself','overdose','no reason to live','can\'t go on',
@@ -443,7 +447,7 @@ function scanForSafety(text) {
   return { crisis, pii };
 }
 
-// ─── Emotional Theme Detection ──────────
+// --- Emotional Theme Detection ----------
 const EMOTIONAL_THEMES = {
   isolation: {
     keywords: ['alone','lonely','isolated','nobody','no one','invisible','ignored','forgotten','empty','hollow','left out'],
@@ -550,8 +554,8 @@ function getAdaptivePrompt(entries, day) {
 
 function getMoodInsights(entries) {
   if (entries.length < 3) return null;
-  const moodMap = { '🌑': 1, '🌒': 2, '🌓': 3, '🌔': 4, '🌕': 5 };
-  const moodLabels = { '🌑': 'Heavy', '🌒': 'Quiet', '🌓': 'Okay', '🌔': 'Lighter', '🌕': 'Good' };
+  const moodMap = { '??': 1, '??': 2, '??': 3, '??': 4, '??': 5 };
+  const moodLabels = { '??': 'Heavy', '??': 'Quiet', '??': 'Okay', '??': 'Lighter', '??': 'Good' };
 
   const moodTrend = entries.slice().sort((a, b) => a.day - b.day)
     .map(e => ({ day: e.day, mood: e.mood, value: moodMap[e.mood] || 3 }));
@@ -577,7 +581,7 @@ function getMoodInsights(entries) {
   };
 }
 
-// ─── Matching ───────────────────────────
+// --- Matching ---------------------------
 const complementary = {
   protector: 'connector', connector: 'protector',
   performer: 'disconnector', disconnector: 'performer'
@@ -664,7 +668,7 @@ function getPartnerId(match, userId) {
   return match.user1_id === userId ? match.user2_id : match.user1_id;
 }
 
-// ─── Web Push Setup ─────────────────────
+// --- Web Push Setup ---------------------
 const VAPID_PATH = path.join(__dirname, '.vapid-keys.json');
 let vapidKeys;
 try {
@@ -673,7 +677,7 @@ try {
   } else {
     vapidKeys = webpush.generateVAPIDKeys();
     fs.writeFileSync(VAPID_PATH, JSON.stringify(vapidKeys, null, 2));
-    console.log('  ✓ Generated VAPID keys');
+    console.log('  ? Generated VAPID keys');
   }
   webpush.setVapidDetails(
     'mailto:' + (process.env.CONTACT_EMAIL || 'hello@mentallyprepare.in'),
@@ -681,10 +685,10 @@ try {
     vapidKeys.privateKey
   );
 } catch (e) {
-  console.error('  ✗ VAPID setup failed:', e.message);
+  console.error('  ? VAPID setup failed:', e.message);
 }
 
-// ─── Razorpay Setup ─────────────────────
+// --- Razorpay Setup ---------------------
 let razorpay = null;
 if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
   const Razorpay = require('razorpay');
@@ -692,19 +696,19 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_KEY_SECRET
   });
-  console.log('  ✓ Razorpay configured');
+  console.log('  ? Razorpay configured');
 }
 
-// ─── Stripe Setup ───────────────────────
+// --- Stripe Setup -----------------------
 let stripe = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-  console.log('  ✓ Stripe configured');
+  console.log('  ? Stripe configured');
 }
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // AUTH ROUTES
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/register', authLimiter, async (req, res) => {
   try {
     const { name, email, password, college, year, gender, matchGenderPref, matchYearPref, consentGiven } = req.body;
@@ -762,9 +766,9 @@ app.post('/api/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // STATE ROUTE
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.get('/api/me', apiLimiter, requireAuth, (req, res) => {
   try {
     const userId = req.session.userId;
@@ -845,9 +849,9 @@ app.get('/api/me', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // SCAN ROUTE
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/scan', apiLimiter, requireAuth, (req, res) => {
   try {
     const { scores, archetype } = req.body;
@@ -868,9 +872,9 @@ app.post('/api/scan', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // ENTRY ROUTE
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/entry', apiLimiter, requireAuth, (req, res) => {
   try {
     const userId = req.session.userId;
@@ -888,7 +892,7 @@ app.post('/api/entry', apiLimiter, requireAuth, (req, res) => {
     if (day > 21) return res.status(400).json({ error: 'Journey complete' });
 
     const prompt = prompts[(day - 1) % prompts.length];
-    stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
+    stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '??', prompt);
 
     res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, helplines: safety.crisis ? HELPLINES : null } });
   } catch (e) {
@@ -897,9 +901,9 @@ app.post('/api/entry', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // PARTNER STATUS
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.get('/api/partner-status', apiLimiter, requireAuth, (req, res) => {
   try {
     const userId = req.session.userId;
@@ -925,9 +929,9 @@ app.get('/api/partner-status', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // SWITCH PARTNER
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/switch-partner', apiLimiter, requireAuth, (req, res) => {
   try {
     const userId = req.session.userId;
@@ -962,9 +966,9 @@ app.post('/api/switch-partner', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // COMMENTS
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/comment', apiLimiter, requireAuth, (req, res) => {
   try {
     const userId = req.session.userId;
@@ -991,9 +995,9 @@ app.post('/api/comment', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // REPORT
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/report', apiLimiter, requireAuth, (req, res) => {
   try {
     const userId = req.session.userId;
@@ -1007,9 +1011,9 @@ app.post('/api/report', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // REVEAL
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/reveal', apiLimiter, requireAuth, (req, res) => {
   try {
     const userId = req.session.userId;
@@ -1030,9 +1034,9 @@ app.post('/api/reveal', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // DEV TOOLS (blocked in production)
-// ═══════════════════════════════════════
+// ---------------------------------------
 function requireDev(req, res, next) {
   if (IS_PROD) return res.status(404).json({ error: 'Not found' });
   next();
@@ -1076,7 +1080,7 @@ app.post('/api/dev/setup', requireAuth, requireDev, async (req, res) => {
       'Is it strange that I feel like I know you?',
       'I wonder if you\'re having a good day today.'
     ];
-    const moods = ['🌑', '🌒', '🌓', '🌔', '🌕'];
+    const moods = ['??', '??', '??', '??', '??'];
     for (let d = 1; d < day; d++) {
       const existing = stmts.getEntry.get(partnerId, match.id, d);
       if (!existing) {
@@ -1107,7 +1111,7 @@ app.post('/api/dev/advance', requireAuth, requireDev, (req, res) => {
       'The prompt made me think of something.', 'I feel like I know you.',
       'I wonder about your day.'
     ];
-    const moods = ['🌑', '🌒', '🌓', '🌔', '🌕'];
+    const moods = ['??', '??', '??', '??', '??'];
     for (let day = 1; day <= 21; day++) {
       const existing = stmts.getEntry.get(partnerId, match.id, day);
       if (!existing) {
@@ -1136,9 +1140,9 @@ app.post('/api/dev/partner-reveal', requireAuth, requireDev, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // PASSWORD RESET
-// ═══════════════════════════════════════
+// ---------------------------------------
 const resetTokens = new Map();
 
 app.post('/api/forgot-password', authLimiter, (req, res) => {
@@ -1150,7 +1154,7 @@ app.post('/api/forgot-password', authLimiter, (req, res) => {
 
     const token = crypto.randomBytes(32).toString('hex');
     resetTokens.set(token, { userId: user.id, expires: Date.now() + 15 * 60 * 1000 });
-    console.log(`  ✉ Password reset token for ${user.email}: ${token}`);
+    console.log(`  ? Password reset token for ${user.email}: ${token}`);
     res.json({ ok: true, message: 'If that email exists, a reset link has been generated.' });
   } catch (e) {
     console.error('Forgot password error:', e);
@@ -1184,9 +1188,9 @@ app.post('/api/reset-password', authLimiter, async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // DATA EXPORT
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.get('/api/my-data', apiLimiter, requireAuth, (req, res) => {
   try {
     const userId = req.session.userId;
@@ -1226,9 +1230,9 @@ app.get('/api/my-data', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // ACCOUNT DELETION
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.delete('/api/account', apiLimiter, requireAuth, async (req, res) => {
   try {
     const { password } = req.body;
@@ -1252,9 +1256,9 @@ app.delete('/api/account', apiLimiter, requireAuth, async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // CONSENT
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.get('/api/consent', apiLimiter, requireAuth, (req, res) => {
   try {
     const user = stmts.getUserById.get(req.session.userId);
@@ -1276,9 +1280,9 @@ app.post('/api/consent/withdraw', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // PUSH NOTIFICATIONS
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.get('/api/push/public-key', (req, res) => {
   if (!vapidKeys) return res.status(503).json({ error: 'Push not configured' });
   res.json({ publicKey: vapidKeys.publicKey });
@@ -1319,7 +1323,7 @@ function sendDailyReminders() {
     try {
       const sub = JSON.parse(row.push_subscription);
       const payload = JSON.stringify({
-        title: 'Your prompt is waiting ✦',
+        title: 'Your prompt is waiting ?',
         body: `Day ${day} of 21 — take 5 minutes to be honest.`,
         url: '/app'
       });
@@ -1332,7 +1336,7 @@ function sendDailyReminders() {
       });
     } catch { failed++; }
   }
-  console.log(`  📬 Daily reminders: ${sent} sent, ${failed} failed`);
+  console.log(`  ?? Daily reminders: ${sent} sent, ${failed} failed`);
 }
 
 // Run daily at 8pm IST (14:30 UTC)
@@ -1348,13 +1352,13 @@ function scheduleDailyPush() {
     setInterval(sendDailyReminders, 24 * 60 * 60 * 1000);
   }, delay);
 
-  console.log(`  ⏰ Daily push scheduled for 8:00 PM IST (in ${Math.round(delay / 60000)} min)`);
+  console.log(`  ? Daily push scheduled for 8:00 PM IST (in ${Math.round(delay / 60000)} min)`);
 }
 scheduleDailyPush();
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // RAZORPAY (India payments)
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/pay/razorpay/create', apiLimiter, requireAuth, async (req, res) => {
   try {
     if (!razorpay) return res.status(503).json({ error: 'Razorpay not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.' });
@@ -1419,9 +1423,9 @@ app.post('/api/pay/razorpay/verify', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // STRIPE (International payments)
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.post('/api/pay/stripe/create', apiLimiter, requireAuth, async (req, res) => {
   try {
     if (!stripe) return res.status(503).json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY.' });
@@ -1498,9 +1502,9 @@ app.get('/api/pay/history', apiLimiter, requireAuth, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // HEALTH CHECK (for UptimeRobot etc.)
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.get('/api/health', (req, res) => {
   try {
     // Quick DB check
@@ -1519,12 +1523,12 @@ app.get('/api/health', (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // PRIVACY & STATIC ROUTES
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
+// ---------------------------------------
+// ---------------------------------------
 // EMAIL REMINDER SIGNUP
-// ═══════════════════════════════════════
+// ---------------------------------------
 const EMAILS_PATH = path.join(__dirname, 'daily-reminder-emails.txt');
 app.post('/api/reminder-signup', apiLimiter, (req, res) => {
   try {
@@ -1572,9 +1576,9 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // ADMIN ROUTES
-// ═══════════════════════════════════════
+// ---------------------------------------
 // Serve admin panel
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
@@ -1645,301 +1649,39 @@ function getAdminStats() {
   };
 }
 
+registerAdminRoutes(app, {
+  rootDir: __dirname,
+  db,
+  stmts,
+  requireAdmin,
+  getAdminStats,
+  getMatchDay,
+  findUserByIdentifier,
+  complementary,
+  deleteUserDataTx,
+  deleteMatchData
+});
+
+registerWaitlistRoutes(app, {
+  apiLimiter,
+  db,
+  requireAdmin
+});
+
+registerStaticRoutes(app, {
+  baseUrl: BASE_URL,
+  rootDir: __dirname
+});
+
 // Send announcement (POST /admin/announce)
-app.post('/admin/announce', requireAdmin, express.json(), (req, res) => {
-  const { message } = req.body;
-  if (!message || !message.trim()) return res.status(400).json({ error: 'Message required' });
-  // TODO: Broadcast to users (push/email/etc). For now, just log.
-  console.log('[ADMIN ANNOUNCEMENT]', message);
-  res.json({ ok: true });
-});
-
-// Get recent reports (GET /admin/reports)
-app.get('/admin/reports', requireAdmin, (req, res) => {
-  try {
-    const rows = db.prepare(`
-      SELECT r.id, r.reporter_id, r.day, r.reason, r.created_at, u.name as reporter_name
-      FROM reports r
-      LEFT JOIN users u ON u.id = r.reporter_id
-      ORDER BY r.created_at DESC
-      LIMIT 20
-    `).all();
-    res.json(rows.map(r => ({
-      id: r.id,
-      reporter_id: r.reporter_id,
-      reporter_name: r.reporter_name,
-      day: r.day,
-      reason: r.reason,
-      date: r.created_at
-    })));
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to load reports' });
-  }
-});
-
-app.get('/admin/users', requireAdmin, (req, res) => {
-  try {
-    const rows = db.prepare(`
-      SELECT
-        u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at,
-        EXISTS (
-          SELECT 1 FROM matches m WHERE m.user1_id = u.id OR m.user2_id = u.id
-        ) as has_match
-      FROM users u
-      ORDER BY u.created_at DESC
-    `).all();
-    res.json(rows.map(row => ({ ...row, has_match: !!row.has_match })));
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to load users' });
-  }
-});
-
-app.get('/admin/stats', requireAdmin, (req, res) => {
-  try {
-    res.json(getAdminStats());
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to load stats' });
-  }
-});
-
-app.get('/admin/activity', requireAdmin, (req, res) => {
-  try {
-    const activity = [
-      ...db.prepare(`
-        SELECT created_at, 'register' as type, name || ' joined from ' || college as message
-        FROM users
-        ORDER BY created_at DESC
-        LIMIT 8
-      `).all(),
-      ...db.prepare(`
-        SELECT m.started_at as created_at, 'match' as type, u1.name || ' matched with ' || u2.name as message
-        FROM matches m
-        JOIN users u1 ON u1.id = m.user1_id
-        JOIN users u2 ON u2.id = m.user2_id
-        ORDER BY m.started_at DESC
-        LIMIT 8
-      `).all(),
-      ...db.prepare(`
-        SELECT e.created_at, 'entry' as type, u.name || ' wrote Day ' || e.day || ' in match #' || e.match_id as message
-        FROM entries e
-        JOIN users u ON u.id = e.user_id
-        ORDER BY e.created_at DESC
-        LIMIT 8
-      `).all(),
-      ...db.prepare(`
-        SELECT r.created_at, 'report' as type, 'Report from ' || COALESCE(u.name, 'user #' || r.reporter_id) || ': ' || r.reason as message
-        FROM reports r
-        LEFT JOIN users u ON u.id = r.reporter_id
-        ORDER BY r.created_at DESC
-        LIMIT 8
-      `).all(),
-      ...db.prepare(`
-        SELECT rv.created_at, 'reveal' as type, u.name || ' chose ' || rv.choice || ' on reveal day' as message
-        FROM reveals rv
-        JOIN users u ON u.id = rv.user_id
-        ORDER BY rv.created_at DESC
-        LIMIT 8
-      `).all(),
-      ...db.prepare(`
-        SELECT deleted_at as created_at, 'delete' as type, 'User data deleted (' || reason || ')' as message
-        FROM deletion_log
-        ORDER BY deleted_at DESC
-        LIMIT 5
-      `).all()
-    ]
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 12);
-    res.json(activity);
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to load activity' });
-  }
-});
-
-app.post('/admin/manual-match', requireAdmin, express.json(), (req, res) => {
-  try {
-    const userA = findUserByIdentifier(req.body.user1_id);
-    const userB = findUserByIdentifier(req.body.user2_id);
-    if (!userA || !userB) return res.status(404).json({ error: 'Both users must exist' });
-    if (userA.id === userB.id) return res.status(400).json({ error: 'Choose two different users' });
-    if (!userA.archetype || !userB.archetype) return res.status(400).json({ error: 'Both users must complete the scan first' });
-    if (userA.college.trim().toLowerCase() === userB.college.trim().toLowerCase()) {
-      return res.status(400).json({ error: 'Users must be from different colleges' });
-    }
-    if (complementary[userA.archetype] !== userB.archetype) {
-      return res.status(400).json({ error: 'Archetypes are not complementary' });
-    }
-    if (stmts.getMatch.get(userA.id, userA.id) || stmts.getMatch.get(userB.id, userB.id)) {
-      return res.status(400).json({ error: 'One or both users are already matched' });
-    }
-    const result = stmts.insertMatch.run(userA.id, userB.id);
-    res.json({ ok: true, match_id: result.lastInsertRowid });
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to create manual match' });
-  }
-});
-
-app.post('/admin/remove-user', requireAdmin, express.json(), (req, res) => {
-  try {
-    const user = findUserByIdentifier(req.body.user_id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    deleteUserDataTx(user.id, 'admin_removed');
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to remove user' });
-  }
-});
-
-app.post('/admin/end-match', requireAdmin, express.json(), (req, res) => {
-  try {
-    const matchId = Number(req.body.match_id);
-    if (!Number.isInteger(matchId) || matchId <= 0) return res.status(400).json({ error: 'Valid match ID required' });
-    const match = db.prepare('SELECT id FROM matches WHERE id = ?').get(matchId);
-    if (!match) return res.status(404).json({ error: 'Match not found' });
-    db.transaction(() => deleteMatchData(matchId))();
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to end match' });
-  }
-});
-
-app.post('/admin/dismiss-report', requireAdmin, express.json(), (req, res) => {
-  try {
-    const reportId = Number(req.body.report_id);
-    if (!Number.isInteger(reportId) || reportId <= 0) return res.status(400).json({ error: 'Valid report ID required' });
-    const result = stmts.deleteReportById.run(reportId);
-    if (!result.changes) return res.status(404).json({ error: 'Report not found' });
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to dismiss report' });
-  }
-});
-
-app.get('/admin/export', requireAdmin, (req, res) => {
-  try {
-    const exportData = {
-      exported_at: new Date().toISOString(),
-      users: db.prepare('SELECT id, name, email, college, year, archetype, consent_given, created_at, last_active_date FROM users ORDER BY id').all(),
-      matches: db.prepare('SELECT * FROM matches ORDER BY id').all(),
-      entries: db.prepare('SELECT * FROM entries ORDER BY id').all(),
-      reveals: db.prepare('SELECT * FROM reveals ORDER BY id').all(),
-      comments: db.prepare('SELECT * FROM comments ORDER BY id').all(),
-      reports: db.prepare('SELECT * FROM reports ORDER BY id').all(),
-      payments: db.prepare('SELECT id, user_id, provider, provider_payment_id, provider_order_id, amount, currency, product, status, created_at, updated_at FROM payments ORDER BY id').all(),
-      deletion_log: db.prepare('SELECT * FROM deletion_log ORDER BY id').all()
-    };
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', 'attachment; filename="mentally-prepare-admin-export.json"');
-    res.json(exportData);
-  } catch (e) {
-    console.error('Admin export error:', e);
-    res.status(500).json({ error: 'Failed to export data' });
-  }
-});
-
-app.get('/privacy', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
-});
-
-app.get('/waitlist', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'waitlist.html'));
-});
-
-app.get('/api/waitlist/count', apiLimiter, (req, res) => {
-  try {
-    const count = db.prepare('SELECT COUNT(*) as c FROM waitlist').get().c;
-    res.json({ count });
-  } catch {
-    res.json({ count: 0 });
-  }
-});
-
-app.post('/api/waitlist', apiLimiter, (req, res) => {
-  try {
-    const name = String(req.body.name || '').trim();
-    const college = String(req.body.college || '').trim();
-    const email = String(req.body.email || '').trim().toLowerCase();
-    const year = String(req.body.year || '').trim();
-    const archetype = req.body.archetype ? String(req.body.archetype).trim().toLowerCase() : null;
-
-    if (!name || !email || !college) {
-      return res.status(400).json({ error: 'Name, email and college are required' });
-    }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: 'Please enter a valid email' });
-    }
-
-    const validArchetypes = ['protector', 'connector', 'performer', 'disconnector'];
-    if (archetype && !validArchetypes.includes(archetype)) {
-      return res.status(400).json({ error: 'Invalid archetype' });
-    }
-
-    const existing = db.prepare('SELECT id FROM waitlist WHERE email = ?').get(email);
-    if (existing) {
-      const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(existing.id).c;
-      return res.json({ ok: true, position, alreadyExists: true });
-    }
-
-    const result = db.prepare(`
-      INSERT INTO waitlist (name, email, college, year, archetype)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(name, email, college, year || '', archetype || '');
-    const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(result.lastInsertRowid).c;
-    console.log(`  ✦ Waitlist signup: ${name} from ${college} (#${position})`);
-    res.json({ ok: true, position });
-  } catch (e) {
-    if (e.message.includes('UNIQUE')) {
-      const existing = db.prepare('SELECT id FROM waitlist WHERE email = ?').get(req.body.email?.toLowerCase().trim());
-      if (existing) {
-        const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(existing.id).c;
-        return res.json({ ok: true, position, alreadyExists: true });
-      }
-    }
-    console.error('Waitlist error:', e);
-    res.status(500).json({ error: 'Failed to join waitlist' });
-  }
-});
-
-app.get('/admin/waitlist', requireAdmin, (req, res) => {
-  try {
-    const entries = db.prepare('SELECT * FROM waitlist ORDER BY created_at DESC').all();
-    res.json(entries);
-  } catch (e) {
-    res.status(500).json({ error: 'Failed to load waitlist' });
-  }
-});
-
-app.get('/app', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'app.html'));
-});
-app.get('/app/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'app.html'));
-});
-
-app.get('/sitemap.xml', (req, res) => {
-  const base = 'https://mymentallyprepare.com';
-  res.header('Content-Type', 'application/xml');
-  res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>${base}/</loc><priority>1.0</priority></url>
-  <url><loc>${base}/waitlist</loc><priority>0.9</priority></url>
-  <url><loc>${base}/privacy</loc><priority>0.5</priority></url>
-  <url><loc>${base}/terms</loc><priority>0.5</priority></url>
-</urlset>`);
-});
-
-app.get('/robots.txt', (req, res) => {
-  res.type('text/plain');
-  res.send('User-agent: *\nAllow: /\nSitemap: https://mymentallyprepare.com/sitemap.xml');
-});
-
 // 404
 app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', 'app.html'));
 });
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // GRACEFUL SHUTDOWN
-// ═══════════════════════════════════════
+// ---------------------------------------
 function shutdown() {
   console.log('\n  Shutting down...');
   db.close();
@@ -1948,15 +1690,16 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
-// ═══════════════════════════════════════
+// ---------------------------------------
 // START
-// ═══════════════════════════════════════
+// ---------------------------------------
 app.listen(PORT, () => {
-  console.log(`\n  ✦ Mentally Prepare v2.0`);
+  console.log(`\n  ? Mentally Prepare v2.0`);
   console.log(`  Database: SQLite (${DB_PATH})`);
   console.log(`  Environment: ${IS_PROD ? 'PRODUCTION' : 'development'}`);
-  console.log(`  Razorpay: ${razorpay ? '✓' : '– skipped (no keys)'}`);
-  console.log(`  Stripe: ${stripe ? '✓' : '– skipped (no keys)'}`);
-  console.log(`  Push: ${vapidKeys ? '✓' : '– skipped'}`);
+  console.log(`  Razorpay: ${razorpay ? '?' : '– skipped (no keys)'}`);
+  console.log(`  Stripe: ${stripe ? '?' : '– skipped (no keys)'}`);
+  console.log(`  Push: ${vapidKeys ? '?' : '– skipped'}`);
   console.log(`  Running on http://localhost:${PORT}\n`);
 });
+
