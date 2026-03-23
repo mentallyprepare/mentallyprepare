@@ -32,7 +32,7 @@ const { registerPaymentRoutes } = require('./routes/payments');
 
 const app = express();
 app.set('trust proxy', 1); // Trust Railway/Heroku/Vercel proxy for correct IP handling
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // --- SQLite Database --------------------
@@ -994,12 +994,6 @@ process.on('SIGTERM', shutdown);
 // START
 // ---------------------------------------
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n  ? Mentally Prepare v2.0`);
-  console.log(`  Database: SQLite (${DB_PATH})`);
-  console.log(`  Environment: ${IS_PROD ? 'PRODUCTION' : 'development'}`);
-  console.log(`  Razorpay: ${razorpay ? '?' : '– skipped (no keys)'}`);
-  console.log(`  Stripe: ${stripe ? '?' : '– skipped (no keys)'}`);
-  console.log(`  Push: ${vapidKeys ? '?' : '– skipped'}`);
-  console.log(`  Running on http://0.0.0.0:${PORT}\n`);
+  console.log(`Server running on port ${PORT}`);
 });
 
