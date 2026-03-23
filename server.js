@@ -807,13 +807,7 @@ scheduleDailyPush();
 // HEALTH CHECK (for UptimeRobot etc.)
 // ---------------------------------------
 app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: Math.floor(process.uptime()),
-    env: process.env.NODE_ENV || 'development',
-    version: '2.0.0'
-  });
+  res.json({ status: 'ok' });
 });
 
 app.get('/api/ready', (req, res) => {
