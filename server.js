@@ -1,4 +1,13 @@
-﻿// ---------------------------------------
+﻿// --- Error Logging for Startup Issues ---
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
+  process.exit(1);
+});
+// ---------------------------------------
 // MENTALLY PREPARE — Backend Server v2
 // SQLite · Push Notifications · Razorpay · Stripe
 // ---------------------------------------
@@ -27,7 +36,7 @@ const PORT = process.env.PORT || 3000;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // --- SQLite Database --------------------
-const DB_PATH = path.join(__dirname, 'mentally-prepare.db');
+const DB_PATH = IS_PROD ? '/tmp/mentally-prepare.db' : path.join(__dirname, 'mentally-prepare.db');
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for better concurrent read/write performance
@@ -990,13 +999,13 @@ process.on('SIGTERM', shutdown);
 // ---------------------------------------
 // START
 // ---------------------------------------
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  ? Mentally Prepare v2.0`);
   console.log(`  Database: SQLite (${DB_PATH})`);
   console.log(`  Environment: ${IS_PROD ? 'PRODUCTION' : 'development'}`);
   console.log(`  Razorpay: ${razorpay ? '?' : '– skipped (no keys)'}`);
   console.log(`  Stripe: ${stripe ? '?' : '– skipped (no keys)'}`);
   console.log(`  Push: ${vapidKeys ? '?' : '– skipped'}`);
-  console.log(`  Running on http://localhost:${PORT}\n`);
+  console.log(`  Running on http://0.0.0.0:${PORT}\n`);
 });
 
