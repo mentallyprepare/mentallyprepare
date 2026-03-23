@@ -798,20 +798,25 @@ scheduleDailyPush();
 // HEALTH CHECK (for UptimeRobot etc.)
 // ---------------------------------------
 app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    env: process.env.NODE_ENV || 'development',
+    version: '2.0.0'
+  });
+});
+
+app.get('/api/ready', (req, res) => {
   try {
-    // Quick DB check
-    const check = db.prepare('SELECT COUNT(*) as c FROM users').get();
+    db.prepare('SELECT 1').get();
     res.json({
-      status: 'ok',
+      status: 'ready',
       timestamp: new Date().toISOString(),
-      uptime: Math.floor(process.uptime()),
-      users: check.c,
-      db: 'sqlite',
-      env: process.env.NODE_ENV || 'development',
-      version: '2.0.0'
+      db: 'sqlite'
     });
   } catch (e) {
-    res.status(500).json({ status: 'error', error: e.message });
+    res.status(503).json({ status: 'not_ready', error: e.message });
   }
 });
 
