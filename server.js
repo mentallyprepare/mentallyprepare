@@ -326,6 +326,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Health check — must be before auth/rate-limiters so Railway's probe always gets a 200
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Persist session secret
