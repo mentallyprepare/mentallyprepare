@@ -46,7 +46,7 @@
 
 <!-- APP NAVBAR -->
 <nav class="site-nav" id="siteNav">
-  <a class="site-nav-logo" href="/" onclick="showLanding(); return false;" style="cursor:pointer">
+  <a class="site-nav-logo" id="siteNavLogo" href="/" style="cursor:pointer">
     <span aria-label="Mentally Prepare logo" style="display:inline-block;vertical-align:middle;">
       <svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" alt="Mentally Prepare — anonymous 21-day journal for college students" aria-labelledby="logoTitle logoDesc" role="img" style="height:56px;max-width:220px;animation:float 3.5s ease-in-out infinite;">
         <title id="logoTitle">Mentally Prepare Logo</title>
@@ -133,12 +133,12 @@
     </span>
   </a>
   <div class="site-nav-links" id="siteNavLinks">
-    <a href="#how" onclick="navTo('how')">How It Works</a>
-    <a href="#l-archetypes" onclick="navTo('l-archetypes')">Archetypes</a>
-    <a href="#l-stories" onclick="navTo('l-stories')">Stories</a>
+    <a href="#how" data-nav-target="how">How It Works</a>
+    <a href="#l-archetypes" data-nav-target="l-archetypes">Archetypes</a>
+    <a href="#l-stories" data-nav-target="l-stories">Stories</a>
   </div>
-  <button class="site-nav-cta" id="navCta" onclick="startApp()">Start Your Journey</button>
-  <button class="site-nav-menu" id="siteMenuBtn" onclick="toggleSiteMenu()">&#9776;</button>
+  <button class="site-nav-cta" id="navCta" type="button">Start Your Journey</button>
+  <button class="site-nav-menu" id="siteMenuBtn" type="button" aria-expanded="false" aria-controls="siteNavLinks">&#9776;</button>
 </nav>
 
 <!-- ═══ LANDING ═══ -->
@@ -155,11 +155,11 @@
     <h1 class="hero-h1">You were never meant<br/>to carry <em>this</em> alone.</h1>
     <p class="hero-sub">Write anonymously in this emotional journal for 21 days. A stranger from another college writes back. On Day 21, choose: reveal — or stay beautifully unknown.</p>
     <div class="hero-actions">
-      <button class="btn-primary" onclick="startApp()">Start Your Journey</button>
-      <a href="#how" class="btn-ghost-l" onclick="navTo('how');return false;">See How It Works</a>
+      <button class="btn-primary" id="heroStartBtn" type="button">Start Your Journey</button>
+      <a href="#how" class="btn-ghost-l" id="heroHowLink">See How It Works</a>
     </div>
   </div>
-  <button class="hero-scroll" type="button" onclick="document.getElementById('l-problem').scrollIntoView({behavior:'smooth'})" aria-label="Scroll to the problem section">
+  <button class="hero-scroll" id="heroScrollBtn" type="button" aria-label="Scroll to the problem section">
     <div class="hero-scroll-line"></div>
     <span class="hero-scroll-text">Scroll</span>
   </button>
@@ -529,9 +529,9 @@
   <div class="slide">
     <div class="slide-visual" style="padding:24px 0 8px;flex-direction:column;align-items:flex-start;">
       <div class="perm-list">
-        <div class="perm-item"><div class="perm-ico">🌙</div><div class="perm-info"><div class="perm-title">Midnight notifications</div><div class="perm-sub">When your partner's entry unseals — we'll let you know.</div></div><div class="perm-toggle" onclick="togglePerm(this)"></div></div>
-        <div class="perm-item"><div class="perm-ico">✍️</div><div class="perm-info"><div class="perm-title">Daily prompt reminder</div><div class="perm-sub">A gentle nudge at 9pm so you don't break your streak.</div></div><div class="perm-toggle" onclick="togglePerm(this)"></div></div>
-        <div class="perm-item"><div class="perm-ico">🔒</div><div class="perm-info"><div class="perm-title">Anonymous — always</div><div class="perm-sub">Your real name is never shared until both say yes on Day 21.</div></div><div class="perm-toggle" style="cursor:default;opacity:.5;"></div></div>
+        <div class="perm-item"><div class="perm-ico">🌙</div><div class="perm-info"><div class="perm-title">Midnight notifications</div><div class="perm-sub">When your partner's entry unseals — we'll let you know.</div></div><button class="perm-toggle" type="button" aria-pressed="true" aria-label="Toggle midnight notifications"></button></div>
+        <div class="perm-item"><div class="perm-ico">✍️</div><div class="perm-info"><div class="perm-title">Daily prompt reminder</div><div class="perm-sub">A gentle nudge at 9pm so you don't break your streak.</div></div><button class="perm-toggle" type="button" aria-pressed="true" aria-label="Toggle daily prompt reminders"></button></div>
+        <div class="perm-item"><div class="perm-ico">🔒</div><div class="perm-info"><div class="perm-title">Anonymous — always</div><div class="perm-sub">Your real name is never shared until both say yes on Day 21.</div></div><span class="perm-toggle" aria-hidden="true" style="cursor:default;opacity:.5;"></span></div>
       </div>
       <div style="margin-top:14px;padding:14px;background:rgba(126,200,160,.05);border:1px solid rgba(126,200,160,.12);border-radius:14px;">
         <div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);opacity:.7;margin-bottom:8px;">🛡️ Trust & Safety</div>
@@ -610,11 +610,11 @@
 
 <!-- OVERLAYS -->
 <div class="toast" id="toast"></div>
-<div class="entry-detail-overlay" id="entry-detail" onclick="if(event.target===this)closeEntryDetail()"></div>
+<div class="entry-detail-overlay" id="entry-detail"></div>
 <div class="celebrate-overlay" id="celebrate"></div>
 
 <!-- SAFETY OVERLAY -->
-<div class="safety-overlay" id="safety-overlay" onclick="if(event.target===this)closeSafety()">
+<div class="safety-overlay" id="safety-overlay">
   <div class="safety-card">
     <div class="safety-ico">💚</div>
     <h3 class="safety-h">We noticed you're going through something heavy.</h3>

@@ -208,7 +208,7 @@ a:focus-visible{
 .perm-info{flex:1}
 .perm-title{font-size:12.5px;font-weight:400;color:var(--ink);margin-bottom:2px}
 .perm-sub{font-size:10.5px;color:var(--ink-s);line-height:1.5}
-.perm-toggle{width:36px;height:20px;border-radius:100px;background:linear-gradient(135deg,var(--rose-d),var(--purple));position:relative;flex-shrink:0;cursor:pointer}
+.perm-toggle{width:36px;height:20px;border-radius:100px;background:linear-gradient(135deg,var(--rose-d),var(--purple));position:relative;flex-shrink:0;cursor:pointer;border:none;padding:0}
 .perm-toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;right:3px;top:3px;transition:right .2s}
 .perm-toggle.off{background:rgba(248,242,255,.1)}
 .perm-toggle.off::after{right:auto;left:3px}
@@ -472,7 +472,7 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .entry-detail-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px;margin:20px;max-width:390px;width:100%;max-height:80vh;overflow-y:auto;position:relative;transform:translateY(20px);transition:transform .3s}
 .entry-detail-overlay.show .entry-detail-card{transform:translateY(0)}
 .entry-detail-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.3),transparent)}
-.edc-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:rgba(248,242,255,.06);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--ink-s);transition:background .2s}
+.edc-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:rgba(248,242,255,.06);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;color:var(--ink-s);transition:background .2s;padding:0}
 .edc-close:hover{background:rgba(248,242,255,.12)}
 .edc-day{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:6px}
 .edc-mood{font-size:32px;margin-bottom:14px}

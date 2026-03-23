@@ -184,12 +184,75 @@ function navTo(id) {
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   }, 100);
   document.querySelector('.site-nav-links').classList.remove('open');
+  document.getElementById('siteMenuBtn').setAttribute('aria-expanded', 'false');
+}
+
+function bindStaticUi() {
+  const siteNavLogo = document.getElementById('siteNavLogo');
+  const navCta = document.getElementById('navCta');
+  const siteMenuBtn = document.getElementById('siteMenuBtn');
+  const heroStartBtn = document.getElementById('heroStartBtn');
+  const heroHowLink = document.getElementById('heroHowLink');
+  const heroScrollBtn = document.getElementById('heroScrollBtn');
+
+  if (siteNavLogo) {
+    siteNavLogo.addEventListener('click', function(e) {
+      e.preventDefault();
+      showLanding();
+    });
+  }
+
+  if (navCta) navCta.onclick = startApp;
+  if (siteMenuBtn) siteMenuBtn.addEventListener('click', toggleSiteMenu);
+  if (heroStartBtn) heroStartBtn.addEventListener('click', startApp);
+
+  if (heroHowLink) {
+    heroHowLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      navTo('how');
+    });
+  }
+
+  if (heroScrollBtn) {
+    heroScrollBtn.addEventListener('click', function() {
+      const section = document.getElementById('l-problem');
+      if (section) section.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+
+  document.querySelectorAll('[data-nav-target]').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      navTo(link.getAttribute('data-nav-target'));
+    });
+  });
+
+  document.querySelectorAll('.perm-toggle').forEach(function(toggle) {
+    toggle.addEventListener('click', function() {
+      togglePerm(toggle);
+    });
+  });
+
+  const entryDetail = document.getElementById('entry-detail');
+  if (entryDetail) {
+    entryDetail.addEventListener('click', function(e) {
+      if (e.target === entryDetail) closeEntryDetail();
+    });
+  }
+
+  const safetyOverlay = document.getElementById('safety-overlay');
+  if (safetyOverlay) {
+    safetyOverlay.addEventListener('click', function(e) {
+      if (e.target === safetyOverlay) closeSafety();
+    });
+  }
 }
 
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
 (async function init() {
+  bindStaticUi();
   const loggedIn = await loadState();
   if (!loggedIn) return; // stay on landing
 
@@ -284,6 +347,7 @@ function pickYear(el) {
 }
 function togglePerm(el) {
   el.classList.toggle('off');
+  el.setAttribute('aria-pressed', String(!el.classList.contains('off')));
   if (!el.classList.contains('off') && 'Notification' in window && Notification.permission === 'default') {
     Notification.requestPermission().then(function(result) {
       if (result === 'granted' && 'serviceWorker' in navigator) subscribeToPush();
@@ -563,7 +627,7 @@ function renderJournal() {
       <div class="moods">
         ${['🌑|Heavy','🌒|Quiet','🌓|Okay','🌔|Lighter','🌕|Good'].map(m => {
           const [e,w] = m.split('|');
-          return `<div class="mood ${currentMood===e?'on':''}" onclick="setMood('${e}',this)"><div class="mood-em">${e}</div><div class="mood-w">${w}</div></div>`;
+          return `<button class="mood ${currentMood===e?'on':''}" type="button" data-mood="${e}" aria-pressed="${currentMood===e?'true':'false'}"><div class="mood-em">${e}</div><div class="mood-w">${w}</div></button>`;
         }).join('')}
       </div>
     </div>
@@ -571,26 +635,43 @@ function renderJournal() {
     <div class="write-block reveal-on-scroll">
       <div class="write-box">
         <div class="write-date">${dayNames[today.getDay()]}, ${today.getDate()} ${monthNames[today.getMonth()]} · Day ${day}</div>
-        <textarea id="journal-draft" placeholder="Start writing…" oninput="updateWordCount(this)">${escapeHtml(draft)}</textarea>
+        <textarea id="journal-draft" placeholder="Start writing…">${escapeHtml(draft)}</textarea>
         <div class="write-ft"><div class="ww" id="ww">${wordCount(draft)} words</div><div id="word-milestone"></div></div>
-        <button class="btn-ghost" style="margin-top:8px;font-size:12px;float:right;" onclick="reportEntry()">Report inappropriate content</button>
+        <button class="btn-ghost" id="journalReportBtn" type="button" style="margin-top:8px;font-size:12px;float:right;">Report inappropriate content</button>
       </div>
     </div>
     // Report inappropriate content in journal entry
     ${state.streak >= 3 ? `<div class="streak-nudge reveal-on-scroll"><div class="streak-nudge-inner"><span style="font-size:16px;">🔥</span><div class="streak-nudge-text">${getStreakNudge(state.streak)}</div></div></div>` : ''}
     <div class="cta-block">
-      <button class="btn" onclick="sealEntry()">🌙 Seal tonight's entry</button>
-      <button class="btn-ghost" onclick="saveDraft()" style="margin-top:8px;">Save draft</button>
+      <button class="btn" id="sealEntryBtn" type="button">🌙 Seal tonight's entry</button>
+      <button class="btn-ghost" id="saveDraftBtn" type="button" style="margin-top:8px;">Save draft</button>
     </div>
     ${renderTabs('tonight')}`;
+  document.querySelectorAll('#s-journal [data-mood]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      setMood(btn.getAttribute('data-mood'), btn);
+    });
+  });
+  const journalDraft = document.getElementById('journal-draft');
+  if (journalDraft) journalDraft.addEventListener('input', function() { updateWordCount(journalDraft); });
+  const journalReportBtn = document.getElementById('journalReportBtn');
+  if (journalReportBtn) journalReportBtn.addEventListener('click', function() { reportEntry(); });
+  const sealEntryBtn = document.getElementById('sealEntryBtn');
+  if (sealEntryBtn) sealEntryBtn.addEventListener('click', sealEntry);
+  const saveDraftBtn = document.getElementById('saveDraftBtn');
+  if (saveDraftBtn) saveDraftBtn.addEventListener('click', saveDraft);
   startCountdown();
   initScrollReveal('#s-journal');
 }
 
 function setMood(m, el) {
   currentMood = m;
-  el.closest('.moods').querySelectorAll('.mood').forEach(x => x.classList.remove('on'));
+  el.closest('.moods').querySelectorAll('.mood').forEach(function(x) {
+    x.classList.remove('on');
+    x.setAttribute('aria-pressed', 'false');
+  });
   el.classList.add('on');
+  el.setAttribute('aria-pressed', 'true');
 }
 
 function updateWordCount(el) {
@@ -1199,7 +1280,7 @@ function showEntryDetail(idx) {
 
   document.getElementById('entry-detail').innerHTML = `
     <div class="entry-detail-card">
-      <div class="edc-close" onclick="closeEntryDetail()">✕</div>
+      <button class="edc-close" id="entryDetailCloseBtn" type="button" aria-label="Close entry detail">×</button>
       <div class="edc-day">Day ${entry.day} of 21</div>
       <div class="edc-mood">${entry.mood}</div>
       <div class="edc-prompt">${escapeHtml(entry.prompt)}</div>
@@ -1224,16 +1305,22 @@ function showEntryDetail(idx) {
                       ${escapeHtml(myComment.text)}
                     </div>`
                  : `<div class="edc-comment-input">
-                      <textarea id="comment-text" placeholder="Leave a quiet thought…" maxlength="500"></textarea>
-                      <button class="edc-comment-send" onclick="submitComment(${entry.day})" title="Send">⤴</button>
+                      <textarea id="comment-text" placeholder="Leave a quiet thought..." maxlength="500"></textarea>
+                      <button class="edc-comment-send" id="entryCommentSendBtn" type="button" title="Send">⤴</button>
                     </div>`
                }
              </div>
-             <button class="report-btn" onclick="reportEntry(${entry.day})">⚑ Report this entry</button>`
+             <button class="report-btn" id="entryReportBtn" type="button">⚑ Report this entry</button>`
           : `<div class="edc-partner-text" style="filter:blur(4px);user-select:none;">This entry hasn't been revealed yet.</div><div class="edc-partner-note">Partner entries appear the next day</div>`
         }
       </div>
     </div>`;
+  const closeBtn = document.getElementById('entryDetailCloseBtn');
+  if (closeBtn) closeBtn.addEventListener('click', closeEntryDetail);
+  const commentSendBtn = document.getElementById('entryCommentSendBtn');
+  if (commentSendBtn) commentSendBtn.addEventListener('click', function() { submitComment(entry.day); });
+  const reportBtn = document.getElementById('entryReportBtn');
+  if (reportBtn) reportBtn.addEventListener('click', function() { reportEntry(entry.day); });
   document.getElementById('entry-detail').classList.add('show');
 }
 
@@ -1456,7 +1543,10 @@ document.addEventListener('click', function(e) {
 
 // Mobile menu toggle
 function toggleSiteMenu() {
-  document.querySelector('.site-nav-links').classList.toggle('open');
+  const links = document.querySelector('.site-nav-links');
+  const nextState = !links.classList.contains('open');
+  links.classList.toggle('open', nextState);
+  document.getElementById('siteMenuBtn').setAttribute('aria-expanded', String(nextState));
 }
 
 // Service Worker: force-update old versions
