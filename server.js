@@ -382,6 +382,11 @@ const authLimiter = rateLimit({
   validate: { xForwardedForHeader: false }
 });
 
+// --- Health Check -----------------------
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 registerAuthRoutes(app, {
   authLimiter,
   bcrypt,
