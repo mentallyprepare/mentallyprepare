@@ -86,15 +86,13 @@ button,input,textarea{font:inherit}button{cursor:pointer}
             <tr>
               <th>#</th>
               <th>Name</th>
-              <th>College</th>
-              <th>Year</th>
-              <th>Archetype</th>
+              <th>Email</th>
               <th>Joined</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody id="wl-tbody">
-            <tr><td colspan="7"><div class="skeleton"></div></td></tr>
+            <tr><td colspan="5"><div class="skeleton"></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -146,26 +144,21 @@ async function loadWaitlist() {
     document.getElementById('wl-badge').textContent = data.length;
     const tbody = document.getElementById('wl-tbody');
     if (!data.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-s, var(--soft));padding:20px;font-style:italic;">No signups yet — share the waitlist link</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-s, var(--soft));padding:20px;font-style:italic;">No signups yet — share the waitlist link</td></tr>';
       return;
     }
     tbody.innerHTML = data.map((entry, index) => {
-      const archetype = entry.archetype
-        ? `<span class="chip rose">${archetypeEmoji[entry.archetype]||'✦'} ${escHtml(entry.archetype)}</span>`
-        : '<span class="chip purple">Unknown</span>';
       return `<tr>
         <td class="mono">#${index + 1}</td>
         <td>${escHtml(entry.name)}</td>
-        <td>${escHtml(entry.college)}</td>
-        <td>${escHtml(entry.year || '-')}</td>
-        <td>${archetype}</td>
+        <td>${escHtml(entry.email)}</td>
         <td class="mono">${timeAgo(entry.created_at)}</td>
         <td>${waitlistRowAction(entry.email)}</td>
       </tr>`;
     }).join('');
   } catch {
     document.getElementById('wl-badge').textContent = '-';
-    document.getElementById('wl-tbody').innerHTML = '<tr><td colspan="7" class="tiny">Could not load waitlist</td></tr>';
+    document.getElementById('wl-tbody').innerHTML = '<tr><td colspan="5" class="tiny">Could not load waitlist</td></tr>';
   }
 }
 </script>

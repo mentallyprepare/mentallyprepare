@@ -75,28 +75,8 @@
       <div class="ctitle">Claim your <em>spot.</em></div>
       <div class="csub">First batch - April 2026 - Limited to 50 people</div>
       <div class="row">
-        <div><label class="flabel">Your name</label><input class="fi" id="fn" type="text" placeholder="Ananya Sharma"/></div>
-        <div><label class="flabel">Your college</label><input class="fi" id="fc" type="text" placeholder="Miranda House, Delhi"/></div>
-      </div>
-      <div class="row">
-        <div><label class="flabel">Email address</label><input class="fi" id="fe" type="email" placeholder="you@college.edu"/></div>
-        <div><label class="flabel">Your year</label>
-          <select class="fsel" id="fy">
-            <option value="" disabled selected>Select year</option>
-            <option value="1st">1st year</option>
-            <option value="2nd">2nd year</option>
-            <option value="3rd">3rd year</option>
-            <option value="4th">4th year</option>
-            <option value="5th+">5th year +</option>
-          </select>
-        </div>
-      </div>
-      <label class="alabel">Which feels most like you? <span style="color:var(--ink-s);font-weight:400;letter-spacing:0;text-transform:none;font-size:9px;">(optional)</span></label>
-      <div class="agrid">
-        <button class="acard" type="button" aria-pressed="false" onclick="pa(this,'protector')"><span class="aem">&#127761;</span><div class="an">The Protector</div><div class="aq">"I care for everyone so nobody sees me falling apart."</div></button>
-        <button class="acard" type="button" aria-pressed="false" onclick="pa(this,'connector')"><span class="aem">&#127762;</span><div class="an">The Connector</div><div class="aq">"I open up easily - until someone actually gets close."</div></button>
-        <button class="acard" type="button" aria-pressed="false" onclick="pa(this,'performer')"><span class="aem">&#127763;</span><div class="an">The Performer</div><div class="aq">"I've gotten so good at fine that even I believe it."</div></button>
-        <button class="acard" type="button" aria-pressed="false" onclick="pa(this,'disconnector')"><span class="aem">&#127764;</span><div class="an">The Disconnector</div><div class="aq">"I disappear before anyone can leave me first."</div></button>
+        <div style="flex:1"><label class="flabel">Your name <span style="color:var(--ink-s);font-weight:400;font-size:11px">(optional)</span></label><input class="fi" id="fn" type="text" placeholder="Ananya Sharma"/></div>
+        <div style="flex:1"><label class="flabel">Email address</label><input class="fi" id="fe" type="email" placeholder="you@college.edu" required/></div>
       </div>
       <button class="sub-btn" id="sbtn" onclick="submitWaitlist()">&#10022; &nbsp; Join the waitlist</button>
       <div class="fnote">Free forever - No spam - Unsubscribe anytime</div>
@@ -154,7 +134,40 @@ let sa='';
 function pa(el,arch){document.querySelectorAll('.acard').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-pressed','false')});el.classList.add('on');el.setAttribute('aria-pressed','true');sa=arch}
 async function loadC(){try{const d=await fetch('/api/waitlist/count').then(r=>r.json());document.getElementById('wlc').textContent=d.count??0}catch{document.getElementById('wlc').textContent='0'}}
 loadC();
-async function submitWaitlist(){const name=document.getElementById('fn').value.trim();const college=document.getElementById('fc').value.trim();const email=document.getElementById('fe').value.trim();const year=document.getElementById('fy').value;if(!name){toast('Enter your name ✦');return}if(!college){toast('Enter your college ✦');return}if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Enter a valid email ✦');return}if(!year){toast('Select your year ✦');return}const btn=document.getElementById('sbtn');btn.textContent='✦  Adding you...';btn.disabled=true;try{const res=await fetch('/api/waitlist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,college,email,year,archetype:sa})});const d=await res.json();if(d.ok){document.getElementById('fview').style.display='none';document.getElementById('success').style.display='block';document.getElementById('snum').textContent='#'+d.position;burst();loadC()}else{toast(d.error||'Something went wrong');btn.textContent='✦  Join the waitlist';btn.disabled=false}}catch{toast('Could not connect - try again');btn.textContent='✦  Join the waitlist';btn.disabled=false}}
+async function submitWaitlist() {
+  const name = document.getElementById('fn').value.trim();
+  const email = document.getElementById('fe').value.trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast('Enter a valid email ✦');
+    return;
+  }
+  const btn = document.getElementById('sbtn');
+  btn.textContent = '✦  Adding you...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email })
+    });
+    const d = await res.json();
+    if (d.ok) {
+      document.getElementById('fview').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+      document.getElementById('snum').textContent = '#' + d.position;
+      burst();
+      loadC();
+    } else {
+      toast(d.error || 'Something went wrong');
+      btn.textContent = '✦  Join the waitlist';
+      btn.disabled = false;
+    }
+  } catch {
+    toast('Could not connect - try again');
+    btn.textContent = '✦  Join the waitlist';
+    btn.disabled = false;
+  }
+}
 function copyLink(){navigator.clipboard.writeText(window.location.origin+'/waitlist').then(()=>toast('Link copied! ✦'))}
 function shareWA(){const url=window.location.origin+'/waitlist';window.open('https://wa.me/?text='+encodeURIComponent('I just joined the waitlist for Mentally Prepare - a 21-day anonymous journal experiment. Write to a stranger from another college. On Day 21, reveal or stay unknown. Join: '+url),'_blank')}
 function burst(){const cols=['#e8748a','#c9993a','#a888d8','#f5eeff','#f4a0b0','#f0cc80'];for(let i=0;i<50;i++){setTimeout(()=>{const d=document.createElement('div');const sz=Math.random()*9+4;d.style.cssText=`position:fixed;width:${sz}px;height:${sz}px;background:${cols[~~(Math.random()*6)]};border-radius:${Math.random()>.5?'50%':'3px'};left:${25+Math.random()*50}%;top:${35+Math.random()*25}%;z-index:500;pointer-events:none;animation:cfall ${.8+Math.random()*.8}s ease-out forwards;`;document.body.appendChild(d);setTimeout(()=>d.remove(),1800)},i*35)}}
