@@ -37,6 +37,15 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 // --- SQLite Database --------------------
 const DB_PATH = IS_PROD ? (process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data/mentally-prepare.db') : path.join(__dirname, 'mentally-prepare.db');
+
+// Ensure data directory exists in production
+if (IS_PROD) {
+  const dataDir = path.dirname(DB_PATH);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+}
+
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for better concurrent read/write performance
