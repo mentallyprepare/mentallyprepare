@@ -856,6 +856,13 @@ app.get('/api/ready', (req, res) => {
 
 // ---------------------------------------
 // PRIVACY & STATIC ROUTES
+// Serve privacy.html and terms.html as static pages
+app.get('/privacy', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
+});
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
 // ---------------------------------------
 // ---------------------------------------
 // EMAIL REMINDER SIGNUP
