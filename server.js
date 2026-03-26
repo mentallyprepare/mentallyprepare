@@ -37,7 +37,6 @@ const session = require('express-session');
 const helmet = require('helmet');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
-const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
 const { registerStaticRoutes } = require('./routes/static');
 const { registerWaitlistRoutes } = require('./routes/waitlist');
