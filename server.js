@@ -346,6 +346,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Serve terms.html at /terms
+app.get('/terms', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Persist session secret
