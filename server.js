@@ -34,6 +34,7 @@ try {
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const helmet = require('helmet');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
