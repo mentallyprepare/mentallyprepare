@@ -37,6 +37,7 @@ const session = require('express-session');
 const helmet = require('helmet');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+
 const { registerStaticRoutes } = require('./routes/static');
 const { registerWaitlistRoutes } = require('./routes/waitlist');
 const { registerAdminRoutes } = require('./routes/admin');
@@ -47,12 +48,6 @@ const { registerPaymentRoutes } = require('./routes/payments');
 const Database = require('better-sqlite3');
 const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
-const { registerStaticRoutes } = require('./routes/static');
-const { registerWaitlistRoutes } = require('./routes/waitlist');
-const { registerAdminRoutes } = require('./routes/admin');
-const { registerAuthRoutes } = require('./routes/auth');
-const { registerAppRoutes } = require('./routes/app');
-const { registerPaymentRoutes } = require('./routes/payments');
 
 
 const app = express();
