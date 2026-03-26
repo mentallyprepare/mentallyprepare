@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'mentally-prepare.db');
+const DB_PATH = process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data/mentally-prepare.db';
 const BACKUP_DIR = path.join(__dirname, 'backups');
 const MAX_BACKUPS = 14; // Keep last 14 days
 

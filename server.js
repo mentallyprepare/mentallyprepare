@@ -36,7 +36,7 @@ const PORT = process.env.PORT || 8080;
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // --- SQLite Database --------------------
-const DB_PATH = IS_PROD ? '/tmp/mentally-prepare.db' : path.join(__dirname, 'mentally-prepare.db');
+const DB_PATH = IS_PROD ? (process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data/mentally-prepare.db') : path.join(__dirname, 'mentally-prepare.db');
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for better concurrent read/write performance
