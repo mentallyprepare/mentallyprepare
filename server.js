@@ -11,14 +11,31 @@ process.on('unhandledRejection', (reason, promise) => {
 // MENTALLY PREPARE — Backend Server v2
 // SQLite · Push Notifications · Razorpay · Stripe
 // ---------------------------------------
+
+// --- Ensure DB directory exists and is writable (test-volume.js logic) ---
+const path = require('path');
+const fs = require('fs');
+const IS_PROD = process.env.NODE_ENV === 'production';
+const DB_PATH = IS_PROD ? '/data/db/mentally-prepare.db' : path.join(__dirname, 'mentally-prepare.db');
+const dbDir = IS_PROD ? '/data/db' : __dirname;
+console.log('Checking directory:', dbDir);
+try {
+  if (IS_PROD && !fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log('Created directory:', dbDir);
+  }
+  fs.accessSync(dbDir, fs.constants.W_OK);
+  console.log('Directory is writable');
+} catch (e) {
+  console.error('Error:', e);
+}
+
+// --- Now require other modules ---
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
 const helmet = require('helmet');
 const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const Database = require('better-sqlite3');
 const webpush = require('web-push');
@@ -29,14 +46,22 @@ const { registerAdminRoutes } = require('./routes/admin');
 const { registerAuthRoutes } = require('./routes/auth');
 const { registerAppRoutes } = require('./routes/app');
 const { registerPaymentRoutes } = require('./routes/payments');
+// ---------------------------------------------------------------
+const Database = require('better-sqlite3');
+const webpush = require('web-push');
+const { BASE_URL } = require('./lib/config');
+const { registerStaticRoutes } = require('./routes/static');
+const { registerWaitlistRoutes } = require('./routes/waitlist');
+const { registerAdminRoutes } = require('./routes/admin');
+const { registerAuthRoutes } = require('./routes/auth');
+const { registerAppRoutes } = require('./routes/app');
+const { registerPaymentRoutes } = require('./routes/payments');
+
 
 const app = express();
 app.set('trust proxy', 1); // Trust Railway/Heroku/Vercel proxy for correct IP handling
 const PORT = process.env.PORT || 8080;
-const IS_PROD = process.env.NODE_ENV === 'production';
 
-// --- SQLite Database --------------------
-const DB_PATH = IS_PROD ? (process.env.RAILWAY_VOLUME_MOUNT_PATH || '/data/mentally-prepare.db') : path.join(__dirname, 'mentally-prepare.db');
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for better concurrent read/write performance
