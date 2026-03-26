@@ -13,6 +13,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // ---------------------------------------
 
 // --- Ensure DB directory exists and is writable (test-volume.js logic) ---
+
 const path = require('path');
 const fs = require('fs');
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -29,6 +30,7 @@ try {
 } catch (e) {
   console.error('Error:', e);
 }
+console.log('Using SQLite DB file:', DB_PATH);
 
 // --- Now require other modules ---
 const express = require('express');
@@ -716,13 +718,18 @@ try {
     fs.writeFileSync(VAPID_PATH, JSON.stringify(vapidKeys, null, 2));
     console.log('  ? Generated VAPID keys');
   }
+  if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
+    throw new Error('VAPID keys missing public/private key');
+  }
   webpush.setVapidDetails(
     'mailto:' + (process.env.CONTACT_EMAIL || 'hello@mentallyprepare.in'),
     vapidKeys.publicKey,
     vapidKeys.privateKey
   );
+  console.log('  ? Webpush VAPID keys loaded');
 } catch (e) {
-  console.error('  ? VAPID setup failed:', e.message);
+  vapidKeys = null;
+  console.error('  ? VAPID setup failed:', e && e.stack ? e.stack : e);
 }
 
 // --- Razorpay Setup ---------------------
@@ -792,14 +799,20 @@ function sendDailyReminders() {
         body: `Day ${day} of 21 — take 5 minutes to be honest.`,
         url: '/app'
       });
-      webpush.sendNotification(sub, payload).then(() => { sent++; }).catch(err => {
-        failed++;
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          // Subscription expired, clean up
-          stmts.updatePushSub.run(null, row.id);
-        }
-      });
-    } catch { failed++; }
+      webpush.sendNotification(sub, payload)
+        .then(() => { sent++; })
+        .catch(err => {
+          failed++;
+          console.error('Webpush send error:', err && err.stack ? err.stack : err);
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            // Subscription expired, clean up
+            stmts.updatePushSub.run(null, row.id);
+          }
+        });
+    } catch (err) {
+      failed++;
+      console.error('Webpush JSON/parse error:', err && err.stack ? err.stack : err);
+    }
   }
   console.log(`  ?? Daily reminders: ${sent} sent, ${failed} failed`);
 }
