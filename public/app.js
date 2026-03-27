@@ -545,12 +545,12 @@ function renderWaiting() {
       <div style="font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.75;margin-bottom:12px;">Waiting for your match</div>
       <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;line-height:1.2;margin-bottom:14px;"><em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Your archetype: ${arch.emoji} ${arch.name}</em></h2>
       <div style="font-size:15px;color:var(--ink-m);margin-bottom:18px;">Your match is on their way — usually within 24 hours.</div>
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;width:100%;max-width:400px;margin:0 auto 18px 0;text-align:left;">
-        <div style="font-size:13px;color:var(--ink);margin-bottom:8px;"><b>Day 1 Prompt:</b></div>
-        <div style="font-size:15px;font-style:italic;color:var(--ink-m);margin-bottom:12px;">${escapeHtml(day1Prompt)}</div>
-        <textarea id="wait-draft" placeholder="Start writing while you wait…" style="width:100%;min-height:90px;border-radius:8px;border:1px solid var(--line);padding:10px;font-size:14px;">${escapeHtml(draft)}</textarea>
-        <button class="btn" id="saveWaitEntryBtn" style="margin-top:10px;">Save Day 1 Entry</button>
-        <div id="wait-entry-status" style="font-size:12px;color:var(--ink-s);margin-top:8px;"></div>
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;width:100%;max-width:520px;margin:0 auto 18px auto;text-align:left;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;">
+        <div style="font-size:13px;color:var(--ink);margin-bottom:8px;width:100%;max-width:100%;text-align:left;"><b>Day 1 Prompt:</b></div>
+        <div style="font-size:15px;font-style:italic;color:var(--ink-m);margin-bottom:12px;width:100%;max-width:100%;text-align:left;">${escapeHtml(day1Prompt)}</div>
+        <textarea id="wait-draft" placeholder="Start writing while you wait…" style="width:100%;min-width:0;max-width:100%;min-height:90px;border-radius:8px;border:1px solid var(--line);padding:10px;font-size:14px;box-sizing:border-box;margin-bottom:8px;">${escapeHtml(draft)}</textarea>
+        <button class="btn" id="saveWaitEntryBtn" style="margin-top:10px;width:100%;max-width:100%;">Save Day 1 Entry</button>
+        <div id="wait-entry-status" style="font-size:12px;color:var(--ink-s);margin-top:8px;width:100%;max-width:100%;text-align:center;"></div>
       </div>
       <div style="font-size:12px;color:var(--ink-s);margin-bottom:10px;">You'll be emailed as soon as your match arrives.</div>
     </div>`;
