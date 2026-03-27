@@ -615,9 +615,23 @@ function renderJournal() {
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const today = new Date();
 
+  // Check if partner hasn't written for 3+ days
+  let partnerInactiveCard = '';
+  if (state.partnerEntries && state.partnerEntries.length > 0) {
+    const lastPartnerDay = Math.max(...state.partnerEntries.map(e => e.day));
+    if (day - lastPartnerDay >= 3) {
+      partnerInactiveCard = `
+        <div class="info-card" style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:18px auto 0 auto;max-width:520px;color:var(--ink-s);font-family:'Lora',serif;font-size:15px;text-align:center;">
+          <div style="font-size:16px;font-family:'Playfair Display',serif;color:var(--ink-m);margin-bottom:6px;">Your partner hasn't written in a few days.</div>
+          <div>This happens sometimes. Keep writing — your entries are saved and they'll see everything when they return.</div>
+        </div>
+      `;
+    }
+  }
   document.getElementById('s-journal').innerHTML = `
     <div class="nav"><div class="nav-logo">mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
     <div style="padding:16px 24px 0;"><div class="greeting">${getGreeting(state.user.name)}</div></div>
+    ${partnerInactiveCard}
     <div class="streak reveal-on-scroll">
       <div class="streak-top"><div class="streak-lbl">Streak</div><div class="streak-ct">🔥 ${state.streak} days</div></div>
       <div class="pips">${Array.from({length:21},(_,i) => {
