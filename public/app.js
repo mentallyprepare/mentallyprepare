@@ -532,6 +532,9 @@ function renderResult(matched) {
 // ═══════════════════════════════════════
 function renderWaiting() {
   const arch = archetypes[state.user.archetype];
+  const waitingInfo = state.waitingInfo || {};
+  const day1Prompt = waitingInfo.day1Prompt || (prompts && prompts[0]) || 'Write about your day.';
+  const draft = sessionStorage.getItem('mp-wait-draft') || '';
   document.getElementById('s-waiting').innerHTML = `
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
       <div style="position:relative;margin-bottom:28px;">
@@ -539,19 +542,33 @@ function renderWaiting() {
         <div style="position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(201,169,110,.25);animation:ringExpand 3s ease-out infinite;animation-delay:1.5s;"></div>
         <div class="moon-base" style="width:88px;height:88px;box-shadow:0 0 50px rgba(201,169,110,.55),0 0 100px rgba(201,169,110,.2);animation:float 5s ease-in-out infinite;"></div>
       </div>
-      <div style="font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.75;margin-bottom:12px;">Searching</div>
-      <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;line-height:1.2;margin-bottom:14px;"><em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Finding your complement</em></h2>
-      <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.85;max-width:280px;margin:0 auto 20px;">We're looking for a ${escapeHtml(arch.matchName)} from a different college to match you with.</p>
-      <div class="loading-dots" style="margin-bottom:24px;"><span></span><span></span><span></span></div>
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;width:100%;display:flex;align-items:center;gap:14px;text-align:left;margin-bottom:20px;">
-        <div style="font-size:28px;">${arch.emoji}</div>
-        <div><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:.6;margin-bottom:3px;">You are</div>
-          <div style="font-family:'Playfair Display',serif;font-size:16px;font-style:italic;color:var(--ink);">${arch.name}</div>
-          <div style="font-size:11px;color:var(--ink-s);margin-top:3px;">Waiting for ${arch.matchName}</div></div>
+      <div style="font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.75;margin-bottom:12px;">Waiting for your match</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;line-height:1.2;margin-bottom:14px;"><em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Your archetype: ${arch.emoji} ${arch.name}</em></h2>
+      <div style="font-size:15px;color:var(--ink-m);margin-bottom:18px;">Your match is on their way — usually within 24 hours.</div>
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;width:100%;max-width:400px;margin:0 auto 18px 0;text-align:left;">
+        <div style="font-size:13px;color:var(--ink);margin-bottom:8px;"><b>Day 1 Prompt:</b></div>
+        <div style="font-size:15px;font-style:italic;color:var(--ink-m);margin-bottom:12px;">${escapeHtml(day1Prompt)}</div>
+        <textarea id="wait-draft" placeholder="Start writing while you wait…" style="width:100%;min-height:90px;border-radius:8px;border:1px solid var(--line);padding:10px;font-size:14px;">${escapeHtml(draft)}</textarea>
+        <button class="btn" id="saveWaitEntryBtn" style="margin-top:10px;">Save Day 1 Entry</button>
+        <div id="wait-entry-status" style="font-size:12px;color:var(--ink-s);margin-top:8px;"></div>
       </div>
-      <button class="btn" onclick="devSetup()" style="background:linear-gradient(135deg,var(--gold),var(--rose-d));">⚡ Create test partner (demo)</button>
-      <div style="font-size:9.5px;color:var(--ink-s);margin-top:10px;font-style:italic;">Or wait for a real match — we check every 15 seconds</div>
+      <div style="font-size:12px;color:var(--ink-s);margin-bottom:10px;">You'll be emailed as soon as your match arrives.</div>
     </div>`;
+
+  document.getElementById('wait-draft').addEventListener('input', function(e) {
+    sessionStorage.setItem('mp-wait-draft', e.target.value);
+  });
+  document.getElementById('saveWaitEntryBtn').addEventListener('click', async function() {
+    const text = document.getElementById('wait-draft').value.trim();
+    if (!text) { document.getElementById('wait-entry-status').textContent = 'Please write something first.'; return; }
+    try {
+      await api('POST', '/waiting-entry', { text });
+      document.getElementById('wait-entry-status').textContent = 'Saved! Your Day 1 entry is ready for your match.';
+      sessionStorage.removeItem('mp-wait-draft');
+    } catch (e) {
+      document.getElementById('wait-entry-status').textContent = 'Error saving entry.';
+    }
+  });
 
   clearInterval(matchPollTimer);
   matchPollTimer = setInterval(async () => {

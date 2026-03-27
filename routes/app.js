@@ -109,6 +109,11 @@ function registerAppRoutes(app, deps) {
 
       const insights = entriesData.length >= 3 ? getMoodInsights(entriesData) : null;
 
+      // Always provide archetype and Day 1 prompt for waiting state
+      const waitingInfo = {
+        archetype: safeUser.archetype,
+        day1Prompt: prompts[0]
+      };
       res.json({
         user: safeUser,
         match: matchData,
@@ -118,7 +123,8 @@ function registerAppRoutes(app, deps) {
         reveal: revealData,
         comments,
         adaptivePrompt,
-        insights
+        insights,
+        waitingInfo: !matchData ? waitingInfo : undefined
       });
     } catch (e) {
       console.error('State error:', e);

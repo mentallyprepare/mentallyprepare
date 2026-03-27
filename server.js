@@ -46,6 +46,7 @@ const { registerWaitlistRoutes } = require('./routes/waitlist');
 const { registerAdminRoutes } = require('./routes/admin');
 const { registerAuthRoutes } = require('./routes/auth');
 const { registerAppRoutes } = require('./routes/app');
+const registerWaitingEntryRoute = require('./routes/waiting-entry');
 const { registerPaymentRoutes } = require('./routes/payments');
 // ---------------------------------------------------------------
 const Database = require('better-sqlite3');
@@ -784,6 +785,15 @@ registerAppRoutes(app, {
   deleteUserDataTx,
   vapidKeys,
   IS_PROD
+});
+// Register waiting-entry route
+registerWaitingEntryRoute(app, {
+  apiLimiter,
+  requireAuth,
+  stmts,
+  prompts,
+  scanForSafety,
+  HELPLINES
 });
 
 // Daily push notification cron (call via external cron or setInterval)
