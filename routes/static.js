@@ -1,8 +1,13 @@
 const path = require('path');
 
 function registerStaticRoutes(app, { baseUrl, rootDir }) {
+
   app.get('/privacy', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'privacy.html'));
+  });
+
+  app.get('/terms', (req, res) => {
+    res.sendFile(path.join(rootDir, 'public', 'terms.html'));
   });
 
   app.get('/waitlist', (req, res) => {
