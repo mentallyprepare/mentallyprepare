@@ -368,7 +368,7 @@ function getSessionSecret() {
 app.use(session({
   store: new SQLiteStore({
     db: 'mentally-prepare.db',
-    dir: __dirname
+    dir: IS_PROD ? '/data/db' : __dirname
   }),
   secret: getSessionSecret(),
   resave: false,
