@@ -118,6 +118,14 @@ db.exec(`
     UNIQUE(user_id, day)
   );
 
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS reveals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL REFERENCES matches(id),
@@ -288,6 +296,17 @@ const stmts = {
     ON CONFLICT(user_id, day) DO UPDATE SET text = excluded.text, mood = excluded.mood, prompt = excluded.prompt, updated_at = datetime('now')
   `),
   deleteUserWaitingEntries: db.prepare('DELETE FROM waiting_entries WHERE user_id = ?'),
+  insertPasswordResetToken: db.prepare(`
+    INSERT INTO password_reset_tokens (token, user_id, expires_at, created_at)
+    VALUES (?, ?, ?, ?)
+  `),
+  getValidPasswordResetToken: db.prepare(`
+    SELECT * FROM password_reset_tokens
+    WHERE token = ? AND used_at IS NULL AND expires_at > ?
+  `),
+  markPasswordResetTokenUsed: db.prepare('UPDATE password_reset_tokens SET used_at = ? WHERE token = ?'),
+  deleteExpiredPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE expires_at <= ?'),
+  deleteUserPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?'),
 
   getReveal: db.prepare('SELECT * FROM reveals WHERE match_id = ? AND user_id = ?'),
   upsertReveal: db.prepare(`
@@ -364,11 +383,6 @@ app.use(express.json({ limit: '16kb' }));
 // Serve app.html at root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Serve terms.html at /terms
-app.get('/terms', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -722,6 +736,7 @@ const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
   );
   stmts.deleteUserEntries.run(userId);
   stmts.deleteUserWaitingEntries.run(userId);
+  stmts.deleteUserPasswordResetTokens.run(userId);
   stmts.deleteUserReveals.run(userId);
   stmts.deleteUserComments.run(userId);
   stmts.deleteUserReports.run(userId);
@@ -891,13 +906,7 @@ app.get('/api/ready', (req, res) => {
 
 // ---------------------------------------
 // PRIVACY & STATIC ROUTES
-// Serve privacy.html and terms.html as static pages
-app.get('/privacy', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
-});
-app.get('/terms', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
-});
+// (Registered centrally in routes/static.js)
 // ---------------------------------------
 // ---------------------------------------
 // EMAIL REMINDER SIGNUP
@@ -952,11 +961,6 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
 // ---------------------------------------
 // ADMIN ROUTES
 // ---------------------------------------
-// Serve admin panel
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
 function requireAdmin(req, res, next) {
   const adminPassword = process.env.ADMIN_PASSWORD;
   const pw = req.headers['x-admin-password'] || req.headers['x-admin-key'] || req.query.key;

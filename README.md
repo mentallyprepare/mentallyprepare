@@ -24,7 +24,7 @@ The app is ready for deployment on platforms like Railway, Azure, or any Docker-
 1. Clone the repository.
 2. Run `npm install` to install dependencies.
 3. Start the server with `node server.js` or `npm start`.
-4. Access the app at `http://localhost:3000` (default).
+4. Access the app at `http://localhost:8080` (default) or the port set in `PORT`.
 
 ## License
 MIT License. See LICENSE file for details.
