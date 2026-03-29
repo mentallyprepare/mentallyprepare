@@ -106,6 +106,18 @@ db.exec(`
     UNIQUE(user_id, match_id, day)
   );
 
+  CREATE TABLE IF NOT EXISTS waiting_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    day INTEGER NOT NULL DEFAULT 1,
+    text TEXT NOT NULL,
+    mood TEXT DEFAULT '😶',
+    prompt TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT,
+    UNIQUE(user_id, day)
+  );
+
   CREATE TABLE IF NOT EXISTS reveals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL REFERENCES matches(id),
@@ -269,6 +281,13 @@ const stmts = {
     ON CONFLICT(user_id, match_id, day) DO UPDATE SET text = excluded.text, mood = excluded.mood
   `),
   deleteUserEntries: db.prepare('DELETE FROM entries WHERE user_id = ?'),
+  getWaitingEntries: db.prepare('SELECT * FROM waiting_entries WHERE user_id = ? ORDER BY day DESC'),
+  upsertWaitingEntry: db.prepare(`
+    INSERT INTO waiting_entries (user_id, day, text, mood, prompt)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, day) DO UPDATE SET text = excluded.text, mood = excluded.mood, prompt = excluded.prompt, updated_at = datetime('now')
+  `),
+  deleteUserWaitingEntries: db.prepare('DELETE FROM waiting_entries WHERE user_id = ?'),
 
   getReveal: db.prepare('SELECT * FROM reveals WHERE match_id = ? AND user_id = ?'),
   upsertReveal: db.prepare(`
@@ -702,6 +721,7 @@ const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
     reason
   );
   stmts.deleteUserEntries.run(userId);
+  stmts.deleteUserWaitingEntries.run(userId);
   stmts.deleteUserReveals.run(userId);
   stmts.deleteUserComments.run(userId);
   stmts.deleteUserReports.run(userId);
@@ -1049,4 +1069,3 @@ process.on('SIGTERM', shutdown);
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
-

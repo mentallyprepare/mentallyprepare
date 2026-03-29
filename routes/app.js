@@ -99,6 +99,9 @@ function registerAppRoutes(app, deps) {
             partner: bothYes && partner ? { name: partner.name, college: partner.college, year: partner.year } : null
           };
         }
+      } else {
+        entriesData = stmts.getWaitingEntries.all(userId)
+          .map((e) => ({ day: e.day, text: e.text, mood: e.mood, prompt: e.prompt, created_at: e.created_at }));
       }
 
       let adaptivePrompt = null;
