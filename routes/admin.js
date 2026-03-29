@@ -11,7 +11,8 @@ function registerAdminRoutes(app, deps) {
     findUserByIdentifier,
     complementary,
     deleteUserDataTx,
-    deleteMatchData
+    deleteMatchData,
+    sendAdminInvite
   } = deps;
 
   app.get('/admin', (req, res) => {
@@ -181,6 +182,38 @@ function registerAdminRoutes(app, deps) {
       res.json({ ok: true });
     } catch (e) {
       res.status(500).json({ error: 'Failed to dismiss report' });
+    }
+  });
+
+  app.post('/api/admin/invite', (req, res) => {
+    try {
+      const { email, adminKey } = req.body;
+      if (!email || !adminKey) {
+        return res.status(400).json({ error: 'email and adminKey are required' });
+      }
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminPassword || adminKey !== adminPassword) {
+        return res.status(401).json({ error: 'Invalid admin key' });
+      }
+
+      const entry = db.prepare('SELECT * FROM waitlist WHERE email = ?').get(email.toLowerCase().trim());
+      if (!entry) {
+        return res.status(404).json({ error: 'Email not found on waitlist' });
+      }
+
+      db.prepare(`UPDATE waitlist SET invited_at = datetime('now') WHERE id = ?`).run(entry.id);
+
+      if (sendAdminInvite) {
+        sendAdminInvite(entry.name, entry.email).catch(err =>
+          console.error('  ✗ Admin invite email failed:', err.message)
+        );
+      }
+
+      console.log(`  ✦ Admin invite sent to ${entry.name} <${entry.email}>`);
+      res.json({ ok: true, name: entry.name, email: entry.email });
+    } catch (e) {
+      console.error('Admin invite error:', e);
+      res.status(500).json({ error: 'Failed to send invite' });
     }
   });
 

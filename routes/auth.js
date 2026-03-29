@@ -3,8 +3,12 @@ function registerAuthRoutes(app, deps) {
     authLimiter,
     bcrypt,
     crypto,
-    stmts
+    stmts,
+    sendLoginWelcome
   } = deps;
+
+  // Track last welcome email sent per user (userId → timestamp ms)
+  const welcomeEmailSentAt = new Map();
 
   const resetTokens = new Map();
 
@@ -54,6 +58,28 @@ function registerAuthRoutes(app, deps) {
       }
 
       req.session.userId = user.id;
+
+      // Send login welcome email for users created within 21 days, once per 24h
+      if (sendLoginWelcome) {
+        try {
+          const createdAt = new Date(user.created_at);
+          const ageMs = Date.now() - createdAt.getTime();
+          const twentyOneDaysMs = 21 * 24 * 60 * 60 * 1000;
+          const lastSent = welcomeEmailSentAt.get(user.id) || 0;
+          const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+
+          if (ageMs <= twentyOneDaysMs && Date.now() - lastSent >= twentyFourHoursMs) {
+            const dayNumber = Math.min(Math.max(Math.floor(ageMs / (24 * 60 * 60 * 1000)) + 1, 1), 21);
+            welcomeEmailSentAt.set(user.id, Date.now());
+            sendLoginWelcome(user.name, user.email, dayNumber).catch(err =>
+              console.error('  ✗ Login welcome email failed:', err.message)
+            );
+          }
+        } catch (emailErr) {
+          console.error('  ✗ Login welcome email check failed:', emailErr.message);
+        }
+      }
+
       res.json({ ok: true });
     } catch (e) {
       console.error('Login error:', e);
