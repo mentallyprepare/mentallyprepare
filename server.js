@@ -884,6 +884,19 @@ function scheduleDailyPush() {
 }
 scheduleDailyPush();
 
+function scheduleTokenCleanup() {
+  const runCleanup = () => {
+    try {
+      stmts.deleteExpiredPasswordResetTokens.run(Date.now());
+    } catch (e) {
+      console.error('Password reset token cleanup failed:', e && e.message ? e.message : e);
+    }
+  };
+  runCleanup();
+  setInterval(runCleanup, 60 * 60 * 1000);
+}
+scheduleTokenCleanup();
+
 // ---------------------------------------
 // HEALTH CHECK (for UptimeRobot etc.)
 // ---------------------------------------
@@ -963,8 +976,14 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
 // ---------------------------------------
 function requireAdmin(req, res, next) {
   const adminPassword = process.env.ADMIN_PASSWORD;
-  const pw = req.headers['x-admin-password'] || req.headers['x-admin-key'] || req.query.key;
-  if (!adminPassword || !pw || pw !== adminPassword) {
+  const rawHeader = req.headers['x-admin-password'] || req.headers['x-admin-key'];
+  const supplied = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+  if (!adminPassword || typeof supplied !== 'string') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const expectedBuf = Buffer.from(String(adminPassword));
+  const suppliedBuf = Buffer.from(supplied);
+  if (expectedBuf.length !== suppliedBuf.length || !crypto.timingSafeEqual(expectedBuf, suppliedBuf)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
