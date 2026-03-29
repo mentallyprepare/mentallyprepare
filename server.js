@@ -48,6 +48,7 @@ const { registerAuthRoutes } = require('./routes/auth');
 const { registerAppRoutes } = require('./routes/app');
 const registerWaitingEntryRoute = require('./routes/waiting-entry');
 const { registerPaymentRoutes } = require('./routes/payments');
+const { sendWaitlistConfirmation, sendLoginWelcome, sendAdminInvite } = require('./lib/email');
 // ---------------------------------------------------------------
 const Database = require('better-sqlite3');
 const webpush = require('web-push');
@@ -162,6 +163,7 @@ db.exec(`
     college TEXT NOT NULL,
     year TEXT,
     archetype TEXT,
+    invited_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -173,6 +175,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_users_archetype ON users(archetype);
   CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at);
 `);
+
+// --- Migrate waitlist table: add invited_at if missing ---
+try {
+  const cols = db.prepare("PRAGMA table_info(waitlist)").all().map(c => c.name);
+  if (!cols.includes('invited_at')) {
+    db.prepare("ALTER TABLE waitlist ADD COLUMN invited_at TEXT").run();
+    console.log('  ✦ Migrated waitlist: added invited_at column');
+  }
+} catch (e) {
+  console.error('  ✗ waitlist migration failed:', e.message);
+}
 
 // --- Migrate from data.json if it exists -
 (function migrateFromJson() {
@@ -412,7 +425,8 @@ registerAuthRoutes(app, {
   authLimiter,
   bcrypt,
   crypto,
-  stmts
+  stmts,
+  sendLoginWelcome
 });
 
 const apiLimiter = rateLimit({
@@ -1012,13 +1026,15 @@ registerAdminRoutes(app, {
   findUserByIdentifier,
   complementary,
   deleteUserDataTx,
-  deleteMatchData
+  deleteMatchData,
+  sendAdminInvite
 });
 
 registerWaitlistRoutes(app, {
   apiLimiter,
   db,
-  requireAdmin
+  requireAdmin,
+  sendWaitlistConfirmation
 });
 
 registerStaticRoutes(app, {

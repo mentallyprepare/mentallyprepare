@@ -1,4 +1,4 @@
-function registerWaitlistRoutes(app, { apiLimiter, db, requireAdmin }) {
+function registerWaitlistRoutes(app, { apiLimiter, db, requireAdmin, sendWaitlistConfirmation }) {
   app.get('/api/waitlist/count', apiLimiter, (req, res) => {
     try {
       const count = db.prepare('SELECT COUNT(*) as c FROM waitlist').get().c;
@@ -30,6 +30,11 @@ function registerWaitlistRoutes(app, { apiLimiter, db, requireAdmin }) {
       `).run(name, email);
       const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(result.lastInsertRowid).c;
       console.log(`  ✦ Waitlist signup: ${name} (#${position})`);
+      if (sendWaitlistConfirmation) {
+        sendWaitlistConfirmation(name, email).catch(err =>
+          console.error('  ✗ Waitlist confirmation email failed:', err.message)
+        );
+      }
       res.json({ ok: true, position });
     } catch (e) {
       if (e.message && e.message.includes('UNIQUE')) {
