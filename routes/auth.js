@@ -6,8 +6,6 @@ function registerAuthRoutes(app, deps) {
     stmts
   } = deps;
 
-  const resetTokens = new Map();
-
   app.post('/api/register', authLimiter, async (req, res) => {
     try {
       const { name, email, password, college, year, gender, matchGenderPref, matchYearPref, consentGiven } = req.body;
@@ -67,13 +65,15 @@ function registerAuthRoutes(app, deps) {
 
   app.post('/api/forgot-password', authLimiter, (req, res) => {
     try {
+      stmts.deleteExpiredPasswordResetTokens.run(Date.now());
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: 'Email is required' });
       const user = stmts.getUserByEmail.get(email.toLowerCase().trim());
       if (!user) return res.json({ ok: true, message: 'If that email exists, a reset code has been generated.' });
 
       const token = crypto.randomBytes(32).toString('hex');
-      resetTokens.set(token, { userId: user.id, expires: Date.now() + 15 * 60 * 1000 });
+      const expiresAt = Date.now() + 15 * 60 * 1000;
+      stmts.insertPasswordResetToken.run(token, user.id, expiresAt, Date.now());
       console.log(`  ✉ Password reset token for ${user.email}: ${token}`);
       res.json({ ok: true, message: 'If that email exists, a reset link has been generated.' });
     } catch (e) {
@@ -84,23 +84,23 @@ function registerAuthRoutes(app, deps) {
 
   app.post('/api/reset-password', authLimiter, async (req, res) => {
     try {
+      stmts.deleteExpiredPasswordResetTokens.run(Date.now());
       const { code, newPassword } = req.body;
       const token = code;
       if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required' });
       if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
-      const entry = resetTokens.get(token);
-      if (!entry || entry.expires < Date.now()) {
-        if (token) resetTokens.delete(token);
+      const entry = stmts.getValidPasswordResetToken.get(token, Date.now());
+      if (!entry) {
         return res.status(400).json({ error: 'Invalid or expired reset token' });
       }
 
-      const user = stmts.getUserById.get(entry.userId);
+      const user = stmts.getUserById.get(entry.user_id);
       if (!user) return res.status(400).json({ error: 'User not found' });
 
       const hash = await bcrypt.hash(newPassword, 12);
       stmts.updateUserPassword.run(hash, user.id);
-      resetTokens.delete(token);
+      stmts.markPasswordResetTokenUsed.run(Date.now(), token);
       res.json({ ok: true });
     } catch (e) {
       console.error('Reset password error:', e);

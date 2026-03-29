@@ -106,6 +106,26 @@ db.exec(`
     UNIQUE(user_id, match_id, day)
   );
 
+  CREATE TABLE IF NOT EXISTS waiting_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    day INTEGER NOT NULL DEFAULT 1,
+    text TEXT NOT NULL,
+    mood TEXT DEFAULT '😶',
+    prompt TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT,
+    UNIQUE(user_id, day)
+  );
+
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS reveals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL REFERENCES matches(id),
@@ -269,6 +289,24 @@ const stmts = {
     ON CONFLICT(user_id, match_id, day) DO UPDATE SET text = excluded.text, mood = excluded.mood
   `),
   deleteUserEntries: db.prepare('DELETE FROM entries WHERE user_id = ?'),
+  getWaitingEntries: db.prepare('SELECT * FROM waiting_entries WHERE user_id = ? ORDER BY day DESC'),
+  upsertWaitingEntry: db.prepare(`
+    INSERT INTO waiting_entries (user_id, day, text, mood, prompt)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, day) DO UPDATE SET text = excluded.text, mood = excluded.mood, prompt = excluded.prompt, updated_at = datetime('now')
+  `),
+  deleteUserWaitingEntries: db.prepare('DELETE FROM waiting_entries WHERE user_id = ?'),
+  insertPasswordResetToken: db.prepare(`
+    INSERT INTO password_reset_tokens (token, user_id, expires_at, created_at)
+    VALUES (?, ?, ?, ?)
+  `),
+  getValidPasswordResetToken: db.prepare(`
+    SELECT * FROM password_reset_tokens
+    WHERE token = ? AND used_at IS NULL AND expires_at > ?
+  `),
+  markPasswordResetTokenUsed: db.prepare('UPDATE password_reset_tokens SET used_at = ? WHERE token = ?'),
+  deleteExpiredPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE expires_at <= ?'),
+  deleteUserPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?'),
 
   getReveal: db.prepare('SELECT * FROM reveals WHERE match_id = ? AND user_id = ?'),
   upsertReveal: db.prepare(`
@@ -345,11 +383,6 @@ app.use(express.json({ limit: '16kb' }));
 // Serve app.html at root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Serve terms.html at /terms
-app.get('/terms', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -702,6 +735,8 @@ const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
     reason
   );
   stmts.deleteUserEntries.run(userId);
+  stmts.deleteUserWaitingEntries.run(userId);
+  stmts.deleteUserPasswordResetTokens.run(userId);
   stmts.deleteUserReveals.run(userId);
   stmts.deleteUserComments.run(userId);
   stmts.deleteUserReports.run(userId);
@@ -849,6 +884,19 @@ function scheduleDailyPush() {
 }
 scheduleDailyPush();
 
+function scheduleTokenCleanup() {
+  const runCleanup = () => {
+    try {
+      stmts.deleteExpiredPasswordResetTokens.run(Date.now());
+    } catch (e) {
+      console.error('Password reset token cleanup failed:', e && e.message ? e.message : e);
+    }
+  };
+  runCleanup();
+  setInterval(runCleanup, 60 * 60 * 1000);
+}
+scheduleTokenCleanup();
+
 // ---------------------------------------
 // HEALTH CHECK (for UptimeRobot etc.)
 // ---------------------------------------
@@ -871,13 +919,7 @@ app.get('/api/ready', (req, res) => {
 
 // ---------------------------------------
 // PRIVACY & STATIC ROUTES
-// Serve privacy.html and terms.html as static pages
-app.get('/privacy', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
-});
-app.get('/terms', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
-});
+// (Registered centrally in routes/static.js)
 // ---------------------------------------
 // ---------------------------------------
 // EMAIL REMINDER SIGNUP
@@ -932,15 +974,16 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
 // ---------------------------------------
 // ADMIN ROUTES
 // ---------------------------------------
-// Serve admin panel
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
 function requireAdmin(req, res, next) {
   const adminPassword = process.env.ADMIN_PASSWORD;
-  const pw = req.headers['x-admin-password'] || req.headers['x-admin-key'] || req.query.key;
-  if (!adminPassword || !pw || pw !== adminPassword) {
+  const rawHeader = req.headers['x-admin-password'] || req.headers['x-admin-key'];
+  const supplied = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+  if (!adminPassword || typeof supplied !== 'string') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const expectedBuf = Buffer.from(String(adminPassword));
+  const suppliedBuf = Buffer.from(supplied);
+  if (expectedBuf.length !== suppliedBuf.length || !crypto.timingSafeEqual(expectedBuf, suppliedBuf)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
@@ -1049,4 +1092,3 @@ process.on('SIGTERM', shutdown);
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
-
