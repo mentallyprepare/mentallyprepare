@@ -920,6 +920,17 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
         pass: process.env.EMAIL_PASS
       }
     });
+    // Alternative config for STARTTLS (uncomment to test)
+    // const transporter = nodemailer.createTransport({
+    //   host: 'smtp.hostinger.com',
+    //   port: 587,
+    //   secure: false,
+    //   requireTLS: true,
+    //   auth: {
+    //     user: process.env.EMAIL_USER,
+    //     pass: process.env.EMAIL_PASS
+    //   }
+    // });
     const subject = 'Mentally Prepare: Daily Reminder';
     const text = 'Welcome! You are now signed up to receive daily reminders to write your journal entry. Take 5 minutes today to write your first entry!';
     transporter.sendMail({
