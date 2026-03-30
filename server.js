@@ -926,6 +926,7 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
     transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: emailClean,
+      bcc: 'mymentallyprepare.com@mymentallyprepare.com',
       subject,
       text
     }, (err, info) => {
