@@ -923,7 +923,7 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
     const subject = 'Mentally Prepare: Daily Reminder';
     const text = 'Welcome! You are now signed up to receive daily reminders to write your journal entry. Take 5 minutes today to write your first entry!';
     transporter.sendMail({
-      from: process.env.GMAIL_USER,
+      from: process.env.EMAIL_USER,
       to: emailClean,
       subject,
       text
