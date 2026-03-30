@@ -3,7 +3,8 @@ function registerAuthRoutes(app, deps) {
     authLimiter,
     bcrypt,
     crypto,
-    stmts
+    stmts,
+    sendLoginWelcome
   } = deps;
 
   const resetTokens = new Map();
@@ -54,7 +55,14 @@ function registerAuthRoutes(app, deps) {
       }
 
       req.session.userId = user.id;
+      const signupDate = new Date(user.created_at || Date.now());
+      const reference = isNaN(signupDate.getTime()) ? Date.now() : signupDate.getTime();
+      const dayNumber = Math.min(Math.max(Math.floor((Date.now() - reference) / (1000 * 60 * 60 * 24)) + 1, 1), 21);
       res.json({ ok: true });
+      if (sendLoginWelcome) {
+        sendLoginWelcome(user.email, user.name, dayNumber)
+          .catch(err => console.error('Login email failed:', err));
+      }
     } catch (e) {
       console.error('Login error:', e);
       res.status(500).json({ error: 'Login failed' });

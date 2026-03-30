@@ -11,7 +11,8 @@ function registerAdminRoutes(app, deps) {
     findUserByIdentifier,
     complementary,
     deleteUserDataTx,
-    deleteMatchData
+    deleteMatchData,
+    sendWaitlistAccepted
   } = deps;
 
   app.get('/admin', (req, res) => {
@@ -145,6 +146,24 @@ function registerAdminRoutes(app, deps) {
       res.json({ ok: true, match_id: result.lastInsertRowid });
     } catch (e) {
       res.status(500).json({ error: 'Failed to create manual match' });
+    }
+  });
+
+  app.post('/api/admin/invite', requireAdmin, async (req, res) => {
+    try {
+      const email = String(req.body.email || '').trim().toLowerCase();
+      if (!email) return res.status(400).json({ error: 'Email is required' });
+      const entry = db.prepare('SELECT id, name FROM waitlist WHERE email = ?').get(email);
+      if (!entry) return res.status(404).json({ error: 'Waitlist entry not found' });
+      if (sendWaitlistAccepted) {
+        await sendWaitlistAccepted(email, entry.name || email)
+          .catch(err => console.error('Invite email failed:', err));
+      }
+      db.prepare('UPDATE waitlist SET invited_at = datetime(\'now\') WHERE id = ?').run(entry.id);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('Invite error:', e);
+      res.status(500).json({ error: 'Failed to send invite' });
     }
   });
 

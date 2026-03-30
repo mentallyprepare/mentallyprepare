@@ -52,6 +52,7 @@ const { registerPaymentRoutes } = require('./routes/payments');
 const Database = require('better-sqlite3');
 const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
+const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome } = require('./email-service');
 
 
 const app = express();
@@ -173,6 +174,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_users_archetype ON users(archetype);
   CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at);
 `);
+
+try {
+  db.prepare('ALTER TABLE waitlist ADD COLUMN invited_at TEXT').run();
+} catch (e) {
+  if (e && !/duplicate column/i.test(e.message || '')) {
+    console.error('Failed to ensure waitlist.invited_at column exists:', e);
+  }
+}
 
 // --- Migrate from data.json if it exists -
 (function migrateFromJson() {
@@ -412,7 +421,8 @@ registerAuthRoutes(app, {
   authLimiter,
   bcrypt,
   crypto,
-  stmts
+  stmts,
+  sendLoginWelcome
 });
 
 const apiLimiter = rateLimit({
@@ -902,7 +912,9 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
     // Send welcome/daily reminder email immediately
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.hostinger.com',
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS
@@ -1012,13 +1024,15 @@ registerAdminRoutes(app, {
   findUserByIdentifier,
   complementary,
   deleteUserDataTx,
-  deleteMatchData
+  deleteMatchData,
+  sendWaitlistAccepted
 });
 
 registerWaitlistRoutes(app, {
   apiLimiter,
   db,
-  requireAdmin
+  requireAdmin,
+  sendWaitlistConfirmation
 });
 
 registerStaticRoutes(app, {
