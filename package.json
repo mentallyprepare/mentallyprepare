@@ -12,6 +12,7 @@
     "backup": "node backup.js"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.6.2",
     "connect-sqlite3": "^0.9.16",
