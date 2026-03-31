@@ -1,9 +1,0 @@
-# Railway deployment configuration for Node.js
-[build]
-  command = "npm install"
-[start]
-  command = "node server.js"
-
-# Set the default port for Railway
-[env]
-  PORT = 3000

@@ -14,7 +14,6 @@ send-daily-reminders.js
 railway.toml
 vercel.json
 Procfile
-Dockerfile
 .dockerignore
 .env.example
 app.json

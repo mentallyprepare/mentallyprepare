@@ -25,6 +25,7 @@ Anonymous 21-day journaling webapp for college students, built with Node.js, Exp
 5. Open `http://localhost:8080`
 
 ## Railway notes
+- Let Railway deploy this service as a normal Node.js app instead of using a custom Dockerfile
 - Set `SESSION_SECRET` as a permanent Railway variable
 - Mount a persistent volume at `/data/db`
 - Keep `DATA_DIR=/data/db`

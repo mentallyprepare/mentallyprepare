@@ -16,6 +16,16 @@ backups/
 
 # VAPID keys
 .vapid-keys.json
+.session-secret
+mentally-prepare-desktop-folder/
+tmp-prod-repro/
+tmpdata/
+tmpdata2/
+tmpdata3/
+prod-out.log
+prod-err.log
+prod2-out.log
+prod2-err.log
 
 # Old server backups
 server.js.bak

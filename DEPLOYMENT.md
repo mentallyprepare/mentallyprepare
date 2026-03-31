@@ -12,6 +12,7 @@
 - `package-lock.json`
 
 ## Railway production checklist
+- Let Railway use its standard Node.js build flow for this service (no custom Dockerfile needed)
 - Set `SESSION_SECRET` as a permanent Railway variable
 - Set `ADMIN_PASSWORD`, `SENDGRID_API_KEY`, `SENDGRID_FROM`, and any payment keys you need
 - Mount a Railway persistent volume and point it at `/data/db`
