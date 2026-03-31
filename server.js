@@ -452,8 +452,11 @@ app.use(session({
 // --- HTTPS redirect (production) --------
 if (IS_PROD) {
   app.use((req, res, next) => {
-    if (req.header('x-forwarded-proto') !== 'https') {
-      return res.redirect('https://' + req.header('host') + req.url);
+    const forwardedProto = req.header('x-forwarded-proto');
+    const host = req.header('host');
+    // Only force HTTPS when the proxy explicitly tells us the request came over HTTP.
+    if (forwardedProto && forwardedProto !== 'https' && host) {
+      return res.redirect('https://' + host + req.url);
     }
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     next();
