@@ -17,23 +17,33 @@ process.on('unhandledRejection', (reason, promise) => {
 const path = require('path');
 const fs = require('fs');
 const IS_PROD = process.env.NODE_ENV === 'production';
-const DATA_DIR = process.env.DATA_DIR
+const requestedDataDir = process.env.DATA_DIR
   || process.env.RAILWAY_VOLUME_MOUNT_PATH
   || (IS_PROD ? '/data/db' : __dirname);
+function resolveDataDir(preferredDir) {
+  const candidates = [preferredDir, __dirname].filter((dir, idx, arr) => dir && arr.indexOf(dir) === idx);
+  for (const candidate of candidates) {
+    try {
+      if (!fs.existsSync(candidate)) {
+        fs.mkdirSync(candidate, { recursive: true });
+        console.log('Created directory:', candidate);
+      }
+      fs.accessSync(candidate, fs.constants.W_OK);
+      return candidate;
+    } catch (e) {
+      console.error('Data directory unavailable:', candidate, e.message);
+    }
+  }
+  throw new Error('No writable data directory available');
+}
+const DATA_DIR = resolveDataDir(requestedDataDir);
 const DB_PATH = path.join(DATA_DIR, 'mentally-prepare.db');
 console.log('Checking directory:', DATA_DIR);
-try {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    console.log('Created directory:', DATA_DIR);
-  }
-  fs.accessSync(DATA_DIR, fs.constants.W_OK);
-  console.log('Directory is writable');
-} catch (e) {
-  console.error('Error:', e);
-}
+console.log('Directory is writable');
 console.log('Using SQLite DB file:', DB_PATH);
-if (IS_PROD && !process.env.RAILWAY_VOLUME_MOUNT_PATH && !process.env.DATA_DIR) {
+if (IS_PROD && DATA_DIR === __dirname) {
+  console.warn('Using app directory for data storage. SQLite data will be ephemeral until a Railway volume is mounted.');
+} else if (IS_PROD && !process.env.RAILWAY_VOLUME_MOUNT_PATH && !process.env.DATA_DIR) {
   console.warn('No Railway volume mount detected. SQLite data may be stored on ephemeral disk.');
 }
 
