@@ -1,4 +1,11 @@
-# Runtime defaults for Railway Dockerfile deployments
+[build]
+command = "npm install"
+
+[deploy]
+startCommand = "node server.js"
+healthcheckPath = "/api/ready"
+healthcheckTimeout = 60
+
 [env]
-  NODE_ENV = "production"
-  DATA_DIR = "/data/db"
+NODE_ENV = "production"
+DATA_DIR = "/data/db"
