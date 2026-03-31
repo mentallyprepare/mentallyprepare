@@ -1,10 +1,4 @@
-# Railway deployment configuration for Node.js
-[build]
-  command = "npm install"
-[start]
-  command = "node server.js"
-
-# Runtime defaults for Railway
+# Runtime defaults for Railway Dockerfile deployments
 [env]
   NODE_ENV = "production"
   DATA_DIR = "/data/db"

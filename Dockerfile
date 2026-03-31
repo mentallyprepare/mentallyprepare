@@ -17,10 +17,8 @@ COPY . .
 # Create the DB directory at build time so it always exists
 RUN mkdir -p /data/db
 
-ENV NODE_ENV=production \
-    PORT=8080
+ENV NODE_ENV=production
 
 EXPOSE 8080
 
-# Use shell form so startup errors reach the container logs before exit
-CMD node server.js 2>&1
+CMD ["node", "server.js"]
