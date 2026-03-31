@@ -180,8 +180,7 @@ function showLanding() {
 function navTo(id) {
   showLanding();
   setTimeout(function() {
-    var el = document.getElementById(id)
-      || (id === 'l-stories' ? document.getElementById('stories') : null);
+    var el = document.getElementById(id);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
   }, 100);
   document.querySelector('.site-nav-links').classList.remove('open');

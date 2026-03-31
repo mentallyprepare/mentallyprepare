@@ -1,0 +1,25 @@
+{
+  "name": "Mentally Prepare — The Well App",
+  "short_name": "Mentally Prepare",
+  "description": "Anonymous 21-day emotional reset with a stranger who gets it",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08050F",
+  "theme_color": "#08050F",
+  "orientation": "portrait",
+  "categories": ["health", "lifestyle", "social"],
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

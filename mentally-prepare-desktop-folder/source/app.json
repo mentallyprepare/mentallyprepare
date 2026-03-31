@@ -1,0 +1,12 @@
+{
+  "name": "mentally-prepare-app",
+  "description": "Production-ready deployment configuration for Node.js web app.",
+  "repository": "https://github.com/yourusername/mentally-prepare-app",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

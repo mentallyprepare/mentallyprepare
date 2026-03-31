@@ -1,16 +1,14 @@
 function registerWaitlistRoutes(app, { apiLimiter, db, requireAdmin, sendWaitlistConfirmation }) {
   app.get('/api/waitlist/count', apiLimiter, (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
     try {
       const count = db.prepare('SELECT COUNT(*) as c FROM waitlist').get().c;
-      res.json({ count: Number(count) || 0 });
+      res.json({ count });
     } catch {
       res.json({ count: 0 });
     }
   });
 
   app.post('/api/waitlist', apiLimiter, (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
     try {
       const name = String(req.body.name || '').trim();
       const email = String(req.body.email || '').trim().toLowerCase();
@@ -22,31 +20,29 @@ function registerWaitlistRoutes(app, { apiLimiter, db, requireAdmin, sendWaitlis
       const existing = db.prepare('SELECT id FROM waitlist WHERE email = ?').get(email);
       if (existing) {
         const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(existing.id).c;
-        const count = db.prepare('SELECT COUNT(*) as c FROM waitlist').get().c;
-        return res.json({ ok: true, position, count, alreadyExists: true });
+        return res.json({ ok: true, position, alreadyExists: true });
       }
 
+      // Insert only name and email, other fields left blank for compatibility
       const result = db.prepare(`
         INSERT INTO waitlist (name, email, college, year, archetype)
         VALUES (?, ?, '', '', '')
       `).run(name, email);
       const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(result.lastInsertRowid).c;
-      const count = db.prepare('SELECT COUNT(*) as c FROM waitlist').get().c;
-      console.log(`Waitlist signup: ${name || email} (#${position})`);
+      console.log(`  âœ¦ Waitlist signup: ${name} (#${position})`);
 
       if (sendWaitlistConfirmation) {
         sendWaitlistConfirmation(email, name || email, position)
           .catch(err => console.error('Waitlist email failed:', err));
       }
 
-      res.json({ ok: true, position, count });
+      res.json({ ok: true, position });
     } catch (e) {
       if (e.message && e.message.includes('UNIQUE')) {
         const existing = db.prepare('SELECT id FROM waitlist WHERE email = ?').get(req.body.email?.toLowerCase().trim());
         if (existing) {
           const position = db.prepare('SELECT COUNT(*) as c FROM waitlist WHERE id <= ?').get(existing.id).c;
-          const count = db.prepare('SELECT COUNT(*) as c FROM waitlist').get().c;
-          return res.json({ ok: true, position, count, alreadyExists: true });
+          return res.json({ ok: true, position, alreadyExists: true });
         }
       }
       console.error('Waitlist error:', e);

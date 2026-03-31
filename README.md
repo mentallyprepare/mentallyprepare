@@ -1,33 +1,34 @@
-# Node.js Web App: Daily Reminder Service
+# Mentally Prepare
 
-## Overview
-This project is a Node.js web application designed to send daily reminders to users. It features a clean, modern UI, robust backend, and is ready for deployment on cloud platforms like Railway and Azure. The app is fully branded, accessible, and follows best practices for maintainability and scalability.
+Anonymous 21-day journaling webapp for college students, built with Node.js, Express, SQLite, and plain frontend assets.
 
-## Features
-- **Daily Reminders:** Automatically sends daily notifications to users.
-- **Modern UI:** Responsive, accessible, and branded interface.
-- **Cloud Ready:** Includes deployment files for Railway, Azure, and Docker.
-- **Manifest & PWA:** Supports web app manifest and service worker for installability.
-- **Easy Configuration:** All settings managed via environment variables and config files.
+## Stack
+- Node.js 18+
+- Express
+- better-sqlite3
+- express-session + connect-sqlite3
+- SendGrid
+- Razorpay / Stripe
+- Web Push + PWA assets
 
-## Project Structure
-- `server.js` — Main Express server.
-- `send-daily-reminders.js` — Script for sending reminders.
-- `public/` — Static frontend assets (HTML, CSS, JS, logo, manifest, etc.).
-- `package.json` — Project dependencies and scripts.
-- `webapp-files.txt` — Deployment manifest listing all source files.
+## Main folders
+- `server.js` - app bootstrap, schema creation, middleware, scheduling
+- `routes/` - auth, app, admin, payments, waitlist, static pages
+- `public/` - landing page, app UI, waitlist page, admin page, CSS, JS, PWA files
+- `lib/` - config and email helpers
 
-## Deployment
-The app is ready for deployment on platforms like Railway, Azure, or any Docker-compatible service. See the deployment files (`Dockerfile`, `railway.toml`, etc.) and the manifest for details.
+## Local setup
+1. Copy `.env.example` to `.env`
+2. Fill in the required secrets
+3. Run `npm install`
+4. Run `npm start`
+5. Open `http://localhost:8080`
 
-## Configuration
-Before launching the server, set `SENDGRID_API_KEY` and `SENDGRID_FROM` (or `EMAIL_USER` if you still use SMTP). SendGrid requires that the `FROM` address is verified on your account.
+## Railway notes
+- Set `SESSION_SECRET` as a permanent Railway variable
+- Mount a persistent volume at `/data/db`
+- Keep `DATA_DIR=/data/db`
+- Verify `/api/ready` after deploy
 
-## Getting Started
-1. Clone the repository.
-2. Run `npm install` to install dependencies.
-3. Start the server with `node server.js` or `npm start`.
-4. Access the app at `http://localhost:3000` (default).
-
-## License
-MIT License. See LICENSE file for details.
+## Deployment manifest
+If you deploy from a curated file list, make sure `routes/`, `lib/`, `email-service.js`, and `email-templates.js` are included. See `webapp-files.txt`.

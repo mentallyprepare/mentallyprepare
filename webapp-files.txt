@@ -1,9 +1,15 @@
-# List of all files and folders needed for deployment on Railway or any Node.js platform
+# Files and folders needed for deployment on Railway or any Node.js platform
 README.md
+DEPLOYMENT.md
 package.json
 package-lock.json
 server.js
+routes/
 public/
+lib/
+scripts/
+email-service.js
+email-templates.js
 send-daily-reminders.js
 railway.toml
 vercel.json
@@ -12,6 +18,3 @@ Dockerfile
 .dockerignore
 .env.example
 app.json
-mentally-prepare.db
-mentally-prepare.db-shm
-mentally-prepare.db-wal

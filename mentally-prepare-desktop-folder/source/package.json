@@ -1,0 +1,28 @@
+{
+  "name": "mentally-prepare",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Mentally Prepare — anonymous peer reset for students",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "start:prod": "NODE_ENV=production node server.js",
+    "backup": "node backup.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.6.2",
+    "connect-sqlite3": "^0.9.16",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
+    "helmet": "^8.1.0",
+    "nodemailer": "^8.0.2",
+    "razorpay": "^2.9.6",
+    "stripe": "^20.4.1",
+    "web-push": "^3.6.7"
+  }
+}

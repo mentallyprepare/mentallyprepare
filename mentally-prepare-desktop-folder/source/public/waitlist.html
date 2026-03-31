@@ -122,219 +122,61 @@
   </div>
 </div>
 <script>
-const cv = document.getElementById('cv');
-const c = cv.getContext('2d');
-const waitlistCountEl = document.getElementById('wlc');
-const waitlistPositionEl = document.getElementById('snum');
-let W, H, stars = [], mx = 0, my = 0, fr = 0;
-
-function rsz() {
-  W = cv.width = innerWidth;
-  H = cv.height = innerHeight;
-}
-
-function mkS() {
-  stars = [];
-  const n = Math.min(~~(W * H / 5500), 200);
-  const pal = ['rgba(232,116,138,', 'rgba(245,238,255,', 'rgba(201,153,58,', 'rgba(176,154,210,'];
-  for (let i = 0; i < n; i++) {
-    const r = Math.random() * 1.5 + 0.25;
-    stars.push({
-      x: Math.random() * W,
-      y: Math.random() * H,
-      dx: (Math.random() - 0.5) * 0.07,
-      dy: Math.random() * 0.14 + 0.04,
-      r,
-      col: pal[~~(Math.random() * 4)],
-      t: Math.random() * Math.PI * 2,
-      ts: 0.8 + Math.random() * 2
-    });
-  }
-}
-
-function draw() {
-  c.clearRect(0, 0, W, H);
-  fr += 0.008;
-  const bg = c.createRadialGradient(W * 0.5, H * 0.4, 0, W * 0.5, H * 0.4, Math.max(W, H) * 0.9);
-  bg.addColorStop(0, 'rgba(16,5,40,.45)');
-  bg.addColorStop(1, 'rgba(3,1,10,.96)');
-  c.fillStyle = bg;
-  c.fillRect(0, 0, W, H);
-
-  [[W * 0.12, H * 0.28, 200, 'rgba(107,79,160,.05)'], [W * 0.82, H * 0.6, 230, 'rgba(232,116,138,.04)'], [W * 0.5, H * 0.08, 160, 'rgba(201,153,58,.03)']].forEach(([x, y, r, cl]) => {
-    const g = c.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, cl);
-    g.addColorStop(1, 'transparent');
-    c.beginPath();
-    c.arc(x, y, r, 0, Math.PI * 2);
-    c.fillStyle = g;
-    c.fill();
-  });
-
-  const px = (mx / W - 0.5) * 16;
-  stars.forEach((s) => {
-    s.x += s.dx + px * 0.001;
-    s.y += s.dy;
-    if (s.y > H + 4) {
-      s.y = -4;
-      s.x = Math.random() * W;
-    }
-    if (s.x < -4) s.x = W + 4;
-    if (s.x > W + 4) s.x = -4;
-    const tw = 0.45 + 0.55 * Math.sin(fr * s.ts + s.t);
-    const al = (0.2 + tw * 0.5).toFixed(2);
-    c.beginPath();
-    c.arc(s.x, s.y, s.r * (0.7 + tw * 0.3), 0, Math.PI * 2);
-    c.fillStyle = s.col + al + ')';
-    c.fill();
-    if (s.r > 1.3 && tw > 0.7) {
-      const gl = c.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 4);
-      gl.addColorStop(0, s.col + '.12)');
-      gl.addColorStop(1, 'transparent');
-      c.beginPath();
-      c.arc(s.x, s.y, s.r * 4, 0, Math.PI * 2);
-      c.fillStyle = gl;
-      c.fill();
-    }
-  });
-
-  requestAnimationFrame(draw);
-}
-
-async function fetchJson(url, options) {
-  const requestOptions = options || {};
-  const headers = { ...(requestOptions.headers || {}) };
-  if (!headers['Content-Type'] && !headers['content-type'] && requestOptions.body) {
-    headers['Content-Type'] = 'application/json';
-  }
-  const res = await fetch(url, {
-    cache: 'no-store',
-    ...requestOptions,
-    headers
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || 'Request failed');
-  }
-  return data;
-}
-
-function setWaitlistCount(count) {
-  waitlistCountEl.textContent = Number.isFinite(count) ? String(count) : '0';
-}
-
-async function loadWaitlistCount() {
-  try {
-    const data = await fetchJson('/api/waitlist/count');
-    setWaitlistCount(Number(data.count) || 0);
-  } catch {
-    setWaitlistCount(0);
-  }
-}
-
+const cv=document.getElementById('cv');const c=cv.getContext('2d');let W,H,stars=[],mx=0,my=0,fr=0;
+function rsz(){W=cv.width=innerWidth;H=cv.height=innerHeight}
+rsz();window.addEventListener('resize',()=>{rsz();mkS()});
+function mkS(){stars=[];const n=Math.min(~~(W*H/5500),200);const pal=['rgba(232,116,138,','rgba(245,238,255,','rgba(201,153,58,','rgba(176,154,210,'];for(let i=0;i<n;i++){const r=Math.random()*1.5+.25;stars.push({x:Math.random()*W,y:Math.random()*H,dx:(Math.random()-.5)*.07,dy:Math.random()*.14+.04,r,col:pal[~~(Math.random()*4)],t:Math.random()*Math.PI*2,ts:.8+Math.random()*2})}}
+mkS();document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+function draw(){c.clearRect(0,0,W,H);fr+=.008;const bg=c.createRadialGradient(W*.5,H*.4,0,W*.5,H*.4,Math.max(W,H)*.9);bg.addColorStop(0,'rgba(16,5,40,.45)');bg.addColorStop(1,'rgba(3,1,10,.96)');c.fillStyle=bg;c.fillRect(0,0,W,H);[[W*.12,H*.28,200,'rgba(107,79,160,.05)'],[W*.82,H*.6,230,'rgba(232,116,138,.04)'],[W*.5,H*.08,160,'rgba(201,153,58,.03)']].forEach(([x,y,r,cl])=>{const g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,cl);g.addColorStop(1,'transparent');c.beginPath();c.arc(x,y,r,0,Math.PI*2);c.fillStyle=g;c.fill()});const px=(mx/W-.5)*16,py=(my/H-.5)*10;stars.forEach(s=>{s.x+=s.dx+px*.001;s.y+=s.dy;if(s.y>H+4){s.y=-4;s.x=Math.random()*W}if(s.x<-4)s.x=W+4;if(s.x>W+4)s.x=-4;const tw=.45+.55*Math.sin(fr*s.ts+s.t);const al=((.2+tw*.5)).toFixed(2);c.beginPath();c.arc(s.x,s.y,s.r*(.7+tw*.3),0,Math.PI*2);c.fillStyle=s.col+al+')';c.fill();if(s.r>1.3&&tw>.7){const gl=c.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*4);gl.addColorStop(0,s.col+'.12)');gl.addColorStop(1,'transparent');c.beginPath();c.arc(s.x,s.y,s.r*4,0,Math.PI*2);c.fillStyle=gl;c.fill()}});requestAnimationFrame(draw)}
+draw();
+const dot=document.getElementById('cdot'),ring=document.getElementById('cring');let rx=0,ry=0,dx=0,dy=0;
+document.addEventListener('mousemove',e=>{dx=e.clientX;dy=e.clientY;dot.style.left=dx+'px';dot.style.top=dy+'px'});
+(function follow(){rx+=(dx-rx)*.1;ry+=(dy-ry)*.1;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(follow)})();
+document.querySelectorAll('button,input,select,.acard,.sbtn,.flinks a').forEach(el=>{el.addEventListener('mouseenter',()=>document.body.classList.add('hov'));el.addEventListener('mouseleave',()=>document.body.classList.remove('hov'))});
+const pf=document.getElementById('ptcls');
+['rgba(232,116,138','rgba(201,153,58','rgba(176,154,210'].forEach(col=>{for(let i=0;i<7;i++){const p=document.createElement('div');p.className='pt';const sz=Math.random()*2.5+.8;p.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;background:${col},${.15+Math.random()*.28});box-shadow:0 0 ${sz*3}px ${col},.18);animation-duration:${12+Math.random()*12}s;animation-delay:-${Math.random()*15}s;`;pf.appendChild(p)}});
+let sa='';
+function pa(el,arch){document.querySelectorAll('.acard').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-pressed','false')});el.classList.add('on');el.setAttribute('aria-pressed','true');sa=arch}
+async function loadC(){try{const d=await fetch('/api/waitlist/count').then(r=>r.json());document.getElementById('wlc').textContent=d.count??0}catch{document.getElementById('wlc').textContent='0'}}
+loadC();
 async function submitWaitlist() {
   const name = document.getElementById('fn').value.trim();
   const email = document.getElementById('fe').value.trim();
-  if (!email || !/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) {
-    toast('Enter a valid email.');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast('Enter a valid email ✦');
     return;
   }
-
   const btn = document.getElementById('sbtn');
-  btn.textContent = 'Adding you...';
+  btn.textContent = '✦  Adding you...';
   btn.disabled = true;
-
   try {
-    const data = await fetchJson('/api/waitlist', {
+    const res = await fetch('/api/waitlist', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email })
     });
-    document.getElementById('fview').style.display = 'none';
-    document.getElementById('success').style.display = 'block';
-    waitlistPositionEl.textContent = '#' + String(data.position || data.count || 0);
-    setWaitlistCount(Number(data.count) || 0);
-    burst();
-  } catch (err) {
-    toast(err.message || 'Could not connect. Try again.');
-    btn.textContent = 'Join the waitlist';
+    const d = await res.json();
+    if (d.ok) {
+      document.getElementById('fview').style.display = 'none';
+      document.getElementById('success').style.display = 'block';
+      document.getElementById('snum').textContent = '#' + d.position;
+      burst();
+      loadC();
+    } else {
+      toast(d.error || 'Something went wrong');
+      btn.textContent = '✦  Join the waitlist';
+      btn.disabled = false;
+    }
+  } catch {
+    toast('Could not connect - try again');
+    btn.textContent = '✦  Join the waitlist';
     btn.disabled = false;
   }
 }
-
-function copyLink() {
-  navigator.clipboard.writeText(window.location.origin + '/waitlist').then(() => toast('Link copied.'));
-}
-
-function shareWA() {
-  const url = window.location.origin + '/waitlist';
-  window.open('https://wa.me/?text=' + encodeURIComponent('I just joined the waitlist for Mentally Prepare. Join here: ' + url), '_blank');
-}
-
-function burst() {
-  const cols = ['#e8748a', '#c9993a', '#a888d8', '#f5eeff', '#f4a0b0', '#f0cc80'];
-  for (let i = 0; i < 50; i++) {
-    setTimeout(() => {
-      const d = document.createElement('div');
-      const sz = Math.random() * 9 + 4;
-      d.style.cssText = `position:fixed;width:${sz}px;height:${sz}px;background:${cols[~~(Math.random() * 6)]};border-radius:${Math.random() > 0.5 ? '50%' : '3px'};left:${25 + Math.random() * 50}%;top:${35 + Math.random() * 25}%;z-index:500;pointer-events:none;animation:cfall ${0.8 + Math.random() * 0.8}s ease-out forwards;`;
-      document.body.appendChild(d);
-      setTimeout(() => d.remove(), 1800);
-    }, i * 35);
-  }
-}
-
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._t);
-  t._t = setTimeout(() => t.classList.remove('show'), 2600);
-}
-
-rsz();
-mkS();
-draw();
-window.addEventListener('resize', () => { rsz(); mkS(); });
-document.addEventListener('mousemove', (e) => { mx = e.clientX; my = e.clientY; });
-
-const dot = document.getElementById('cdot');
-const ring = document.getElementById('cring');
-let rx = 0, ry = 0, dx = 0, dy = 0;
-document.addEventListener('mousemove', (e) => {
-  dx = e.clientX;
-  dy = e.clientY;
-  dot.style.left = dx + 'px';
-  dot.style.top = dy + 'px';
-});
-(function follow() {
-  rx += (dx - rx) * 0.1;
-  ry += (dy - ry) * 0.1;
-  ring.style.left = rx + 'px';
-  ring.style.top = ry + 'px';
-  requestAnimationFrame(follow);
-})();
-
-document.querySelectorAll('button,input,select,.sbtn,.flinks a').forEach((el) => {
-  el.addEventListener('mouseenter', () => document.body.classList.add('hov'));
-  el.addEventListener('mouseleave', () => document.body.classList.remove('hov'));
-});
-
-const pf = document.getElementById('ptcls');
-['rgba(232,116,138', 'rgba(201,153,58', 'rgba(176,154,210'].forEach((col) => {
-  for (let i = 0; i < 7; i++) {
-    const p = document.createElement('div');
-    const sz = Math.random() * 2.5 + 0.8;
-    p.className = 'pt';
-    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random() * 100}%;background:${col},${0.15 + Math.random() * 0.28});box-shadow:0 0 ${sz * 3}px ${col},.18);animation-duration:${12 + Math.random() * 12}s;animation-delay:-${Math.random() * 15}s;`;
-    pf.appendChild(p);
-  }
-});
-
-window.submitWaitlist = submitWaitlist;
-window.copyLink = copyLink;
-window.shareWA = shareWA;
-loadWaitlistCount();
-window.addEventListener('pageshow', loadWaitlistCount);
+function copyLink(){navigator.clipboard.writeText(window.location.origin+'/waitlist').then(()=>toast('Link copied! ✦'))}
+function shareWA(){const url=window.location.origin+'/waitlist';window.open('https://wa.me/?text='+encodeURIComponent('I just joined the waitlist for Mentally Prepare - a 21-day anonymous journal experiment. Write to a stranger from another college. On Day 21, reveal or stay unknown. Join: '+url),'_blank')}
+function burst(){const cols=['#e8748a','#c9993a','#a888d8','#f5eeff','#f4a0b0','#f0cc80'];for(let i=0;i<50;i++){setTimeout(()=>{const d=document.createElement('div');const sz=Math.random()*9+4;d.style.cssText=`position:fixed;width:${sz}px;height:${sz}px;background:${cols[~~(Math.random()*6)]};border-radius:${Math.random()>.5?'50%':'3px'};left:${25+Math.random()*50}%;top:${35+Math.random()*25}%;z-index:500;pointer-events:none;animation:cfall ${.8+Math.random()*.8}s ease-out forwards;`;document.body.appendChild(d);setTimeout(()=>d.remove(),1800)},i*35)}}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2600)}
 </script>
 </body>
 </html>

@@ -17,25 +17,20 @@ process.on('unhandledRejection', (reason, promise) => {
 const path = require('path');
 const fs = require('fs');
 const IS_PROD = process.env.NODE_ENV === 'production';
-const DATA_DIR = process.env.DATA_DIR
-  || process.env.RAILWAY_VOLUME_MOUNT_PATH
-  || (IS_PROD ? '/data/db' : __dirname);
-const DB_PATH = path.join(DATA_DIR, 'mentally-prepare.db');
-console.log('Checking directory:', DATA_DIR);
+const DB_PATH = IS_PROD ? '/data/db/mentally-prepare.db' : path.join(__dirname, 'mentally-prepare.db');
+const dbDir = IS_PROD ? '/data/db' : __dirname;
+console.log('Checking directory:', dbDir);
 try {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    console.log('Created directory:', DATA_DIR);
+  if (IS_PROD && !fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log('Created directory:', dbDir);
   }
-  fs.accessSync(DATA_DIR, fs.constants.W_OK);
+  fs.accessSync(dbDir, fs.constants.W_OK);
   console.log('Directory is writable');
 } catch (e) {
   console.error('Error:', e);
 }
 console.log('Using SQLite DB file:', DB_PATH);
-if (IS_PROD && !process.env.RAILWAY_VOLUME_MOUNT_PATH && !process.env.DATA_DIR) {
-  console.warn('No Railway volume mount detected. SQLite data may be stored on ephemeral disk.');
-}
 
 // --- Now require other modules ---
 const express = require('express');
@@ -171,12 +166,6 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
-  CREATE TABLE IF NOT EXISTS reminder_signups (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL UNIQUE,
-    created_at TEXT DEFAULT (datetime('now'))
-  );
-
   CREATE INDEX IF NOT EXISTS idx_entries_user ON entries(user_id);
   CREATE INDEX IF NOT EXISTS idx_entries_match ON entries(match_id);
   CREATE INDEX IF NOT EXISTS idx_matches_user1 ON matches(user1_id);
@@ -186,49 +175,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at);
 `);
 
-function ensureColumn(tableName, columnName, definition) {
-  try {
-    db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
-  } catch (e) {
-    if (e && !/duplicate column/i.test(e.message || '')) {
-      console.error(`Failed to ensure ${tableName}.${columnName} column exists:`, e);
-    }
+try {
+  db.prepare('ALTER TABLE waitlist ADD COLUMN invited_at TEXT').run();
+} catch (e) {
+  if (e && !/duplicate column/i.test(e.message || '')) {
+    console.error('Failed to ensure waitlist.invited_at column exists:', e);
   }
 }
-
-ensureColumn('waitlist', 'college', "TEXT NOT NULL DEFAULT ''");
-ensureColumn('waitlist', 'year', 'TEXT');
-ensureColumn('waitlist', 'archetype', 'TEXT');
-ensureColumn('waitlist', 'invited_at', 'TEXT');
-
-(function migrateReminderEmailsFromFile() {
-  const legacyPath = path.join(__dirname, 'daily-reminder-emails.txt');
-  if (!fs.existsSync(legacyPath)) return;
-
-  const insertReminderSignup = db.prepare(`
-    INSERT INTO reminder_signups (email)
-    VALUES (?)
-    ON CONFLICT(email) DO NOTHING
-  `);
-
-  const emails = fs.readFileSync(legacyPath, 'utf8')
-    .split(/\r?\n/)
-    .map(email => email.trim().toLowerCase())
-    .filter(Boolean);
-
-  if (!emails.length) return;
-
-  const migrate = db.transaction(() => {
-    for (const email of emails) insertReminderSignup.run(email);
-  });
-
-  try {
-    migrate();
-    console.log(`  ? Imported ${emails.length} reminder signup(s) from daily-reminder-emails.txt`);
-  } catch (e) {
-    console.error('  ? Reminder signup migration failed:', e.message);
-  }
-})();
 
 // --- Migrate from data.json if it exists -
 (function migrateFromJson() {
@@ -356,14 +309,6 @@ const stmts = {
 
   insertDeletionLog: db.prepare('INSERT INTO deletion_log (anonymised_id, reason) VALUES (?, ?)'),
 
-  getReminderSignupByEmail: db.prepare('SELECT * FROM reminder_signups WHERE email = ?'),
-  insertReminderSignup: db.prepare(`
-    INSERT INTO reminder_signups (email)
-    VALUES (?)
-    ON CONFLICT(email) DO NOTHING
-  `),
-  getReminderEmails: db.prepare('SELECT email FROM reminder_signups ORDER BY created_at ASC'),
-
   insertPayment: db.prepare('INSERT INTO payments (user_id, provider, provider_order_id, amount, currency, product, status) VALUES (?, ?, ?, ?, ?, ?, ?)'),
   updatePayment: db.prepare('UPDATE payments SET provider_payment_id = ?, status = ?, updated_at = datetime(\'now\') WHERE id = ?'),
   getPayment: db.prepare('SELECT * FROM payments WHERE id = ?'),
@@ -419,12 +364,9 @@ app.get('/terms', (req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Persist session secret
-const SESSION_SECRET_PATH = path.join(DATA_DIR, '.session-secret');
+const SESSION_SECRET_PATH = path.join(__dirname, '.session-secret');
 function getSessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
-  if (IS_PROD) {
-    console.warn(`SESSION_SECRET is not set. Falling back to ${SESSION_SECRET_PATH}. Set SESSION_SECRET in Railway for a permanent secret.`);
-  }
   try {
     if (fs.existsSync(SESSION_SECRET_PATH)) return fs.readFileSync(SESSION_SECRET_PATH, 'utf8').trim();
   } catch {}
@@ -436,7 +378,7 @@ function getSessionSecret() {
 app.use(session({
   store: new SQLiteStore({
     db: 'mentally-prepare.db',
-    dir: DATA_DIR
+    dir: IS_PROD ? '/data/db' : __dirname
   }),
   secret: getSessionSecret(),
   resave: false,
@@ -930,9 +872,7 @@ app.get('/api/ready', (req, res) => {
     res.json({
       status: 'ready',
       timestamp: new Date().toISOString(),
-      db: 'sqlite',
-      dataDir: DATA_DIR,
-      railwayVolumeMountPath: process.env.RAILWAY_VOLUME_MOUNT_PATH || null
+      db: 'sqlite'
     });
   } catch (e) {
     res.status(503).json({ status: 'not_ready', error: e.message });
@@ -952,6 +892,7 @@ app.get('/terms', (req, res) => {
 // ---------------------------------------
 // EMAIL REMINDER SIGNUP
 // ---------------------------------------
+const EMAILS_PATH = path.join(__dirname, 'daily-reminder-emails.txt');
 app.post('/api/reminder-signup', apiLimiter, (req, res) => {
   try {
     const { email } = req.body;
@@ -959,11 +900,14 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
       return res.status(400).json({ error: 'Valid email required' });
     }
     const emailClean = email.trim().toLowerCase();
-    const existingSignup = stmts.getReminderSignupByEmail.get(emailClean);
-    if (existingSignup) {
+    let emails = [];
+    if (fs.existsSync(EMAILS_PATH)) {
+      emails = fs.readFileSync(EMAILS_PATH, 'utf8').split('\n').map(e => e.trim()).filter(Boolean);
+    }
+    if (emails.includes(emailClean)) {
       return res.status(409).json({ error: 'Already signed up' });
     }
-    stmts.insertReminderSignup.run(emailClean);
+    fs.appendFileSync(EMAILS_PATH, emailClean + '\n');
 
     // Send welcome/daily reminder email immediately using SendGrid
     const { sendEmail } = require('./lib/sendgrid');

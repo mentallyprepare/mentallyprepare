@@ -4,8 +4,6 @@
 [start]
   command = "node server.js"
 
-# Runtime defaults for Railway
+# Set the default port for Railway
 [env]
-  PORT = 8080
-  NODE_ENV = "production"
-  DATA_DIR = "/data/db"
+  PORT = 3000
