@@ -452,6 +452,9 @@ app.use(session({
 // --- HTTPS redirect (production) --------
 if (IS_PROD) {
   app.use((req, res, next) => {
+    if (req.path === '/health' || req.path === '/ready' || req.path === '/api/health' || req.path === '/api/ready') {
+      return next();
+    }
     const forwardedProto = req.header('x-forwarded-proto');
     const host = req.header('host');
     // Only force HTTPS when the proxy explicitly tells us the request came over HTTP.
@@ -927,6 +930,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).send('ok');
+});
+
 app.get('/api/ready', (req, res) => {
   try {
     db.prepare('SELECT 1').get();
@@ -939,6 +946,15 @@ app.get('/api/ready', (req, res) => {
     });
   } catch (e) {
     res.status(503).json({ status: 'not_ready', error: e.message });
+  }
+});
+
+app.get('/ready', (req, res) => {
+  try {
+    db.prepare('SELECT 1').get();
+    res.status(200).send('ready');
+  } catch (e) {
+    res.status(503).send('not_ready');
   }
 });
 
