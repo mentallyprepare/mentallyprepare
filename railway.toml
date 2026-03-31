@@ -6,6 +6,5 @@
 
 # Runtime defaults for Railway
 [env]
-  PORT = 8080
   NODE_ENV = "production"
   DATA_DIR = "/data/db"

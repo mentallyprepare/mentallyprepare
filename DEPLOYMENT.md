@@ -16,6 +16,7 @@
 - Set `ADMIN_PASSWORD`, `SENDGRID_API_KEY`, `SENDGRID_FROM`, and any payment keys you need
 - Mount a Railway persistent volume and point it at `/data/db`
 - Leave `DATA_DIR=/data/db`
+- Do not hardcode `PORT` in Railway variables; Railway injects it automatically at runtime
 - Confirm `/api/ready` reports the expected `dataDir`
 
 ## Data persistence notes
