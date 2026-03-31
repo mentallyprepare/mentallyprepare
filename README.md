@@ -20,6 +20,9 @@ This project is a Node.js web application designed to send daily reminders to us
 ## Deployment
 The app is ready for deployment on platforms like Railway, Azure, or any Docker-compatible service. See the deployment files (`Dockerfile`, `railway.toml`, etc.) and the manifest for details.
 
+## Configuration
+Before launching the server, set `SENDGRID_API_KEY` and `SENDGRID_FROM` (or `EMAIL_USER` if you still use SMTP). SendGrid requires that the `FROM` address is verified on your account.
+
 ## Getting Started
 1. Clone the repository.
 2. Run `npm install` to install dependencies.
