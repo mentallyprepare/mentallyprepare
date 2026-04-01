@@ -30,3 +30,4 @@ prod2-err.log
 # Old server backups
 server.js.bak
 server-old.js
+tmp-mentallyprepare-redeploy/
