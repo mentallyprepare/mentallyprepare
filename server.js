@@ -17,11 +17,13 @@ process.on('unhandledRejection', (reason, promise) => {
 const path = require('path');
 const fs = require('fs');
 const IS_PROD = process.env.NODE_ENV === 'production';
+const FALLBACK_DATA_DIR = IS_PROD ? '/tmp/mentally-prepare-data' : __dirname;
 const requestedDataDir = process.env.DATA_DIR
   || process.env.RAILWAY_VOLUME_MOUNT_PATH
   || (IS_PROD ? '/data/db' : __dirname);
 function resolveDataDir(preferredDir) {
-  const candidates = [preferredDir, __dirname].filter((dir, idx, arr) => dir && arr.indexOf(dir) === idx);
+  const candidates = [preferredDir, FALLBACK_DATA_DIR, __dirname]
+    .filter((dir, idx, arr) => dir && arr.indexOf(dir) === idx);
   for (const candidate of candidates) {
     try {
       if (!fs.existsSync(candidate)) {
@@ -849,7 +851,7 @@ function getPartnerId(match, userId) {
 }
 
 // --- Web Push Setup ---------------------
-const VAPID_PATH = path.join(__dirname, '.vapid-keys.json');
+const VAPID_PATH = path.join(DATA_DIR, '.vapid-keys.json');
 let vapidKeys;
 try {
   if (fs.existsSync(VAPID_PATH)) {
