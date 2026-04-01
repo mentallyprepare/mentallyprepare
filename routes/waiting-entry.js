@@ -14,11 +14,8 @@ module.exports = function(app, deps) {
       if (match) return res.status(400).json({ error: 'Already matched' });
 
       const safety = scanForSafety(text);
-      // Use a pseudo match id (userId as matchId) for waiting state
-      const matchId = userId + '-waiting';
-      const day = 1;
       const prompt = prompts[0];
-      stmts.upsertEntry.run(userId, matchId, day, text.trim(), '??', prompt);
+      stmts.upsertWaitingEntry.run(userId, text.trim(), '??', prompt);
 
       res.json({ ok: true, safety: { crisis: safety.crisis, pii: safety.pii, helplines: safety.crisis ? HELPLINES : null } });
     } catch (e) {

@@ -535,7 +535,7 @@ function renderWaiting() {
   const arch = archetypes[state.user.archetype];
   const waitingInfo = state.waitingInfo || {};
   const day1Prompt = waitingInfo.day1Prompt || (prompts && prompts[0]) || 'Write about your day.';
-  const draft = sessionStorage.getItem('mp-wait-draft') || '';
+  const draft = sessionStorage.getItem('mp-wait-draft') || waitingInfo.savedEntry || '';
   document.getElementById('s-waiting').innerHTML = `
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
       <div style="position:relative;margin-bottom:28px;">
@@ -563,11 +563,16 @@ function renderWaiting() {
     const text = document.getElementById('wait-draft').value.trim();
     if (!text) { document.getElementById('wait-entry-status').textContent = 'Please write something first.'; return; }
     try {
-      await api('POST', '/waiting-entry', { text });
+      const result = await api('POST', '/waiting-entry', { text });
       document.getElementById('wait-entry-status').textContent = 'Saved! Your Day 1 entry is ready for your match.';
+      if (state && state.waitingInfo) state.waitingInfo.savedEntry = text;
       sessionStorage.removeItem('mp-wait-draft');
+      if (result.safety && result.safety.crisis) showSafety();
+      if (result.safety && result.safety.pii) {
+        document.getElementById('wait-entry-status').textContent = 'Saved. Avoid sharing contact details so the match stays anonymous.';
+      }
     } catch (e) {
-      document.getElementById('wait-entry-status').textContent = 'Error saving entry.';
+      document.getElementById('wait-entry-status').textContent = e.message || 'Error saving entry.';
     }
   });
 

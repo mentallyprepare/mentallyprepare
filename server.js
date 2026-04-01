@@ -122,6 +122,16 @@ db.exec(`
     UNIQUE(user_id, match_id, day)
   );
 
+  CREATE TABLE IF NOT EXISTS waiting_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+    text TEXT NOT NULL,
+    mood TEXT DEFAULT '??',
+    prompt TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS reveals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL REFERENCES matches(id),
@@ -301,6 +311,7 @@ ensureColumn('waitlist', 'invited_at', 'TEXT');
 const stmts = {
   getUserById: db.prepare('SELECT * FROM users WHERE id = ?'),
   getUserByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
+  getUsersByName: db.prepare('SELECT * FROM users WHERE LOWER(name) = LOWER(?) ORDER BY created_at DESC'),
   insertUser: db.prepare(`
     INSERT INTO users (name, email, password, college, year, gender, match_gender_pref, match_year_pref, consent_given, consent_date, last_active_date)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -335,6 +346,19 @@ const stmts = {
     ON CONFLICT(user_id, match_id, day) DO UPDATE SET text = excluded.text, mood = excluded.mood
   `),
   deleteUserEntries: db.prepare('DELETE FROM entries WHERE user_id = ?'),
+
+  getWaitingEntry: db.prepare('SELECT * FROM waiting_entries WHERE user_id = ?'),
+  upsertWaitingEntry: db.prepare(`
+    INSERT INTO waiting_entries (user_id, text, mood, prompt)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      text = excluded.text,
+      mood = excluded.mood,
+      prompt = excluded.prompt,
+      updated_at = datetime('now')
+  `),
+  deleteWaitingEntry: db.prepare('DELETE FROM waiting_entries WHERE user_id = ?'),
+  deleteUserWaitingEntries: db.prepare('DELETE FROM waiting_entries WHERE user_id = ?'),
 
   getReveal: db.prepare('SELECT * FROM reveals WHERE match_id = ? AND user_id = ?'),
   upsertReveal: db.prepare(`
@@ -750,6 +774,7 @@ function attemptMatch(userId) {
   const partner = candidates[0] || null;
   if (partner) {
     const result = stmts.insertMatch.run(userId, partner.id);
+    attachWaitingEntriesToMatch(result.lastInsertRowid, [userId, partner.id]);
     return result.lastInsertRowid;
   }
   return null;
@@ -768,7 +793,32 @@ function findUserByIdentifier(identifier) {
   const raw = String(identifier).trim();
   if (!raw) return null;
   if (/^\d+$/.test(raw)) return parseUser(stmts.getUserById.get(Number(raw)));
-  return parseUser(stmts.getUserByEmail.get(raw.toLowerCase()));
+  if (raw.includes('@')) return parseUser(stmts.getUserByEmail.get(raw.toLowerCase()));
+
+  const matches = stmts.getUsersByName.all(raw).map(parseUser).filter(Boolean);
+  if (matches.length === 1) return matches[0];
+  if (matches.length > 1) {
+    const err = new Error('Multiple users share that name. Use email or ID instead.');
+    err.statusCode = 400;
+    throw err;
+  }
+  return null;
+}
+
+function attachWaitingEntriesToMatch(matchId, userIds) {
+  for (const userId of userIds) {
+    const waitingEntry = stmts.getWaitingEntry.get(userId);
+    if (!waitingEntry) continue;
+    stmts.upsertEntry.run(
+      userId,
+      matchId,
+      1,
+      waitingEntry.text,
+      waitingEntry.mood || '??',
+      waitingEntry.prompt || prompts[0]
+    );
+    stmts.deleteWaitingEntry.run(userId);
+  }
 }
 
 function deleteMatchData(matchId) {
@@ -786,6 +836,7 @@ const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
     reason
   );
   stmts.deleteUserEntries.run(userId);
+  stmts.deleteUserWaitingEntries.run(userId);
   stmts.deleteUserReveals.run(userId);
   stmts.deleteUserComments.run(userId);
   stmts.deleteUserReports.run(userId);
@@ -865,6 +916,7 @@ registerAppRoutes(app, {
   scanForSafety,
   HELPLINES,
   attemptMatch,
+  attachWaitingEntriesToMatch,
   complementary,
   deleteUserDataTx,
   vapidKeys,
@@ -1097,6 +1149,7 @@ registerAdminRoutes(app, {
   requireAdmin,
   getAdminStats,
   getMatchDay,
+  attachWaitingEntriesToMatch,
   findUserByIdentifier,
   complementary,
   deleteUserDataTx,

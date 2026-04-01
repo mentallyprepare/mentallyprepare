@@ -14,6 +14,7 @@ function registerAppRoutes(app, deps) {
     scanForSafety,
     HELPLINES,
     attemptMatch,
+    attachWaitingEntriesToMatch,
     complementary,
     deleteUserDataTx,
     vapidKeys,
@@ -49,6 +50,7 @@ function registerAppRoutes(app, deps) {
       let streak = 0;
       let revealData = null;
       let comments = [];
+      const waitingEntry = stmts.getWaitingEntry.get(userId);
 
       if (match) {
         const partnerId = getPartnerId(match, userId);
@@ -112,7 +114,8 @@ function registerAppRoutes(app, deps) {
       // Always provide archetype and Day 1 prompt for waiting state
       const waitingInfo = {
         archetype: safeUser.archetype,
-        day1Prompt: prompts[0]
+        day1Prompt: prompts[0],
+        savedEntry: waitingEntry ? waitingEntry.text : ''
       };
       res.json({
         user: safeUser,
@@ -326,7 +329,8 @@ function registerAppRoutes(app, deps) {
           now
         );
         const partnerId = Number(partnerResult.lastInsertRowid);
-        stmts.insertMatch.run(userId, partnerId);
+        const result = stmts.insertMatch.run(userId, partnerId);
+        attachWaitingEntriesToMatch(result.lastInsertRowid, [userId, partnerId]);
         match = stmts.getMatch.get(userId, userId);
       }
 
@@ -419,6 +423,7 @@ function registerAppRoutes(app, deps) {
       const match = stmts.getMatch.get(userId, userId);
       const myEntries = db.prepare('SELECT day, prompt, text, mood, created_at FROM entries WHERE user_id = ?').all(userId)
         .map((e) => ({ day: e.day, prompt: e.prompt, text: e.text, mood: e.mood, written_at: e.created_at }));
+      const waitingDraft = stmts.getWaitingEntry.get(userId);
       const myReveals = db.prepare('SELECT match_id, choice, created_at FROM reveals WHERE user_id = ?').all(userId)
         .map((r) => ({ match_id: r.match_id, choice: r.choice, decided_at: r.created_at }));
       const myComments = db.prepare('SELECT day, text, created_at FROM comments WHERE user_id = ?').all(userId)
@@ -443,6 +448,12 @@ function registerAppRoutes(app, deps) {
           lastActive: user.last_active_date
         },
         match: match ? { status: 'active', dayCount: getMatchDay(match.started_at) } : null,
+        waiting_draft: waitingDraft ? {
+          prompt: waitingDraft.prompt,
+          text: waitingDraft.text,
+          created_at: waitingDraft.created_at,
+          updated_at: waitingDraft.updated_at
+        } : null,
         journal_entries: myEntries,
         comments: myComments,
         reveal_choices: myReveals

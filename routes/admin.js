@@ -8,6 +8,7 @@ function registerAdminRoutes(app, deps) {
     requireAdmin,
     getAdminStats,
     getMatchDay,
+    attachWaitingEntriesToMatch,
     findUserByIdentifier,
     complementary,
     deleteUserDataTx,
@@ -143,9 +144,10 @@ function registerAdminRoutes(app, deps) {
         return res.status(400).json({ error: 'One or both users are already matched' });
       }
       const result = stmts.insertMatch.run(userA.id, userB.id);
+      attachWaitingEntriesToMatch(result.lastInsertRowid, [userA.id, userB.id]);
       res.json({ ok: true, match_id: result.lastInsertRowid });
     } catch (e) {
-      res.status(500).json({ error: 'Failed to create manual match' });
+      res.status(e.statusCode || 500).json({ error: e.message || 'Failed to create manual match' });
     }
   });
 
@@ -174,7 +176,7 @@ function registerAdminRoutes(app, deps) {
       deleteUserDataTx(user.id, 'admin_removed');
       res.json({ ok: true });
     } catch (e) {
-      res.status(500).json({ error: 'Failed to remove user' });
+      res.status(e.statusCode || 500).json({ error: e.message || 'Failed to remove user' });
     }
   });
 
@@ -210,6 +212,7 @@ function registerAdminRoutes(app, deps) {
         users: db.prepare('SELECT id, name, email, college, year, archetype, consent_given, created_at, last_active_date FROM users ORDER BY id').all(),
         matches: db.prepare('SELECT * FROM matches ORDER BY id').all(),
         entries: db.prepare('SELECT * FROM entries ORDER BY id').all(),
+        waiting_entries: db.prepare('SELECT * FROM waiting_entries ORDER BY id').all(),
         reveals: db.prepare('SELECT * FROM reveals ORDER BY id').all(),
         comments: db.prepare('SELECT * FROM comments ORDER BY id').all(),
         reports: db.prepare('SELECT * FROM reports ORDER BY id').all(),
