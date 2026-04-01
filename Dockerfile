@@ -18,6 +18,7 @@ COPY . .
 RUN mkdir -p /data/db
 
 ENV NODE_ENV=production
+ENV PORT=8080
 
 EXPOSE 8080
 

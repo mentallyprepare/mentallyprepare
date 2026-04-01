@@ -72,7 +72,7 @@ const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome } = req
 
 const app = express();
 app.set('trust proxy', 1); // Trust Railway/Heroku/Vercel proxy for correct IP handling
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 const db = new Database(DB_PATH);
 
