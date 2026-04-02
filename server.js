@@ -520,6 +520,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Persist session secret
 const SESSION_SECRET_PATH = path.join(DATA_DIR, '.session-secret');
+const SESSION_DB_NAME = 'mentally-prepare-sessions.db';
 function getSessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
   if (IS_PROD) {
@@ -533,11 +534,20 @@ function getSessionSecret() {
   return secret;
 }
 
-app.use(session({
-  store: new SQLiteStore({
-    db: 'mentally-prepare.db',
-    dir: DATA_DIR
-  }),
+function createSessionStore() {
+  try {
+    return new SQLiteStore({
+      db: SESSION_DB_NAME,
+      dir: DATA_DIR
+    });
+  } catch (e) {
+    console.error('Session store unavailable:', e && e.stack ? e.stack : e);
+    console.warn('Falling back to in-memory sessions. Logins will reset on restart until SQLite session storage is working again.');
+    return null;
+  }
+}
+
+const sessionConfig = {
   secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
@@ -547,7 +557,14 @@ app.use(session({
     sameSite: 'strict',
     maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
   }
-}));
+};
+
+const sessionStore = createSessionStore();
+if (sessionStore) {
+  sessionConfig.store = sessionStore;
+}
+
+app.use(session(sessionConfig));
 
 // --- HTTPS redirect (production) --------
 if (IS_PROD) {
