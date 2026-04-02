@@ -21,6 +21,43 @@ const FALLBACK_DATA_DIR = IS_PROD ? '/tmp/mentally-prepare-data' : __dirname;
 const requestedDataDir = process.env.DATA_DIR
   || process.env.RAILWAY_VOLUME_MOUNT_PATH
   || (IS_PROD ? '/data/db' : __dirname);
+const Database = require('better-sqlite3');
+
+function getDataDirCandidates(preferredDir) {
+  return [preferredDir, FALLBACK_DATA_DIR, __dirname]
+    .filter((dir, idx, arr) => dir && arr.indexOf(dir) === idx);
+}
+
+function initializeDatabase(preferredDir) {
+  let lastError = null;
+  const candidates = getDataDirCandidates(preferredDir);
+  for (const candidate of candidates) {
+    const dbPath = path.join(candidate, 'mentally-prepare.db');
+    let db = null;
+    try {
+      if (!fs.existsSync(candidate)) {
+        fs.mkdirSync(candidate, { recursive: true });
+        console.log('Created directory:', candidate);
+      }
+      fs.accessSync(candidate, fs.constants.W_OK);
+      db = new Database(dbPath);
+      db.pragma('journal_mode = WAL');
+      db.pragma('foreign_keys = ON');
+      console.log('Checking directory:', candidate);
+      console.log('Directory is writable');
+      console.log('Using SQLite DB file:', dbPath);
+      return { DATA_DIR: candidate, DB_PATH: dbPath, db };
+    } catch (e) {
+      if (db) {
+        try { db.close(); } catch {}
+      }
+      lastError = e;
+      console.error('Data directory unavailable:', candidate, e.message);
+    }
+  }
+  throw new Error(`No usable SQLite data directory available: ${lastError ? lastError.message : 'unknown error'}`);
+}
+
 function resolveDataDir(preferredDir) {
   const candidates = [preferredDir, FALLBACK_DATA_DIR, __dirname]
     .filter((dir, idx, arr) => dir && arr.indexOf(dir) === idx);
@@ -38,11 +75,7 @@ function resolveDataDir(preferredDir) {
   }
   throw new Error('No writable data directory available');
 }
-const DATA_DIR = resolveDataDir(requestedDataDir);
-const DB_PATH = path.join(DATA_DIR, 'mentally-prepare.db');
-console.log('Checking directory:', DATA_DIR);
-console.log('Directory is writable');
-console.log('Using SQLite DB file:', DB_PATH);
+const { DATA_DIR, DB_PATH, db } = initializeDatabase(requestedDataDir);
 if (IS_PROD && DATA_DIR === __dirname) {
   console.warn('Using app directory for data storage. SQLite data will be ephemeral until a Railway volume is mounted.');
 } else if (IS_PROD && !process.env.RAILWAY_VOLUME_MOUNT_PATH && !process.env.DATA_DIR) {
@@ -66,7 +99,6 @@ const { registerAppRoutes } = require('./routes/app');
 const registerWaitingEntryRoute = require('./routes/waiting-entry');
 const { registerPaymentRoutes } = require('./routes/payments');
 // ---------------------------------------------------------------
-const Database = require('better-sqlite3');
 const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
 const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome } = require('./email-service');
@@ -75,12 +107,6 @@ const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome } = req
 const app = express();
 app.set('trust proxy', 1); // Trust Railway/Heroku/Vercel proxy for correct IP handling
 const PORT = process.env.PORT || 8080;
-
-const db = new Database(DB_PATH);
-
-// Enable WAL mode for better concurrent read/write performance
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
 
 // --- Schema -----------------------------
 db.exec(`
