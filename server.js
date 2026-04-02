@@ -223,6 +223,38 @@ ensureColumn('waitlist', 'year', 'TEXT');
 ensureColumn('waitlist', 'archetype', 'TEXT');
 ensureColumn('waitlist', 'invited_at', 'TEXT');
 
+function handleLiveness(req, res) {
+  res.json({ status: 'ok' });
+}
+
+function handleLivenessText(req, res) {
+  res.status(200).send('ok');
+}
+
+function handleReadiness(req, res) {
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({
+      status: 'ready',
+      timestamp: new Date().toISOString(),
+      db: 'sqlite',
+      dataDir: DATA_DIR,
+      railwayVolumeMountPath: process.env.RAILWAY_VOLUME_MOUNT_PATH || null
+    });
+  } catch (e) {
+    res.status(503).json({ status: 'not_ready', error: e.message });
+  }
+}
+
+function handleReadinessText(req, res) {
+  try {
+    db.prepare('SELECT 1').get();
+    res.status(200).send('ready');
+  } catch (e) {
+    res.status(503).send('not_ready');
+  }
+}
+
 (function migrateReminderEmailsFromFile() {
   const legacyPath = path.join(__dirname, 'daily-reminder-emails.txt');
   if (!fs.existsSync(legacyPath)) return;
@@ -441,6 +473,12 @@ app.use(helmet({
   referrerPolicy: { policy: 'no-referrer' }
 }));
 app.use(express.json({ limit: '16kb' }));
+
+// Keep Railway health checks independent from session middleware.
+app.get('/api/health', handleLiveness);
+app.get('/health', handleLivenessText);
+app.get('/api/ready', handleReadiness);
+app.get('/ready', handleReadinessText);
 
 // Serve app.html at root
 app.get('/', (req, res) => {
@@ -986,41 +1024,6 @@ function scheduleDailyPush() {
   console.log(`  ? Daily push scheduled for 8:00 PM IST (in ${Math.round(delay / 60000)} min)`);
 }
 scheduleDailyPush();
-
-// ---------------------------------------
-// HEALTH CHECK (for UptimeRobot etc.)
-// ---------------------------------------
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-app.get('/health', (req, res) => {
-  res.status(200).send('ok');
-});
-
-app.get('/api/ready', (req, res) => {
-  try {
-    db.prepare('SELECT 1').get();
-    res.json({
-      status: 'ready',
-      timestamp: new Date().toISOString(),
-      db: 'sqlite',
-      dataDir: DATA_DIR,
-      railwayVolumeMountPath: process.env.RAILWAY_VOLUME_MOUNT_PATH || null
-    });
-  } catch (e) {
-    res.status(503).json({ status: 'not_ready', error: e.message });
-  }
-});
-
-app.get('/ready', (req, res) => {
-  try {
-    db.prepare('SELECT 1').get();
-    res.status(200).send('ready');
-  } catch (e) {
-    res.status(503).send('not_ready');
-  }
-});
 
 // ---------------------------------------
 // PRIVACY & STATIC ROUTES
