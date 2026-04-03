@@ -1,4 +1,4 @@
-﻿// --- Error Logging for Startup Issues ---
+// --- Error Logging for Startup Issues ---
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
   process.exit(1);
@@ -225,10 +225,41 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    day INTEGER NOT NULL,
+    emoji TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, match_id, day)
+  );
+
+  CREATE TABLE IF NOT EXISTS nudges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    dismissed INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS archetype_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    day INTEGER NOT NULL,
+    scores TEXT NOT NULL,
+    archetype TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_entries_user ON entries(user_id);
   CREATE INDEX IF NOT EXISTS idx_entries_match ON entries(match_id);
   CREATE INDEX IF NOT EXISTS idx_matches_user1 ON matches(user1_id);
   CREATE INDEX IF NOT EXISTS idx_matches_user2 ON matches(user2_id);
+  CREATE INDEX IF NOT EXISTS idx_reactions_match ON reactions(match_id);
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   CREATE INDEX IF NOT EXISTS idx_users_archetype ON users(archetype);
   CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at);
@@ -471,6 +502,27 @@ const stmts = {
     JOIN matches m ON (m.user1_id = u.id OR m.user2_id = u.id)
     WHERE u.push_subscription IS NOT NULL
   `),
+
+  // Reactions
+  upsertReaction: db.prepare(`
+    INSERT INTO reactions (user_id, match_id, day, emoji)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id, match_id, day) DO UPDATE SET emoji = excluded.emoji
+  `),
+  getReactions: db.prepare('SELECT * FROM reactions WHERE match_id = ?'),
+  deleteUserReactions: db.prepare('DELETE FROM reactions WHERE user_id = ?'),
+  deleteMatchReactions: db.prepare('DELETE FROM reactions WHERE match_id = ?'),
+
+  // Nudges
+  insertNudge: db.prepare(`INSERT INTO nudges (user_id, match_id, type, message) VALUES (?, ?, ?, ?)`),
+  getActiveNudges: db.prepare('SELECT * FROM nudges WHERE user_id = ? AND dismissed = 0 ORDER BY created_at DESC LIMIT 3'),
+  dismissNudge: db.prepare('UPDATE nudges SET dismissed = 1 WHERE id = ? AND user_id = ?'),
+  deleteUserNudges: db.prepare('DELETE FROM nudges WHERE user_id = ?'),
+  deleteMatchNudges: db.prepare('DELETE FROM nudges WHERE match_id = ?'),
+
+  // Archetype snapshots
+  insertSnapshot: db.prepare('INSERT INTO archetype_snapshots (user_id, match_id, day, scores, archetype) VALUES (?, ?, ?, ?, ?)'),
+  getSnapshots: db.prepare('SELECT * FROM archetype_snapshots WHERE user_id = ? AND match_id = ? ORDER BY day ASC'),
 };
 
 // --- Helper: parse scores JSON ----------
@@ -908,6 +960,8 @@ function deleteMatchData(matchId) {
   stmts.deleteMatchEntries.run(matchId);
   stmts.deleteMatchComments.run(matchId);
   stmts.deleteMatchReveals.run(matchId);
+  stmts.deleteMatchReactions.run(matchId);
+  stmts.deleteMatchNudges.run(matchId);
   stmts.deleteMatchById.run(matchId);
 }
 
@@ -924,6 +978,8 @@ const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
   stmts.deleteUserComments.run(userId);
   stmts.deleteUserReports.run(userId);
   stmts.deleteUserPayments.run(userId);
+  stmts.deleteUserReactions.run(userId);
+  stmts.deleteUserNudges.run(userId);
   stmts.deleteUser.run(userId);
 });
 

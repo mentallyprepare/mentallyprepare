@@ -493,6 +493,32 @@ async function submitScan() {
   } catch (e) { toast(e.message); }
 }
 
+function renderCosmicOrb(archKey) {
+  return `<div class="cosmic-orb ${archKey}" style="animation:float 5s ease-in-out infinite">
+    <div class="cosmic-orb-glow"></div>
+    <div class="cosmic-orb-body"></div>
+    <div class="cosmic-orb-ring"><div class="orbit-dot"></div></div>
+  </div>`;
+}
+
+function renderConstellationCorners() {
+  const star = `<svg viewBox="0 0 50 50"><circle cx="12" cy="8" r="1.5" fill="rgba(248,242,255,.6)"/><circle cx="38" cy="14" r="1" fill="rgba(248,242,255,.4)"/><circle cx="25" cy="35" r="1.2" fill="rgba(248,242,255,.5)"/><circle cx="8" cy="42" r="1" fill="rgba(248,242,255,.3)"/><line x1="12" y1="8" x2="38" y2="14" stroke="rgba(248,242,255,.15)" stroke-width=".5"/><line x1="38" y1="14" x2="25" y2="35" stroke="rgba(248,242,255,.15)" stroke-width=".5"/><line x1="25" y1="35" x2="8" y2="42" stroke="rgba(248,242,255,.15)" stroke-width=".5"/></svg>`;
+  return `<div class="constellation-corner tl">${star}</div><div class="constellation-corner br">${star}</div>`;
+}
+
+function renderConnectionScore(score) {
+  const offset = 283 - (283 * score / 100);
+  const desc = score >= 80 ? 'Deep sync — you\'re in rhythm' : score >= 50 ? 'Growing connection' : score >= 25 ? 'Getting started' : 'Keep writing together';
+  return `<div class="connection-score reveal-on-scroll">
+    <svg width="0" height="0"><defs><linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="var(--cyan)"/><stop offset="100%" stop-color="var(--purple-l)"/></linearGradient></defs></svg>
+    <div class="score-ring-wrap">
+      <svg viewBox="0 0 100 100"><circle class="score-ring-bg" cx="50" cy="50" r="45"/><circle class="score-ring-fill" cx="50" cy="50" r="45" style="stroke-dashoffset:${offset}"/></svg>
+      <div class="score-ring-value">${score}</div>
+    </div>
+    <div class="score-info"><div class="score-label">Connection Score</div><div class="score-desc">${desc}</div></div>
+  </div>`;
+}
+
 function renderResult(matched) {
   const archKey = state.user.archetype;
   const arch = archetypes[archKey];
@@ -504,9 +530,12 @@ function renderResult(matched) {
 
   document.getElementById('s-result').innerHTML = `
     <div class="result-tag">Your Connection Profile</div>
-    <div class="result-glow"><div class="result-glow-inner">${arch.emoji}</div></div>
-    <div class="result-type">${arch.name}</div>
-    <p class="result-line">${arch.quote}</p>
+    <div class="result-cosmic-card ${archKey}">
+      ${renderConstellationCorners()}
+      ${renderCosmicOrb(archKey)}
+      <div class="result-type" style="margin-top:8px;">${arch.name}</div>
+      <p class="result-line" style="margin-bottom:0;">${arch.quote}</p>
+    </div>
     <div style="padding:0 24px;margin-bottom:14px;"><div style="font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;text-align:center;">${arch.description}</div></div>
     <div class="result-card">
       <div style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:14px;">ECP-11 Profile</div>
@@ -621,6 +650,30 @@ function renderJournal() {
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const today = new Date();
 
+  // Special day banner
+  let specialDayHTML = '';
+  if (state.specialDay) {
+    const sd = state.specialDay;
+    specialDayHTML = `<div class="special-day-banner ${sd.type} reveal-on-scroll">
+      <div class="special-day-badge">${sd.badge} ${sd.title}</div>
+      <div class="special-day-title">${sd.type === 'unsent_letter' ? 'Write a letter to your stranger.' : sd.type === 'weekly_ritual' ? (day === 7 ? 'One truth. No filter.' : 'Look back at where you started.') : 'The final night.'}</div>
+      <div class="special-day-sub">${sd.type === 'unsent_letter' ? 'This letter will be revealed on Day 21.' : sd.type === 'final_night' ? 'Tomorrow, everything changes.' : 'A special milestone prompt.'}</div>
+    </div>`;
+  }
+
+  // Nudge banners
+  let nudgesHTML = '';
+  if (state.nudges && state.nudges.length > 0) {
+    nudgesHTML = state.nudges.map(n => `<div class="nudge-banner" data-nudge-id="${n.id}">
+      <div class="nudge-ico">💜</div>
+      <div class="nudge-text">${escapeHtml(n.message)}</div>
+      <button class="nudge-dismiss" type="button" data-dismiss="${n.id}">×</button>
+    </div>`).join('');
+  }
+
+  // Connection score
+  const connScoreHTML = state.connectionScore > 0 ? renderConnectionScore(state.connectionScore) : '';
+
   // Check if partner hasn't written for 3+ days
   let partnerInactiveCard = '';
   if (state.partnerEntries && state.partnerEntries.length > 0) {
@@ -637,7 +690,10 @@ function renderJournal() {
   document.getElementById('s-journal').innerHTML = `
     <div class="nav"><div class="nav-logo">mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
     <div style="padding:16px 24px 0;"><div class="greeting">${getGreeting(state.user.name)}</div></div>
+    ${specialDayHTML}
+    ${nudgesHTML}
     ${partnerInactiveCard}
+    ${connScoreHTML}
     <div class="streak reveal-on-scroll">
       <div class="streak-top"><div class="streak-lbl">Streak</div><div class="streak-ct">🔥 ${state.streak} days</div></div>
       <div class="pips">${Array.from({length:21},(_,i) => {
@@ -648,9 +704,9 @@ function renderJournal() {
     </div>
     <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until entries unseal</div></div>
     <div class="prompt-block reveal-on-scroll">
-      <div class="eyebrow">Tonight's prompt</div>
+      <div class="eyebrow">${state.specialDay ? '✦ ' + state.specialDay.title : 'Tonight\'s prompt'}</div>
       <div class="prompt-text">${escapeHtml(prompt)}</div>
-      ${day % 7 === 0 ? '<div class="dare">⚡ Weekly dare</div>' : ''}
+      ${state.specialDay && state.specialDay.type === 'unsent_letter' ? '<div class="dare">💌 This letter seals until Day 21</div>' : day % 7 === 0 ? '<div class="dare">⚡ Weekly dare</div>' : ''}
     </div>
     ${state.adaptivePrompt ? `<div class="adaptive-block reveal-on-scroll">
       <div class="adaptive-card">
@@ -672,7 +728,7 @@ function renderJournal() {
     <div class="write-block reveal-on-scroll">
       <div class="write-box">
         <div class="write-date">${dayNames[today.getDay()]}, ${today.getDate()} ${monthNames[today.getMonth()]} · Day ${day}</div>
-        <textarea id="journal-draft" placeholder="Start writing…">${escapeHtml(draft)}</textarea>
+        <textarea id="journal-draft" placeholder="${state.specialDay && state.specialDay.type === 'unsent_letter' ? 'Dear stranger, I want you to know...' : 'Start writing…'}">${escapeHtml(draft)}</textarea>
         <div class="write-ft"><div class="ww" id="ww">${wordCount(draft)} words</div><div id="word-milestone"></div></div>
         <button class="btn-ghost" id="journalReportBtn" type="button" style="margin-top:8px;font-size:12px;float:right;">Report inappropriate content</button>
       </div>
@@ -697,6 +753,13 @@ function renderJournal() {
   if (sealEntryBtn) sealEntryBtn.addEventListener('click', sealEntry);
   const saveDraftBtn = document.getElementById('saveDraftBtn');
   if (saveDraftBtn) saveDraftBtn.addEventListener('click', saveDraft);
+  // Nudge dismiss handlers
+  document.querySelectorAll('[data-dismiss]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const id = parseInt(btn.dataset.dismiss);
+      try { await api('POST', '/nudge/dismiss', { nudgeId: id }); btn.closest('.nudge-banner').remove(); } catch(e) {}
+    });
+  });
   startCountdown();
   initScrollReveal('#s-journal');
 }
@@ -860,6 +923,7 @@ function renderProfile() {
   if (!state || !state.user) return;
   if (!state.user.archetype) { go('s-scan-intro'); return; }
   const arch = archetypes[state.user.archetype];
+  const archKey = state.user.archetype;
   if (!arch) return;
   const s = state.user.scores || { openness: 50, awareness: 50, guard: 50, reciprocity: 50 };
   const day = state.match ? state.match.day : 0;
@@ -867,15 +931,17 @@ function renderProfile() {
 
   document.getElementById('s-profile').innerHTML = `
     <div class="nav"><div class="nav-logo">mentally prepare</div><div style="width:36px;height:36px;border-radius:50%;background:rgba(248,242,255,.04);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;" onclick="renderSettings();go('s-settings')">⚙️</div></div>
-    <div class="hero-profile">
-      <div class="avatar-wrap"><div class="av-ring"></div><div class="av-ring av-ring2"></div><div class="avatar">${arch.emoji}</div></div>
-      <div class="p-user-name">${escapeHtml(state.user.name)}</div>
-      <div class="p-college-text">${escapeHtml(state.user.college)} · ${escapeHtml(state.user.year)} year</div>
-      <div class="arch-hero">
-        <div class="arch-top"><div class="arch-moon">${arch.emoji}</div><div><div class="arch-ey">Your archetype</div><div class="arch-name">${arch.name}</div></div></div>
-        <div class="arch-quote">${arch.quote}</div>
+    <div class="hero-profile" style="padding-bottom:0;">
+      <div class="profile-planet-card ${archKey}">
+        ${renderConstellationCorners()}
+        ${renderCosmicOrb(archKey)}
+        <div class="p-user-name">${escapeHtml(state.user.name)}</div>
+        <div class="p-college-text" style="margin-bottom:12px;">${escapeHtml(state.user.college)} · ${escapeHtml(state.user.year)} year</div>
+        <div style="font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:6px;">Your archetype</div>
+        <div style="font-family:'Playfair Display',serif;font-size:20px;font-style:italic;color:var(--ink);margin-bottom:6px;">${arch.name}</div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:12.5px;color:var(--ink-m);line-height:1.7;">${arch.quote}</div>
         <button class="share-btn" onclick="shareArchetype()" style="margin-top:12px;">📋 Share result</button>
-      </button>
+      </div>
     </div>
     <div class="traits">
       <div class="sec-ey">ECP-11 Profile</div>
@@ -884,6 +950,7 @@ function renderProfile() {
         return `<div class="trait" style="margin-bottom:13px;"><div class="trait-top"><span class="trait-name">${name}</span><span class="trait-pct" style="font-size:12px;color:var(--rose-l);font-family:'Playfair Display',serif;">${val}%</span></div><div class="trait-track"><div class="trait-fill-p" style="width:${val}%"></div></div></div>`;
       }).join('')}
     </div>
+    ${state.connectionScore > 0 ? renderConnectionScore(state.connectionScore) : ''}
     <div class="stats-row" id="profile-stats">
       <div class="stat reveal-on-scroll"><div class="stat-n" data-target="${state.entries.length}">0</div><div class="stat-l">Entries written</div></div>
       <div class="stat reveal-on-scroll"><div class="stat-n" data-target="${state.streak}" data-prefix="🔥">🔥0</div><div class="stat-l">Day streak</div></div>
@@ -1315,6 +1382,20 @@ function showEntryDetail(idx) {
   const myComment = comments.find(c => c.from === 'me');
   const partnerComment = comments.find(c => c.from === 'partner');
 
+  // Get reactions for this day
+  const reactions = (state.reactions || []).filter(r => r.day === entry.day);
+  const myReaction = reactions.find(r => r.from === 'me');
+  const partnerReaction = reactions.find(r => r.from === 'partner');
+
+  // Reaction picker (only show if partner entry is visible)
+  const reactionEmojis = ['🤍','🥺','💛','🫂','✨','🌙'];
+  const reactionPickerHTML = partnerEntry ? `
+    <div class="reaction-picker">
+      ${reactionEmojis.map(emoji => `<button class="reaction-btn ${myReaction && myReaction.emoji === emoji ? 'active' : ''}" type="button" data-react-emoji="${emoji}" data-react-day="${entry.day}">${emoji}</button>`).join('')}
+    </div>
+    ${partnerReaction ? `<div class="reaction-display"><span>${partnerReaction.emoji}</span><span class="reaction-display-label">from your partner</span></div>` : ''}
+  ` : '';
+
   document.getElementById('entry-detail').innerHTML = `
     <div class="entry-detail-card">
       <button class="edc-close" id="entryDetailCloseBtn" type="button" aria-label="Close entry detail">×</button>
@@ -1334,6 +1415,7 @@ function showEntryDetail(idx) {
         <div class="edc-partner-lbl">Partner's entry · Day ${entry.day}</div>
         ${partnerEntry
           ? `<div class="edc-partner-text">${escapeHtml(partnerEntry.text)}</div>
+             ${reactionPickerHTML}
              <div class="edc-comments">
                <div class="edc-comments-lbl">Your reflection</div>
                ${myComment
@@ -1358,6 +1440,31 @@ function showEntryDetail(idx) {
   if (commentSendBtn) commentSendBtn.addEventListener('click', function() { submitComment(entry.day); });
   const reportBtn = document.getElementById('entryReportBtn');
   if (reportBtn) reportBtn.addEventListener('click', function() { reportEntry(entry.day); });
+  // Reaction button handlers
+  document.querySelectorAll('[data-react-emoji]').forEach(btn => {
+    btn.addEventListener('click', async function() {
+      const emoji = btn.dataset.reactEmoji;
+      const day = parseInt(btn.dataset.reactDay);
+      try {
+        await api('POST', '/react', { day, emoji });
+        // Float emoji animation
+        const floater = document.createElement('div');
+        floater.className = 'emoji-float';
+        floater.textContent = emoji;
+        const rect = btn.getBoundingClientRect();
+        floater.style.left = rect.left + rect.width/2 - 12 + 'px';
+        floater.style.top = rect.top + 'px';
+        document.body.appendChild(floater);
+        setTimeout(() => floater.remove(), 800);
+        // Update local state
+        const existingIdx = (state.reactions || []).findIndex(r => r.day === day && r.from === 'me');
+        if (existingIdx >= 0) state.reactions[existingIdx].emoji = emoji;
+        else { if (!state.reactions) state.reactions = []; state.reactions.push({ day, emoji, from: 'me' }); }
+        // Re-render to show active state
+        showEntryDetail(idx);
+      } catch(e) { toast(e.message); }
+    });
+  });
   document.getElementById('entry-detail').classList.add('show');
 }
 

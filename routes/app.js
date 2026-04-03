@@ -26,6 +26,33 @@ function registerAppRoutes(app, deps) {
     next();
   }
 
+  // --- Special prompts for milestone days ---
+  const specialDayPrompts = {
+    7: { type: 'weekly_ritual', title: 'The Halfway Honest', prompt: '"Write one thing you\u2019ve never said out loud — to anyone. Not even yourself."', badge: '🔥' },
+    11: { type: 'unsent_letter', title: 'The Unsent Letter', prompt: '"Dear stranger, I want you to know..."', badge: '💌' },
+    14: { type: 'weekly_ritual', title: 'The Mirror Entry', prompt: '"Read your Day 1 entry. Now write what you\u2019d say to that version of yourself."', badge: '🪞' },
+    21: { type: 'final_night', title: 'The Last Night', prompt: '"Would you like to know who has been writing to you?"', badge: '✦' }
+  };
+
+  // --- Connection score calculation ---
+  function calcConnectionScore(userEntries, partnerEntries, matchDay) {
+    if (!userEntries.length || !partnerEntries.length) return 0;
+    const userDays = new Set(userEntries.map(e => e.day));
+    const partnerDays = new Set(partnerEntries.map(e => e.day));
+    // Sync bonus: both wrote same day
+    let syncDays = 0;
+    userDays.forEach(d => { if (partnerDays.has(d)) syncDays++; });
+    const syncScore = Math.min(syncDays / Math.max(matchDay - 1, 1), 1) * 40;
+    // Consistency
+    const consistencyScore = Math.min(userEntries.length / Math.max(matchDay, 1), 1) * 30;
+    // Word balance
+    const userAvg = userEntries.reduce((s, e) => s + (e.text ? e.text.split(/\s+/).length : 0), 0) / userEntries.length;
+    const partnerAvg = partnerEntries.reduce((s, e) => s + (e.text ? e.text.split(/\s+/).length : 0), 0) / partnerEntries.length;
+    const ratio = Math.min(userAvg, partnerAvg) / Math.max(userAvg, partnerAvg, 1);
+    const balanceScore = ratio * 30;
+    return Math.round(Math.min(syncScore + consistencyScore + balanceScore, 100));
+  }
+
   app.get('/api/me', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
@@ -50,6 +77,11 @@ function registerAppRoutes(app, deps) {
       let streak = 0;
       let revealData = null;
       let comments = [];
+      let reactions = [];
+      let nudges = [];
+      let connectionScore = 0;
+      let specialDay = null;
+      let unsentLetter = null;
       const waitingEntry = stmts.getWaitingEntry.get(userId);
 
       if (match) {
@@ -57,10 +89,23 @@ function registerAppRoutes(app, deps) {
         const day = getMatchDay(match.started_at);
         const partner = parseUser(stmts.getUserById.get(partnerId));
 
+        // Get special day info
+        if (specialDayPrompts[day]) {
+          specialDay = { ...specialDayPrompts[day], day };
+        }
+
+        // Determine the current prompt
+        let currentPrompt;
+        if (specialDay) {
+          currentPrompt = specialDay.prompt;
+        } else {
+          currentPrompt = prompts[(day - 1) % prompts.length];
+        }
+
         matchData = {
           id: match.id,
           day,
-          currentPrompt: prompts[(day - 1) % prompts.length],
+          currentPrompt,
           partner: partner ? { archetype: partner.archetype, scores: partner.scores } : null,
           startedAt: match.started_at
         };
@@ -68,7 +113,9 @@ function registerAppRoutes(app, deps) {
         entriesData = stmts.getEntries.all(userId, match.id)
           .map((e) => ({ day: e.day, text: e.text, mood: e.mood, prompt: e.prompt, created_at: e.created_at }));
 
-        partnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, day)
+        // Partner entries — show entries from previous days (midnight unsealing)
+        const allPartnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, day);
+        partnerEntries = allPartnerEntries
           .map((e) => ({ day: e.day, text: e.text, mood: e.mood }));
 
         const allComments = stmts.getComments.all(match.id, userId, partnerId);
@@ -78,6 +125,28 @@ function registerAppRoutes(app, deps) {
           from: c.user_id === userId ? 'me' : 'partner',
           created_at: c.created_at
         }));
+
+        // Reactions
+        const allReactions = stmts.getReactions.all(match.id);
+        reactions = allReactions.map(r => ({
+          day: r.day,
+          emoji: r.emoji,
+          from: r.user_id === userId ? 'me' : 'partner'
+        }));
+
+        // Active nudges
+        nudges = stmts.getActiveNudges.all(userId).map(n => ({
+          id: n.id, type: n.type, message: n.message
+        }));
+
+        // Connection score
+        connectionScore = calcConnectionScore(entriesData, partnerEntries, day);
+
+        // Unsent letter (Day 11 entry for reveal)
+        const day11Entry = entriesData.find(e => e.day === 11);
+        if (day11Entry && day >= 21) {
+          unsentLetter = { text: day11Entry.text, mood: day11Entry.mood };
+        }
 
         const entryDays = new Set(entriesData.map((e) => e.day));
         if (entryDays.has(day)) streak++;
@@ -92,13 +161,17 @@ function registerAppRoutes(app, deps) {
           const bothYes = myReveal && myReveal.choice === 'yes' && partnerReveal && partnerReveal.choice === 'yes';
           const eitherNo = (myReveal && myReveal.choice === 'no') || (partnerReveal && partnerReveal.choice === 'no');
 
+          // Get partner's unsent letter for reveal
+          const partnerDay11 = stmts.getEntry.get(partnerId, match.id, 11);
+
           revealData = {
             available: true,
             myChoice: myReveal ? myReveal.choice : null,
             partnerChose: !!partnerReveal,
             revealed: bothYes,
             anonymous: eitherNo,
-            partner: bothYes && partner ? { name: partner.name, college: partner.college, year: partner.year } : null
+            partner: bothYes && partner ? { name: partner.name, college: partner.college, year: partner.year, email: partner.email } : null,
+            partnerUnsentLetter: (bothYes || eitherNo) && partnerDay11 ? partnerDay11.text : null
           };
         }
       }
@@ -125,6 +198,11 @@ function registerAppRoutes(app, deps) {
         streak,
         reveal: revealData,
         comments,
+        reactions,
+        nudges,
+        connectionScore,
+        specialDay,
+        unsentLetter,
         adaptivePrompt,
         insights,
         waitingInfo: !matchData ? waitingInfo : undefined
@@ -298,6 +376,46 @@ function registerAppRoutes(app, deps) {
     } catch (e) {
       console.error('Reveal error:', e);
       res.status(500).json({ error: 'Failed to save reveal choice' });
+    }
+  });
+
+  // --- Emoji Reactions ---
+  const VALID_REACTIONS = ['🤍', '🥺', '💛', '🫂', '✨', '🌙'];
+
+  app.post('/api/react', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const { day, emoji } = req.body;
+      if (!day || day < 1 || day > 21) return res.status(400).json({ error: 'Invalid day' });
+      if (!emoji || !VALID_REACTIONS.includes(emoji)) return res.status(400).json({ error: 'Invalid reaction' });
+
+      const match = stmts.getMatch.get(userId, userId);
+      if (!match) return res.status(400).json({ error: 'No match found' });
+
+      const currentDay = getMatchDay(match.started_at);
+      if (day >= currentDay) return res.status(400).json({ error: 'That entry is still sealed' });
+
+      const partnerId = getPartnerId(match, userId);
+      const partnerEntry = stmts.getEntry.get(partnerId, match.id, day);
+      if (!partnerEntry) return res.status(400).json({ error: 'No partner entry on that day' });
+
+      stmts.upsertReaction.run(userId, match.id, day, emoji);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('React error:', e);
+      res.status(500).json({ error: 'Failed to save reaction' });
+    }
+  });
+
+  // --- Dismiss Nudge ---
+  app.post('/api/nudge/dismiss', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const { nudgeId } = req.body;
+      if (!nudgeId) return res.status(400).json({ error: 'Nudge ID required' });
+      stmts.dismissNudge.run(nudgeId, req.session.userId);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to dismiss nudge' });
     }
   });
 

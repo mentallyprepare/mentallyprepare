@@ -4,6 +4,7 @@
   --gold:#ecc885;--gold-l:#E8D0A0;
   --purple:#896cb5;--purple-l:#B09FCC;
   --green:#659179;
+  --cyan:#5ec4d4;--cyan-l:#8FE3EF;
   --ink:#F8F2FF;--ink-m:rgba(248,242,255,.62);--ink-s:rgba(248,242,255,.35);
   --line:rgba(248,242,255,.07);--card:#0E0A18;--bg:#08050F;
 }
@@ -34,6 +35,12 @@ a:focus-visible{
 @keyframes particleFly{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-120px) scale(0);opacity:0}}
 @keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 @keyframes barGrow{from{width:0}}
+@keyframes cosmicPulse{0%,100%{box-shadow:0 0 40px rgba(94,196,212,.3),0 0 80px rgba(94,196,212,.1);transform:scale(1)}50%{box-shadow:0 0 60px rgba(94,196,212,.5),0 0 120px rgba(94,196,212,.2);transform:scale(1.02)}}
+@keyframes orbitSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes constellationDraw{from{stroke-dashoffset:200}to{stroke-dashoffset:0}}
+@keyframes emojiPop{0%{transform:scale(0) translateY(0);opacity:1}50%{transform:scale(1.4) translateY(-20px);opacity:1}100%{transform:scale(1) translateY(-40px);opacity:0}}
+@keyframes unsealGlow{0%{filter:blur(4px);opacity:.5}100%{filter:blur(0);opacity:1}}
+@keyframes scoreRing{from{stroke-dashoffset:283}}
 
 /* ── Stars ── */
 .stars{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
@@ -460,6 +467,87 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .si-arrow{font-size:13px;color:var(--ink-s)}
 .si-badge{font-size:9px;letter-spacing:.08em;background:rgba(212,133,154,.1);border:1px solid rgba(212,133,154,.18);color:var(--rose-l);padding:3px 8px;border-radius:100px}
 .spacer{height:36px}
+
+/* ── Cosmic Orb (Stardust-inspired) ── */
+.cosmic-orb{position:relative;width:140px;height:140px;margin:0 auto;display:flex;align-items:center;justify-content:center}
+.cosmic-orb-glow{position:absolute;inset:-20px;border-radius:50%;background:radial-gradient(circle,var(--orb-color, rgba(94,196,212,.3)),transparent 70%);animation:cosmicPulse 4s ease-in-out infinite;filter:blur(20px)}
+.cosmic-orb-body{width:100px;height:100px;border-radius:50%;background:radial-gradient(ellipse at 35% 30%,var(--orb-highlight, #8FE3EF),var(--orb-mid, #5ec4d4) 50%,var(--orb-dark, #2a7a8a));position:relative;overflow:hidden;z-index:2;box-shadow:0 0 40px var(--orb-color, rgba(94,196,212,.4))}
+.cosmic-orb-body::before{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(ellipse at 28% 28%,rgba(255,255,255,.25),transparent 55%)}
+.cosmic-orb-body::after{content:'';position:absolute;width:130%;height:1px;top:55%;left:-15%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);transform:rotate(-5deg)}
+.cosmic-orb-ring{position:absolute;width:140px;height:40px;border:1px solid rgba(255,255,255,.2);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%) rotateX(70deg);z-index:3}
+.cosmic-orb-ring .orbit-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.6);top:-4px;right:20px;box-shadow:0 0 8px rgba(255,255,255,.4)}
+.cosmic-orb-emoji{position:absolute;z-index:4;font-size:42px;filter:drop-shadow(0 0 12px rgba(0,0,0,.3))}
+
+/* Archetype-specific orb colors */
+.cosmic-orb.protector{--orb-color:rgba(94,196,212,.3);--orb-highlight:#8FE3EF;--orb-mid:#5ec4d4;--orb-dark:#2a7a8a}
+.cosmic-orb.connector{--orb-color:rgba(212,133,154,.3);--orb-highlight:#f0c4d4;--orb-mid:#d4859a;--orb-dark:#9B4F66}
+.cosmic-orb.performer{--orb-color:rgba(201,169,110,.3);--orb-highlight:#f0ddb0;--orb-mid:#C9A96E;--orb-dark:#8a6b2a}
+.cosmic-orb.disconnector{--orb-color:rgba(123,94,167,.3);--orb-highlight:#c9b4e8;--orb-mid:#7b5ea7;--orb-dark:#4a3570}
+
+/* ── Constellation Card ── */
+.constellation-card{background:linear-gradient(135deg,rgba(14,10,30,.95),rgba(20,14,40,.9));border:1px solid rgba(248,242,255,.08);border-radius:24px;padding:28px 24px;position:relative;overflow:hidden}
+.constellation-card::before{content:'';position:absolute;inset:0;border-radius:24px;background:radial-gradient(ellipse at 30% 20%,rgba(94,196,212,.04),transparent 60%);pointer-events:none}
+.constellation-card::after{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(94,196,212,.2),transparent)}
+.constellation-corner{position:absolute;opacity:.15;pointer-events:none}
+.constellation-corner svg{width:50px;height:50px}
+.constellation-corner.tl{top:12px;left:12px}
+.constellation-corner.tr{top:12px;right:12px}
+.constellation-corner.bl{bottom:12px;left:12px}
+.constellation-corner.br{bottom:12px;right:12px}
+
+/* ── Reaction Picker ── */
+.reaction-picker{display:flex;gap:6px;margin-top:12px;justify-content:center}
+.reaction-btn{width:38px;height:38px;border-radius:50%;background:rgba(248,242,255,.04);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .2s;padding:0}
+.reaction-btn:hover{background:rgba(212,133,154,.1);border-color:rgba(212,133,154,.25);transform:scale(1.15)}
+.reaction-btn.active{background:rgba(212,133,154,.15);border-color:var(--rose);transform:scale(1.1);box-shadow:0 0 12px rgba(212,133,154,.2)}
+.reaction-display{display:inline-flex;align-items:center;gap:4px;font-size:14px;padding:4px 10px;background:rgba(212,133,154,.06);border-radius:100px;margin-top:8px}
+.reaction-display-label{font-size:10px;color:var(--ink-s)}
+.emoji-float{position:fixed;pointer-events:none;z-index:200;font-size:24px;animation:emojiPop .8s ease-out forwards}
+
+/* ── Special Day Banner ── */
+.special-day-banner{margin:16px 24px 0;padding:16px 18px;border-radius:18px;position:relative;overflow:hidden;text-align:center}
+.special-day-banner.unsent_letter{background:linear-gradient(135deg,rgba(212,133,154,.1),rgba(201,169,110,.08));border:1px solid rgba(212,133,154,.2)}
+.special-day-banner.weekly_ritual{background:linear-gradient(135deg,rgba(201,169,110,.1),rgba(123,94,167,.08));border:1px solid rgba(201,169,110,.2)}
+.special-day-banner.final_night{background:linear-gradient(135deg,rgba(94,196,212,.1),rgba(123,94,167,.08));border:1px solid rgba(94,196,212,.2)}
+.special-day-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-l);margin-bottom:8px}
+.special-day-title{font-family:'Playfair Display',serif;font-size:18px;font-style:italic;color:var(--ink);margin-bottom:4px}
+.special-day-sub{font-size:11px;color:var(--ink-m)}
+
+/* ── Connection Score Ring ── */
+.connection-score{display:flex;align-items:center;gap:16px;padding:18px;background:var(--card);border:1px solid var(--line);border-radius:20px;margin:16px 24px 0;position:relative;overflow:hidden}
+.connection-score::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(94,196,212,.2),transparent)}
+.score-ring-wrap{position:relative;width:56px;height:56px;flex-shrink:0}
+.score-ring-wrap svg{width:56px;height:56px;transform:rotate(-90deg)}
+.score-ring-bg{fill:none;stroke:rgba(248,242,255,.06);stroke-width:4}
+.score-ring-fill{fill:none;stroke:url(#scoreGradient);stroke-width:4;stroke-linecap:round;stroke-dasharray:283;transition:stroke-dashoffset 1.5s ease}
+.score-ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:16px;color:var(--cyan-l)}
+.score-info{flex:1}
+.score-label{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-s);margin-bottom:4px}
+.score-desc{font-family:'Lora',serif;font-style:italic;font-size:12px;color:var(--ink-m);line-height:1.6}
+
+/* ── Nudge Banner ── */
+.nudge-banner{margin:12px 24px 0;padding:14px 16px;background:rgba(123,94,167,.06);border:1px solid rgba(123,94,167,.15);border-radius:16px;display:flex;align-items:center;gap:10px;animation:fadeUp .4s ease both}
+.nudge-ico{font-size:18px;flex-shrink:0}
+.nudge-text{flex:1;font-family:'Lora',serif;font-style:italic;font-size:12px;color:var(--ink-m);line-height:1.6}
+.nudge-dismiss{background:none;border:none;color:var(--ink-s);font-size:16px;cursor:pointer;padding:4px;flex-shrink:0;transition:color .2s}
+.nudge-dismiss:hover{color:var(--ink)}
+
+/* ── Enhanced Result (Stardust Archetype Card) ── */
+.result-cosmic{padding:32px 24px 48px;align-items:center;text-align:center}
+.result-cosmic-card{background:linear-gradient(135deg,rgba(14,10,30,.95),rgba(20,14,40,.9));border:1px solid rgba(248,242,255,.08);border-radius:28px;padding:32px 24px;width:100%;position:relative;overflow:hidden;margin-bottom:20px}
+.result-cosmic-card::before{content:'';position:absolute;inset:0;border-radius:28px;background:radial-gradient(ellipse at 50% 30%,var(--orb-color,rgba(94,196,212,.06)),transparent 70%);pointer-events:none}
+.result-cosmic-card .cosmic-orb{margin-bottom:20px}
+
+/* ── Unsent Letter Card ── */
+.letter-card{background:linear-gradient(135deg,rgba(201,169,110,.06),rgba(212,133,154,.04));border:1px solid rgba(201,169,110,.2);border-radius:20px;padding:20px;margin:16px 24px;position:relative;overflow:hidden}
+.letter-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.3),transparent)}
+.letter-header{font-family:'Playfair Display',serif;font-size:14px;font-style:italic;color:var(--gold-l);margin-bottom:8px}
+.letter-text{font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.8}
+
+/* ── Enhanced Profile (Stardust-inspired) ── */
+.profile-planet-card{background:linear-gradient(135deg,rgba(14,10,30,.95),rgba(20,14,40,.9));border:1px solid rgba(248,242,255,.08);border-radius:24px;padding:28px 20px;margin:0 24px;position:relative;overflow:hidden;text-align:center}
+.profile-planet-card::before{content:'';position:absolute;inset:0;border-radius:24px;background:radial-gradient(ellipse at 50% 40%,var(--orb-color,rgba(94,196,212,.05)),transparent 60%);pointer-events:none}
+.profile-planet-card .cosmic-orb{margin:16px auto 20px}
 
 /* ── Shooting Star ── */
 .shooting-star{position:fixed;width:2px;height:2px;background:#F8F2FF;border-radius:50%;pointer-events:none;z-index:0;opacity:0}
