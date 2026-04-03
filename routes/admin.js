@@ -134,12 +134,13 @@ function registerAdminRoutes(app, deps) {
       if (!userA || !userB) return res.status(404).json({ error: 'Both users must exist' });
       if (userA.id === userB.id) return res.status(400).json({ error: 'Choose two different users' });
       if (!userA.archetype || !userB.archetype) return res.status(400).json({ error: 'Both users must complete the scan first' });
-      if (userA.college.trim().toLowerCase() === userB.college.trim().toLowerCase()) {
-        return res.status(400).json({ error: 'Users must be from different colleges' });
-      }
-      if (complementary[userA.archetype] !== userB.archetype) {
-        return res.status(400).json({ error: 'Archetypes are not complementary' });
-      }
+      // Admins can bypass college and archetype rules in a manual force match
+      // if (userA.college.trim().toLowerCase() === userB.college.trim().toLowerCase()) {
+      //   return res.status(400).json({ error: 'Users must be from different colleges' });
+      // }
+      // if (complementary[userA.archetype] !== userB.archetype) {
+      //   return res.status(400).json({ error: 'Archetypes are not complementary' });
+      // }
       if (stmts.getMatch.get(userA.id, userA.id) || stmts.getMatch.get(userB.id, userB.id)) {
         return res.status(400).json({ error: 'One or both users are already matched' });
       }
