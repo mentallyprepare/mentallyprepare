@@ -694,14 +694,11 @@ function renderJournal() {
     ${nudgesHTML}
     ${partnerInactiveCard}
     ${connScoreHTML}
-    <div class="streak reveal-on-scroll">
-      <div class="streak-top"><div class="streak-lbl">Streak</div><div class="streak-ct">🔥 ${state.streak} days</div></div>
-      <div class="pips">${Array.from({length:21},(_,i) => {
-        if (i < day - 1) return '<div class="pip done"></div>';
-        if (i === day - 1) return '<div class="pip now"></div>';
-        return '<div class="pip"></div>';
-      }).join('')}</div>
+    <div class="streak reveal-on-scroll" id="streak-constellation">
+      <div class="streak-top"><div class="streak-lbl">Your constellation</div><div class="streak-ct">🔥 ${state.streak} days</div></div>
+      <div id="constellation-container">${renderConstellation(state.match, state.entries, state.partnerEntries, day)}</div>
     </div>
+    <div id="daily-note-container" style="padding:0 0 0;"></div>
     <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until entries unseal</div></div>
     <div class="prompt-block reveal-on-scroll">
       <div class="eyebrow">${state.specialDay ? '✦ ' + state.specialDay.title : 'Tonight\'s prompt'}</div>
@@ -762,6 +759,11 @@ function renderJournal() {
   });
   startCountdown();
   initScrollReveal('#s-journal');
+  // Load and render the daily note card asynchronously
+  loadDailyNote().then(function(noteData) {
+    var noteContainer = document.getElementById('daily-note-container');
+    if (noteContainer && noteData) renderDailyNoteCard(noteContainer, noteData);
+  });
 }
 
 function setMood(m, el) {
@@ -871,7 +873,7 @@ function renderSealed() {
     <div style="height:40px;"></div>
     ${renderTabs('partner')}`;
 
-  // Check partner activity
+  // Check partner activity and build unsealing slot for previous day's partner entry
   checkPartnerStatus().then(ps => {
     const statusEl = document.getElementById('partner-status-text');
     const bannerEl = document.getElementById('switch-banner-area');
@@ -889,6 +891,15 @@ function renderSealed() {
       if (bannerEl) bannerEl.innerHTML = `<div class="switch-banner"><div class="switch-banner-ico">⚡</div><div class="switch-banner-text">Your partner hasn't been active in ${ps.daysSinceActive} days. You can switch to a new partner.</div><button class="switch-banner-btn" onclick="switchPartner()">Switch</button></div>`;
     }
   });
+
+  // If there's a partner entry from yesterday, show the unsealing ceremony
+  if (state && state.partnerEntries && state.partnerEntries.length) {
+    const currentDay = state.match ? state.match.day : 1;
+    const prevDayEntry = state.partnerEntries.find(function(e) { return e.day === currentDay - 1; });
+    if (prevDayEntry) {
+      buildUnsealingSlot(prevDayEntry, currentDay - 1, state.match.partner.archetype);
+    }
+  }
 }
 
 function renderPast() {
@@ -1387,14 +1398,15 @@ function showEntryDetail(idx) {
   const myReaction = reactions.find(r => r.from === 'me');
   const partnerReaction = reactions.find(r => r.from === 'partner');
 
-  // Reaction picker (only show if partner entry is visible)
-  const reactionEmojis = ['🤍','🥺','💛','🫂','✨','🌙'];
+  // Reaction picker — one word per entry, one reaction per Day
+  const reactionWords = ['seen', 'same', 'honest', 'brave', 'quiet', 'real'];
   const reactionPickerHTML = partnerEntry ? `
     <div class="reaction-picker">
-      ${reactionEmojis.map(emoji => `<button class="reaction-btn ${myReaction && myReaction.emoji === emoji ? 'active' : ''}" type="button" data-react-emoji="${emoji}" data-react-day="${entry.day}">${emoji}</button>`).join('')}
+      ${reactionWords.map(word => `<button class="reaction-word ${myReaction && myReaction.emoji === word ? 'active' : ''}" type="button" data-react-emoji="${word}" data-react-day="${entry.day}">${word}</button>`).join('')}
     </div>
-    ${partnerReaction ? `<div class="reaction-display"><span>${partnerReaction.emoji}</span><span class="reaction-display-label">from your partner</span></div>` : ''}
+    ${partnerReaction ? `<div class="received-reaction"><span class="received-reaction-word">${partnerReaction.emoji}</span><span class="received-reaction-label">from your partner</span></div>` : ''}
   ` : '';
+
 
   document.getElementById('entry-detail').innerHTML = `
     <div class="entry-detail-card">
@@ -1842,6 +1854,275 @@ async function resetPassword() {
     go('s-login');
   } catch (e) { toast(e.message); }
 }
+// ═══════════════════════════════════════
+// DAILY NOTE CARD — Feature 01
+// ═══════════════════════════════════════
+
+// Web Audio API piano tone (200ms, gentle C note)
+function playPianoTone() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.9);
+  } catch {}
+}
+
+// Word-by-word fade-in
+function animateWordsIn(el, text, msPerWord) {
+  msPerWord = msPerWord || 55;
+  el.innerHTML = '';
+  var words = text.split(' ');
+  words.forEach(function(w, i) {
+    var span = document.createElement('span');
+    span.className = 'note-word';
+    span.textContent = w + ' ';
+    span.style.animationDelay = (i * msPerWord) + 'ms';
+    el.appendChild(span);
+  });
+}
+
+var noteState = null;
+
+async function loadDailyNote() {
+  try {
+    var data = await api('GET', '/daily-note');
+    noteState = data;
+    return data;
+  } catch { return null; }
+}
+
+function renderDailyNoteCard(container, noteData) {
+  if (!noteData || !noteData.note) { container.innerHTML = ''; return; }
+  var note = noteData.note;
+  var isOpened = !!note.opened_at;
+  var moonPhases = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+  var hour = new Date().getHours();
+  var moonIdx = Math.floor(hour / 3);
+
+  container.innerHTML = `
+    <div class="note-card ${isOpened ? 'open' : 'sealed'}" id="daily-note-card" role="button" tabindex="0" aria-label="Daily note card — tap to open">
+      <div class="note-card-header">
+        <span class="note-label">A note for today ✦</span>
+        <span class="note-moon-row">${moonPhases.map(function(m,i){ return '<span class="'+(i===moonIdx?'moon-active':'')+'">' + m + '</span>'; }).join('')}</span>
+      </div>
+      <div id="note-card-body">${isOpened ? renderNoteOpen(note) : renderNoteSealed()}</div>
+    </div>`;
+
+  if (!isOpened) {
+    var card = document.getElementById('daily-note-card');
+    card.addEventListener('click', function() { unsealNote(note); });
+    card.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') unsealNote(note); });
+  }
+}
+
+function renderNoteSealed() {
+  return `<div class="note-sealed-inner">
+    <div class="note-seal-ring"></div>
+    <div class="note-seal-ico">✦</div>
+    <div class="note-sealed-arrived">arrived at 8:00 am · tap to unseal</div>
+  </div>`;
+}
+
+function renderNoteOpen(note) {
+  var feedbackHtml = note.landed
+    ? `<div class="note-feedback-done">${note.landed === 'yes' ? '✦ This landed' : 'Noted'}</div>`
+    : `<div class="note-feedback-row">
+        <button class="note-fb-btn" onclick="submitNoteFeedback('yes')">✦ This landed</button>
+        <button class="note-fb-btn ghost" onclick="submitNoteFeedback('no')">Not today</button>
+      </div>`;
+  return `<div class="note-open-inner">
+    <p class="note-observation" id="note-obs">${escapeHtml(note.observation)}</p>
+    <p class="note-permission" id="note-perm"><em>${escapeHtml(note.permission)}</em></p>
+    <div class="note-question-block" id="note-q">
+      <span class="note-q-label">A question for tonight</span>
+      <span class="note-question-text">${escapeHtml(note.question)}</span>
+    </div>
+    ${feedbackHtml}
+  </div>`;
+}
+
+async function unsealNote(note) {
+  var card = document.getElementById('daily-note-card');
+  if (!card || card.classList.contains('open')) return;
+  card.classList.remove('sealed');
+  card.classList.add('opening');
+  playPianoTone();
+  api('POST', '/daily-note/open').catch(function(){});
+  var body = document.getElementById('note-card-body');
+  body.innerHTML = renderNoteOpen(note);
+  setTimeout(function() {
+    var obs = document.getElementById('note-obs');
+    var perm = document.getElementById('note-perm');
+    if (obs) animateWordsIn(obs, note.observation, 55);
+    if (perm) setTimeout(function(){ animateWordsIn(perm, note.permission, 55); }, 600);
+    card.classList.remove('opening');
+    card.classList.add('open');
+  }, 100);
+}
+
+async function submitNoteFeedback(landed) {
+  try {
+    await api('POST', '/daily-note/feedback', { landed });
+    var fbRow = document.querySelector('.note-feedback-row');
+    if (fbRow) fbRow.outerHTML = `<div class="note-feedback-done">${landed === 'yes' ? '✦ This landed' : 'Noted'}</div>`;
+  } catch (e) { toast(e.message); }
+}
+
+async function renderNoteArchive() {
+  try {
+    var res = await api('GET', '/daily-notes/archive');
+    var el = document.getElementById('note-archive');
+    if (!el) return;
+    var notes = res.notes || [];
+    if (!notes.length) { el.innerHTML = '<p style="opacity:.5;font-size:13px;padding:16px;">No notes yet.</p>'; return; }
+    el.innerHTML = notes.map(function(n, i) {
+      return `<div class="note-archive-item" style="z-index:${notes.length - i};">
+        <div class="note-archive-day">Day ${n.day}</div>
+        <p class="note-archive-obs">${escapeHtml(n.observation)}</p>
+        <p class="note-archive-q"><em>${escapeHtml(n.question)}</em></p>
+        ${n.landed ? `<div class="note-archive-badge">${n.landed === 'yes' ? '✦ Landed' : 'Passed'}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch {}
+}
+
+
+// ═══════════════════════════════════════
+// CONSTELLATION — Feature 04
+// ═══════════════════════════════════════
+var CONSTELLATION_SHAPES = {
+  'protector-connector': [[20,80],[40,60],[55,40],[70,20],[85,50],[65,70],[45,85],[30,65]],
+  'connector-protector': [[20,80],[40,60],[55,40],[70,20],[85,50],[65,70],[45,85],[30,65]],
+  'performer-disconnector': [[15,50],[35,25],[55,15],[75,30],[90,55],[70,75],[50,85],[25,70]],
+  'disconnector-performer': [[15,50],[35,25],[55,15],[75,30],[90,55],[70,75],[50,85],[25,70]],
+  'protector-protector': [[50,10],[75,35],[90,65],[65,85],[35,85],[10,65],[25,35],[50,55]],
+  'connector-connector': [[50,15],[80,40],[85,70],[60,88],[30,80],[15,55],[30,25],[55,50]],
+  'performer-performer': [[30,10],[60,10],[80,35],[75,65],[55,85],[25,80],[10,55],[20,30]],
+  'disconnector-disconnector': [[50,5],[85,30],[75,65],[50,85],[25,65],[15,30],[35,20],[65,20]],
+};
+var CONSTELLATION_NAMES = {
+  'protector-connector': 'The Anchor',
+  'connector-protector': 'The Anchor',
+  'performer-disconnector': 'The Stage',
+  'disconnector-performer': 'The Stage',
+  'protector-protector': 'The Twin Shields',
+  'connector-connector': 'The Open Sky',
+  'performer-performer': 'The Mirror',
+  'disconnector-disconnector': 'The Island Pair',
+};
+
+function renderConstellation(matchData, entries, partnerEntries, day) {
+  var myArch = state && state.user ? state.user.archetype : null;
+  var partnerArch = matchData && matchData.partner ? matchData.partner.archetype : null;
+  if (!myArch || !partnerArch) return '<div class="constellation-empty">✦</div>';
+
+  var key = myArch + '-' + partnerArch;
+  var points = CONSTELLATION_SHAPES[key] || CONSTELLATION_SHAPES['protector-connector'];
+  var name = CONSTELLATION_NAMES[key] || 'The Unknown';
+
+  var partnerMap = {};
+  (partnerEntries || []).forEach(function(e) { partnerMap[e.day] = true; });
+  var bothWroteDays = (entries || []).filter(function(e) { return partnerMap[e.day]; }).length;
+  var starsToShow = Math.max(1, Math.min(bothWroteDays + 1, points.length));
+  var showName = day >= 7;
+
+  var starPoints = points.slice(0, starsToShow);
+  var lines = starPoints.length > 1 ? starPoints.slice(1).map(function(p, i) {
+    var prev = starPoints[i];
+    return '<line x1="' + prev[0] + '" y1="' + prev[1] + '" x2="' + p[0] + '" y2="' + p[1] + '" class="const-line" />';
+  }).join('') : '';
+
+  var stars = starPoints.map(function(p, i) {
+    var isLatest = i === starPoints.length - 1;
+    return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (isLatest ? 3.5 : 2.8) + '" class="const-star' + (isLatest ? ' latest' : '') + '" />';
+  }).join('');
+
+  return `<div class="constellation-wrap">
+    <svg class="constellation-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Constellation map">
+      ${lines}${stars}
+    </svg>
+    ${showName ? `<div class="constellation-name">${name}</div>` : ''}
+    <div class="constellation-days">${starsToShow} of 21 nights ✦</div>
+  </div>`;
+}
+
+
+// ═══════════════════════════════════════
+// MIDNIGHT UNSEALING CEREMONY — Feature 02
+// ═══════════════════════════════════════
+
+function buildUnsealingSlot(partnerEntry, day, partnerArchetype) {
+  var el = document.getElementById('s-sealed');
+  if (!el) return;
+  var archInfo = archetypes[partnerArchetype] || {};
+  var slot = document.getElementById('unseal-slot');
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.id = 'unseal-slot';
+    slot.style.cssText = 'padding:0 24px 16px;';
+    var nav = el.querySelector('.nav');
+    if (nav) nav.insertAdjacentElement('afterend', slot);
+    else el.prepend(slot);
+  }
+  slot.innerHTML = `
+    <div class="unseal-ceremony" id="unseal-ceremony">
+      <div class="envelope-outer" id="envelope-outer">
+        <div class="envelope-flap"></div>
+        <div class="envelope-label">Day ${day} · ${archInfo.name || 'Your partner'}</div>
+      </div>
+      <button class="btn-unseal" id="btn-unseal-ceremony" onclick="revealPartnerEntry()">🌙 Unseal tonight's entry</button>
+    </div>
+    <div class="partner-reveal-text" id="partner-reveal-text" style="display:none;"></div>`;
+  slot._partnerEntry = partnerEntry;
+}
+
+function revealPartnerEntry() {
+  var slot = document.getElementById('unseal-slot');
+  if (!slot) return;
+  var partnerEntry = slot._partnerEntry;
+  if (!partnerEntry) return;
+
+  var envelope = document.getElementById('envelope-outer');
+  var btn = document.getElementById('btn-unseal-ceremony');
+  var revealEl = document.getElementById('partner-reveal-text');
+
+  if (envelope) envelope.classList.add('opening');
+  if (btn) btn.style.display = 'none';
+  playPianoTone();
+
+  setTimeout(function() {
+    if (envelope) envelope.style.display = 'none';
+    if (!revealEl) return;
+    revealEl.style.display = 'block';
+    var archInfo = archetypes[partnerEntry.archetype || ''] || {};
+    var lines = (partnerEntry.text || '').split(/\n/).filter(Boolean);
+    if (!lines.length) lines = [partnerEntry.text || ''];
+    revealEl.innerHTML = `
+      <div class="partner-reveal-header">
+        <span class="partner-reveal-mood">${partnerEntry.mood || '🌓'}</span>
+        <span class="partner-reveal-arch">${archInfo.name || 'Your partner'} · Day ${partnerEntry.day}</span>
+      </div>
+      <div class="partner-reveal-lines" id="pr-lines"></div>`;
+    var linesEl = document.getElementById('pr-lines');
+    lines.forEach(function(line, i) {
+      var p = document.createElement('p');
+      p.className = 'partner-reveal-line';
+      p.style.animationDelay = (i * 0.35) + 's';
+      p.textContent = line;
+      linesEl.appendChild(p);
+    });
+  }, 800);
+}
+
+
 // ═══════════════════════════════════════
 // FLOATING WORDS CYCLER (Landing Problem Section)
 // ═══════════════════════════════════════

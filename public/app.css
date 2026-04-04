@@ -882,3 +882,78 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
   .hero-h1{letter-spacing:-1px}
   .problem-orb-wrap{width:200px;height:200px}
 }
+
+/* ═════ PHASE 1 FEATURES ════════════════════════════ */
+/* Daily Note Card */
+@keyframes sealRingPulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.18);opacity:.85}}
+@keyframes wordFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes noteOpen{0%{transform:scale(.97);opacity:.6}100%{transform:scale(1);opacity:1}}
+@keyframes envelopeFlap{0%{transform:rotateX(0deg)}100%{transform:rotateX(-90deg);opacity:0}}
+@keyframes lineFadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+#daily-note-container{padding:0 24px;margin-top:4px}
+.note-card{background:linear-gradient(135deg,rgba(14,10,30,.97),rgba(20,14,40,.93));border:1px solid rgba(212,133,154,.15);border-radius:22px;padding:20px 20px 18px;position:relative;overflow:hidden;transition:border-color .3s,transform .2s}
+.note-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.3),transparent)}
+.note-card.sealed{cursor:pointer}.note-card.sealed:hover{border-color:rgba(212,133,154,.28);transform:translateY(-1px)}
+.note-card.open{animation:noteOpen .4s ease}
+.note-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.note-label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--rose);opacity:.75}
+.note-moon-row{display:flex;gap:3px;font-size:13px;opacity:.4}
+.note-moon-row .moon-active{opacity:1;transform:scale(1.2);display:inline-block}
+.note-sealed-inner{display:flex;flex-direction:column;align-items:center;padding:14px 0 8px;gap:6px;text-align:center;position:relative}
+.note-seal-ring{width:44px;height:44px;border-radius:50%;border:1px solid rgba(212,133,154,.4);animation:sealRingPulse 2.2s ease-in-out infinite}
+.note-seal-ico{font-size:16px;color:var(--rose-l);opacity:.8;margin:-4px 0 0}
+.note-sealed-arrived{font-size:10px;color:var(--ink-s);letter-spacing:.05em}
+.note-open-inner{display:flex;flex-direction:column;gap:12px}
+.note-observation{font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.9}
+.note-permission{font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--rose-l);line-height:1.85;opacity:.85}
+.note-question-block{background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.14);border-radius:14px;padding:13px 14px;display:flex;flex-direction:column;gap:5px}
+.note-q-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);opacity:.65}
+.note-question-text{font-family:'Playfair Display',serif;font-style:italic;font-size:14.5px;color:var(--ink);line-height:1.5}
+.note-feedback-row{display:flex;gap:8px;margin-top:4px}
+.note-fb-btn{flex:1;padding:10px;border-radius:100px;font-size:11px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;border:1px solid rgba(212,133,154,.25);background:rgba(212,133,154,.08);color:var(--rose-l)}
+.note-fb-btn.ghost{background:transparent;border-color:var(--line);color:var(--ink-s)}
+.note-fb-btn:hover{transform:scale(1.03)}
+.note-feedback-done{font-size:11px;color:var(--gold-l);text-align:center;padding:8px;opacity:.8;font-style:italic;font-family:'Lora',serif}
+.note-word{display:inline-block;opacity:0;animation:wordFadeIn .4s ease forwards}
+.note-archive-item{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;position:relative;overflow:hidden;margin-bottom:8px}
+.note-archive-item::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.1),transparent)}
+.note-archive-day{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-s);margin-bottom:7px}
+.note-archive-obs{font-family:'Lora',serif;font-style:italic;font-size:12.5px;color:var(--ink-m);line-height:1.8;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.note-archive-q{font-size:11.5px;color:var(--ink-s);margin-top:5px;font-style:italic;font-family:'Lora',serif}
+.note-archive-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;color:var(--gold-l);background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.12);padding:2px 8px;border-radius:100px;margin-top:6px}
+
+/* Constellation */
+#constellation-container{padding:4px 0 0}
+.constellation-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:4px 0 2px}
+.constellation-svg{width:100%;max-width:200px;height:120px;display:block}
+.const-line{stroke:rgba(212,133,154,.28);stroke-width:0.8;stroke-linecap:round}
+.const-star{fill:var(--rose-l);filter:drop-shadow(0 0 3px rgba(212,133,154,.5))}
+.const-star.latest{fill:#fff;filter:drop-shadow(0 0 5px rgba(255,255,255,.7))}
+.constellation-name{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:var(--rose-l);text-align:center}
+.constellation-days{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-s);text-align:center}
+.constellation-empty{font-size:18px;color:var(--rose);opacity:.3;text-align:center;padding:12px 0}
+
+/* One-Word Reactions */
+.reaction-picker{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;justify-content:center}
+.reaction-word{padding:7px 14px;border-radius:100px;background:rgba(248,242,255,.04);border:1px solid var(--line);font-size:12px;font-family:'DM Sans',sans-serif;color:var(--ink-s);cursor:pointer;transition:all .2s;letter-spacing:.02em}
+.reaction-word:hover{background:rgba(212,133,154,.1);border-color:rgba(212,133,154,.25);color:var(--ink);transform:translateY(-1px)}
+.reaction-word.active{background:rgba(212,133,154,.15);border-color:var(--rose);color:var(--rose-l);font-weight:500}
+.received-reaction{display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:14px;padding:12px;background:linear-gradient(135deg,rgba(212,133,154,.06),rgba(123,94,167,.04));border:1px solid rgba(212,133,154,.12);border-radius:16px}
+.received-reaction-word{font-family:'Playfair Display',serif;font-size:26px;font-style:italic;color:var(--rose-l);line-height:1}
+.received-reaction-label{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-s)}
+
+/* Midnight Unsealing Ceremony */
+.unseal-ceremony{display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 0 8px}
+.envelope-outer{position:relative;width:140px;height:88px;background:linear-gradient(135deg,rgba(20,14,40,.95),rgba(14,10,30,.98));border:1px solid rgba(212,133,154,.2);border-radius:12px;overflow:hidden}
+.envelope-outer.opening .envelope-flap{animation:envelopeFlap .6s ease forwards;transform-origin:top center}
+.envelope-flap{position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(135deg,rgba(212,133,154,.12),rgba(123,94,167,.08));border-bottom:1px solid rgba(212,133,154,.15);clip-path:polygon(0 0,100% 0,50% 100%)}
+.envelope-label{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:10px;color:var(--ink-s);letter-spacing:.05em}
+.btn-unseal{padding:12px 28px;border-radius:100px;background:linear-gradient(135deg,rgba(212,133,154,.15),rgba(123,94,167,.12));border:1px solid rgba(212,133,154,.25);color:var(--rose-l);font-size:13px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .25s}
+.btn-unseal:hover{background:linear-gradient(135deg,rgba(212,133,154,.22),rgba(123,94,167,.18));transform:translateY(-2px)}
+.partner-reveal-text{padding:16px 0 4px}
+.partner-reveal-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.partner-reveal-mood{font-size:22px}
+.partner-reveal-arch{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--rose);opacity:.65}
+.partner-reveal-lines{display:flex;flex-direction:column;gap:6px}
+.partner-reveal-line{font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.9;opacity:0;animation:lineFadeIn .6s ease forwards}

@@ -235,6 +235,33 @@ db.exec(`
     UNIQUE(user_id, match_id, day)
   );
 
+  CREATE TABLE IF NOT EXISTS daily_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    match_id INTEGER REFERENCES matches(id),
+    day INTEGER NOT NULL,
+    archetype TEXT NOT NULL,
+    observation TEXT NOT NULL,
+    permission TEXT NOT NULL,
+    question TEXT NOT NULL,
+    landed TEXT DEFAULT NULL,
+    opened_at TEXT DEFAULT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, day)
+  );
+
+  CREATE TABLE IF NOT EXISTS sealed_room_picks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    match_id INTEGER NOT NULL REFERENCES matches(id),
+    day INTEGER NOT NULL,
+    color TEXT,
+    weather TEXT,
+    time_of_day TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, match_id, day)
+  );
+
   CREATE TABLE IF NOT EXISTS nudges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id),
@@ -279,6 +306,7 @@ ensureColumn('waitlist', 'college', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('waitlist', 'year', 'TEXT');
 ensureColumn('waitlist', 'archetype', 'TEXT');
 ensureColumn('waitlist', 'invited_at', 'TEXT');
+ensureColumn('matches', 'constellation_name', 'TEXT');
 
 function handleLiveness(req, res) {
   res.json({ status: 'ok' });
@@ -523,6 +551,36 @@ const stmts = {
   // Archetype snapshots
   insertSnapshot: db.prepare('INSERT INTO archetype_snapshots (user_id, match_id, day, scores, archetype) VALUES (?, ?, ?, ?, ?)'),
   getSnapshots: db.prepare('SELECT * FROM archetype_snapshots WHERE user_id = ? AND match_id = ? ORDER BY day ASC'),
+
+  // Daily notes
+  getDailyNote: db.prepare('SELECT * FROM daily_notes WHERE user_id = ? AND day = ?'),
+  getDailyNotesArchive: db.prepare('SELECT * FROM daily_notes WHERE user_id = ? ORDER BY day DESC'),
+  upsertDailyNote: db.prepare(`
+    INSERT INTO daily_notes (user_id, match_id, day, archetype, observation, permission, question)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, day) DO UPDATE SET
+      match_id = excluded.match_id,
+      archetype = excluded.archetype,
+      observation = excluded.observation,
+      permission = excluded.permission,
+      question = excluded.question
+  `),
+  updateNoteLanded: db.prepare("UPDATE daily_notes SET landed = ?, opened_at = COALESCE(opened_at, datetime('now')) WHERE user_id = ? AND day = ?"),
+  markNoteOpened: db.prepare("UPDATE daily_notes SET opened_at = COALESCE(opened_at, datetime('now')) WHERE user_id = ? AND day = ?"),
+  deleteUserDailyNotes: db.prepare('DELETE FROM daily_notes WHERE user_id = ?'),
+
+  // Sealed room picks
+  upsertSealedPick: db.prepare(`
+    INSERT INTO sealed_room_picks (user_id, match_id, day, color, weather, time_of_day)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, match_id, day) DO UPDATE SET
+      color = excluded.color,
+      weather = excluded.weather,
+      time_of_day = excluded.time_of_day
+  `),
+  getSealedPicks: db.prepare('SELECT * FROM sealed_room_picks WHERE match_id = ? ORDER BY day ASC'),
+  deleteUserSealedPicks: db.prepare('DELETE FROM sealed_room_picks WHERE user_id = ?'),
+  deleteMatchSealedPicks: db.prepare('DELETE FROM sealed_room_picks WHERE match_id = ?'),
 };
 
 // --- Helper: parse scores JSON ----------
@@ -962,6 +1020,7 @@ function deleteMatchData(matchId) {
   stmts.deleteMatchReveals.run(matchId);
   stmts.deleteMatchReactions.run(matchId);
   stmts.deleteMatchNudges.run(matchId);
+  try { stmts.deleteMatchSealedPicks.run(matchId); } catch {}
   stmts.deleteMatchById.run(matchId);
 }
 
@@ -980,6 +1039,8 @@ const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
   stmts.deleteUserPayments.run(userId);
   stmts.deleteUserReactions.run(userId);
   stmts.deleteUserNudges.run(userId);
+  try { stmts.deleteUserDailyNotes.run(userId); } catch {}
+  try { stmts.deleteUserSealedPicks.run(userId); } catch {}
   stmts.deleteUser.run(userId);
 });
 
@@ -1071,58 +1132,267 @@ registerWaitingEntryRoute(app, {
   HELPLINES
 });
 
-// Daily push notification cron (call via external cron or setInterval)
-function sendDailyReminders() {
-  if (!vapidKeys) return;
+// ─── Daily Note Generation ───────────────────────────────────
+const { getNote } = require('./lib/note-library');
+
+function generateDailyNoteForUser(userId, matchId, archetype, day) {
+  const note = getNote(archetype, day, userId);
+  stmts.upsertDailyNote.run(userId, matchId || null, day, archetype, note.observation, note.permission, note.question);
+  return note;
+}
+
+// Generate notes for all active users (called at midnight)
+function generateDailyNotesForAll() {
   const rows = stmts.getActiveMatchUsers.all();
-  let sent = 0, failed = 0;
-
+  let generated = 0;
   for (const row of rows) {
-    if (!row.push_subscription) continue;
+    const user = parseUser(stmts.getUserById.get(row.id));
+    if (!user || !user.archetype) continue;
     const day = getMatchDay(row.started_at);
-    if (day > 21) continue;
-
-    try {
-      const sub = JSON.parse(row.push_subscription);
-      const payload = JSON.stringify({
-        title: 'Your prompt is waiting ?',
-        body: `Day ${day} of 21 — take 5 minutes to be honest.`,
-        url: '/app'
-      });
-      webpush.sendNotification(sub, payload)
-        .then(() => { sent++; })
-        .catch(err => {
-          failed++;
-          console.error('Webpush send error:', err && err.stack ? err.stack : err);
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            // Subscription expired, clean up
-            stmts.updatePushSub.run(null, row.id);
-          }
-        });
-    } catch (err) {
-      failed++;
-      console.error('Webpush JSON/parse error:', err && err.stack ? err.stack : err);
+    if (day < 1 || day > 21) continue;
+    // Tomorrow's note
+    const nextDay = Math.min(day + 1, 21);
+    const existing = stmts.getDailyNote.get(user.id, nextDay);
+    if (!existing) {
+      generateDailyNoteForUser(user.id, row.match_id, user.archetype, nextDay);
+      generated++;
     }
   }
-  console.log(`  ?? Daily reminders: ${sent} sent, ${failed} failed`);
+  // Also generate for waiting (unmatched) users
+  const waitingUsers = db.prepare(`SELECT u.id, u.archetype FROM users u LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id WHERE m.id IS NULL AND u.archetype IS NOT NULL`).all();
+  for (const u of waitingUsers) {
+    const existing = stmts.getDailyNote.get(u.id, 1);
+    if (!existing) {
+      generateDailyNoteForUser(u.id, null, u.archetype, 1);
+      generated++;
+    }
+  }
+  console.log(`  ✦ Generated ${generated} daily notes`);
 }
 
-// Run daily at 8pm IST (14:30 UTC)
-function scheduleDailyPush() {
+// ─── API: Daily Note endpoints ────────────────────────────────
+app.get('/api/daily-note', apiLimiter, requireAuth, (req, res) => {
+  const user = parseUser(stmts.getUserById.get(req.session.userId));
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (!user.archetype) return res.json({ note: null, reason: 'no_archetype' });
+
+  const match = stmts.getMatch.get(user.id, user.id);
+  const day = match ? getMatchDay(match.started_at) : 1;
+  let note = stmts.getDailyNote.get(user.id, day);
+
+  if (!note) {
+    // Generate on-demand if missing
+    generateDailyNoteForUser(user.id, match ? match.id : null, user.archetype, day);
+    note = stmts.getDailyNote.get(user.id, day);
+  }
+
+  res.json({ note, archetype: user.archetype });
+});
+
+app.post('/api/daily-note/open', apiLimiter, requireAuth, (req, res) => {
+  const user = parseUser(stmts.getUserById.get(req.session.userId));
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const match = stmts.getMatch.get(user.id, user.id);
+  const day = match ? getMatchDay(match.started_at) : 1;
+  stmts.markNoteOpened.run(user.id, day);
+  res.json({ ok: true });
+});
+
+app.post('/api/daily-note/feedback', apiLimiter, requireAuth, (req, res) => {
+  const { landed } = req.body;
+  if (!['yes', 'no'].includes(landed)) return res.status(400).json({ error: 'landed must be yes or no' });
+  const user = parseUser(stmts.getUserById.get(req.session.userId));
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const match = stmts.getMatch.get(user.id, user.id);
+  const day = match ? getMatchDay(match.started_at) : 1;
+  stmts.updateNoteLanded.run(landed, user.id, day);
+  res.json({ ok: true });
+});
+
+app.get('/api/daily-notes/archive', apiLimiter, requireAuth, (req, res) => {
+  const notes = stmts.getDailyNotesArchive.all(req.session.userId);
+  res.json({ notes });
+});
+
+// ─── API: Sealed Room picks ───────────────────────────────────
+app.post('/api/sealed-room/pick', apiLimiter, requireAuth, (req, res) => {
+  const { color, weather, time_of_day } = req.body;
+  const user = parseUser(stmts.getUserById.get(req.session.userId));
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const match = stmts.getMatch.get(user.id, user.id);
+  if (!match) return res.status(400).json({ error: 'No active match' });
+  const day = getMatchDay(match.started_at);
+  stmts.upsertSealedPick.run(user.id, match.id, day, color || null, weather || null, time_of_day || null);
+  res.json({ ok: true });
+});
+
+app.get('/api/sealed-room', apiLimiter, requireAuth, (req, res) => {
+  const user = parseUser(stmts.getUserById.get(req.session.userId));
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const match = stmts.getMatch.get(user.id, user.id);
+  if (!match) return res.json({ picks: [] });
+  const currentDay = getMatchDay(match.started_at);
+  const allPicks = stmts.getSealedPicks.all(match.id);
+  const partnerId = getPartnerId(match, user.id);
+  // Blur partner picks until Day 21
+  const revealed = currentDay >= 21;
+  const myPicks = allPicks.filter(p => p.user_id === user.id);
+  const partnerPicks = allPicks.filter(p => p.user_id === partnerId).map(p => ({
+    day: p.day,
+    color: revealed ? p.color : null,
+    weather: revealed ? p.weather : null,
+    time_of_day: revealed ? p.time_of_day : null,
+    blurred: !revealed
+  }));
+  res.json({ myPicks, partnerPicks, revealed, currentDay });
+});
+
+// ─── API: Partner wrote today ─────────────────────────────────
+app.get('/api/partner-wrote-today', apiLimiter, requireAuth, (req, res) => {
+  const user = parseUser(stmts.getUserById.get(req.session.userId));
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const match = stmts.getMatch.get(user.id, user.id);
+  if (!match) return res.json({ partnerWrote: false });
+  const partnerId = getPartnerId(match, user.id);
+  const day = getMatchDay(match.started_at);
+  const partnerEntry = stmts.getEntry.get(partnerId, match.id, day);
+  res.json({ partnerWrote: !!partnerEntry });
+});
+
+// ─── Push Notification Scheduler ─────────────────────────────
+function sendPushToUser(row, title, body) {
+  if (!row.push_subscription || !vapidKeys) return;
+  try {
+    const sub = JSON.parse(row.push_subscription);
+    const payload = JSON.stringify({ title, body, url: '/app' });
+    webpush.sendNotification(sub, payload).catch(err => {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        stmts.updatePushSub.run(null, row.id);
+      }
+    });
+  } catch {}
+}
+
+// 9pm IST = 15:30 UTC — daily prompt reminder
+function send9pmReminders() {
+  if (!vapidKeys) return;
+  const rows = stmts.getActiveMatchUsers.all();
+  for (const row of rows) {
+    const day = getMatchDay(row.started_at);
+    if (day > 21) continue;
+    // Only send if user hasn't written today
+    const match = stmts.getMatch.get(row.id, row.id);
+    if (!match) continue;
+    const todayEntry = stmts.getEntry.get(row.id, match.id, day);
+    if (!todayEntry) {
+      sendPushToUser(row, 'Tonight\'s prompt is waiting ✍️', `Day ${day} of 21 — your 5-minute ritual.`);
+    }
+  }
+  console.log('  ✦ 9pm: Sent prompt reminders');
+}
+
+// 10pm IST = 16:30 UTC — conditional "partner wrote" notification
+function send10pmReminders() {
+  if (!vapidKeys) return;
+  const rows = stmts.getActiveMatchUsers.all();
+  for (const row of rows) {
+    const day = getMatchDay(row.started_at);
+    if (day > 21) continue;
+    const match = stmts.getMatch.get(row.id, row.id);
+    if (!match) continue;
+    const todayEntry = stmts.getEntry.get(row.id, match.id, day);
+    if (todayEntry) continue; // already wrote
+    const partnerId = getPartnerId(match, row.id);
+    const partnerEntry = stmts.getEntry.get(partnerId, match.id, day);
+    if (partnerEntry) {
+      sendPushToUser(row, 'Your partner wrote today.', 'Don\'t leave them waiting. ✦');
+    }
+  }
+  console.log('  ✦ 10pm: Sent partner-wrote reminders');
+}
+
+// 11:30pm IST = 18:00 UTC — final seal warning
+function send1130pmReminders() {
+  if (!vapidKeys) return;
+  const rows = stmts.getActiveMatchUsers.all();
+  for (const row of rows) {
+    const day = getMatchDay(row.started_at);
+    if (day > 21) continue;
+    const match = stmts.getMatch.get(row.id, row.id);
+    if (!match) continue;
+    const todayEntry = stmts.getEntry.get(row.id, match.id, day);
+    if (!todayEntry) {
+      sendPushToUser(row, '30 minutes until today seals. 🌙', 'Write something true before midnight.');
+    }
+  }
+  console.log('  ✦ 11:30pm: Sent seal warning reminders');
+}
+
+// Midnight IST = 18:30 UTC — unseal partner entry
+function sendMidnightUnseals() {
+  if (!vapidKeys) return;
+  const rows = stmts.getActiveMatchUsers.all();
+  for (const row of rows) {
+    const day = getMatchDay(row.started_at);
+    if (day < 2 || day > 21) continue;
+    const match = stmts.getMatch.get(row.id, row.id);
+    if (!match) continue;
+    const partnerId = getPartnerId(match, row.id);
+    const prevEntry = stmts.getEntry.get(partnerId, match.id, day - 1);
+    if (prevEntry) {
+      sendPushToUser(row, 'Your partner\'s words are ready. 🌙', 'Tap to unseal their entry.');
+    }
+  }
+  // Also generate today's notes for all users
+  generateDailyNotesForAll();
+  console.log('  ✦ Midnight: Sent unseal notifications, generated notes');
+}
+
+// 8am IST = 02:30 UTC — morning note card arrived
+function send8amNotes() {
+  if (!vapidKeys) return;
+  const rows = stmts.getActiveMatchUsers.all();
+  for (const row of rows) {
+    const day = getMatchDay(row.started_at);
+    if (day > 21) continue;
+    const note = stmts.getDailyNote.get(row.id, day);
+    if (note && !note.opened_at) {
+      sendPushToUser(row, 'Your note arrived. ✦', 'A message written for you overnight.');
+    }
+  }
+  console.log('  ✦ 8am: Sent morning note notifications');
+}
+
+// Schedule all notification slots
+function scheduleNotifications() {
   const now = new Date();
-  const target = new Date(now);
-  target.setUTCHours(14, 30, 0, 0); // 8:00 PM IST
-  if (target <= now) target.setDate(target.getDate() + 1);
-  const delay = target.getTime() - now.getTime();
 
-  setTimeout(() => {
-    sendDailyReminders();
-    setInterval(sendDailyReminders, 24 * 60 * 60 * 1000);
-  }, delay);
+  const slots = [
+    { utcHour: 2, utcMin: 30, label: '8am note', fn: send8amNotes },
+    { utcHour: 15, utcMin: 30, label: '9pm prompt', fn: send9pmReminders },
+    { utcHour: 16, utcMin: 30, label: '10pm partner', fn: send10pmReminders },
+    { utcHour: 18, utcMin: 0, label: '11:30pm seal', fn: send1130pmReminders },
+    { utcHour: 18, utcMin: 30, label: 'midnight unseal', fn: sendMidnightUnseals },
+  ];
 
-  console.log(`  ? Daily push scheduled for 8:00 PM IST (in ${Math.round(delay / 60000)} min)`);
+  for (const slot of slots) {
+    const target = new Date(now);
+    target.setUTCHours(slot.utcHour, slot.utcMin, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    const delay = target.getTime() - now.getTime();
+    setTimeout(() => {
+      slot.fn();
+      setInterval(slot.fn, 24 * 60 * 60 * 1000);
+    }, delay);
+    console.log(`  ✦ ${slot.label} notifications scheduled (in ${Math.round(delay / 60000)} min)`);
+  }
 }
-scheduleDailyPush();
+scheduleNotifications();
+
+// Generate notes for current day on startup (for users who already have a match)
+setTimeout(() => {
+  try { generateDailyNotesForAll(); } catch (e) { console.error('Note generation startup error:', e); }
+}, 5000);
 
 // ---------------------------------------
 // PRIVACY & STATIC ROUTES
