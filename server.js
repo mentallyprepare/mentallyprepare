@@ -97,6 +97,7 @@ const { registerAdminRoutes } = require('./routes/admin');
 const { registerAuthRoutes } = require('./routes/auth');
 const { registerAppRoutes } = require('./routes/app');
 const registerWaitingEntryRoute = require('./routes/waiting-entry');
+const { registerTonightsQuestionRoutes } = require('./routes/tonights-question');
 const { registerPaymentRoutes } = require('./routes/payments');
 // ---------------------------------------------------------------
 const webpush = require('web-push');
@@ -249,6 +250,19 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now')),
     UNIQUE(user_id, day)
   );
+
+  CREATE TABLE IF NOT EXISTS tonights_question_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    prompt_index INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    mood TEXT DEFAULT '🌓',
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(user_id, prompt_index)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_tq_prompt ON tonights_question_entries(prompt_index);
+  CREATE INDEX IF NOT EXISTS idx_tq_user ON tonights_question_entries(user_id);
 
   CREATE TABLE IF NOT EXISTS sealed_room_picks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -581,6 +595,23 @@ const stmts = {
   getSealedPicks: db.prepare('SELECT * FROM sealed_room_picks WHERE match_id = ? ORDER BY day ASC'),
   deleteUserSealedPicks: db.prepare('DELETE FROM sealed_room_picks WHERE user_id = ?'),
   deleteMatchSealedPicks: db.prepare('DELETE FROM sealed_room_picks WHERE match_id = ?'),
+
+  // Tonight's Question
+  getTonightsEntry: db.prepare('SELECT * FROM tonights_question_entries WHERE user_id = ? AND prompt_index = ?'),
+  upsertTonightsEntry: db.prepare(`
+    INSERT INTO tonights_question_entries (user_id, prompt_index, text, mood)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id, prompt_index) DO UPDATE SET text = excluded.text, mood = excluded.mood
+  `),
+  getTonightsWhispers: db.prepare(`
+    SELECT text, mood, created_at FROM tonights_question_entries
+    WHERE prompt_index = ? AND user_id != ?
+    ORDER BY created_at DESC LIMIT 12
+  `),
+  getTonightsCount: db.prepare('SELECT COUNT(*) as c FROM tonights_question_entries WHERE prompt_index = ?'),
+  getUserTonightsCount: db.prepare('SELECT COUNT(*) as c FROM tonights_question_entries WHERE user_id = ?'),
+  getUserTonightsHistory: db.prepare('SELECT * FROM tonights_question_entries WHERE user_id = ? ORDER BY created_at DESC LIMIT 30'),
+  deleteUserTonightsEntries: db.prepare('DELETE FROM tonights_question_entries WHERE user_id = ?'),
 };
 
 // --- Helper: parse scores JSON ----------
@@ -1041,6 +1072,7 @@ const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
   stmts.deleteUserNudges.run(userId);
   try { stmts.deleteUserDailyNotes.run(userId); } catch {}
   try { stmts.deleteUserSealedPicks.run(userId); } catch {}
+  try { stmts.deleteUserTonightsEntries.run(userId); } catch {}
   stmts.deleteUser.run(userId);
 });
 
@@ -1127,6 +1159,18 @@ registerWaitingEntryRoute(app, {
   apiLimiter,
   requireAuth,
   stmts,
+  prompts,
+  scanForSafety,
+  HELPLINES
+});
+
+// Register Tonight's Question routes
+registerTonightsQuestionRoutes(app, {
+  apiLimiter,
+  requireAuth,
+  db,
+  stmts,
+  parseUser,
   prompts,
   scanForSafety,
   HELPLINES

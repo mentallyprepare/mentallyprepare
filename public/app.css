@@ -957,3 +957,109 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .partner-reveal-arch{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--rose);opacity:.65}
 .partner-reveal-lines{display:flex;flex-direction:column;gap:6px}
 .partner-reveal-line{font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.9;opacity:0;animation:lineFadeIn .6s ease forwards}
+
+/* ══════════════════════════════════════════
+   TONIGHT'S QUESTION — Waiting Room
+   ══════════════════════════════════════════ */
+
+@keyframes tqPulse{0%,100%{box-shadow:0 0 30px rgba(212,133,154,.2),0 0 60px rgba(123,94,167,.1)}50%{box-shadow:0 0 50px rgba(212,133,154,.35),0 0 90px rgba(123,94,167,.15)}}
+@keyframes whisperFade{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes counterPop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+@keyframes nightPipGlow{0%,100%{box-shadow:0 0 4px rgba(212,133,154,.3)}50%{box-shadow:0 0 10px rgba(212,133,154,.5)}}
+@keyframes tqSealRipple{0%{transform:scale(1)}50%{transform:scale(.95)}100%{transform:scale(1)}}
+
+/* ── TQ Layout ── */
+.tq-body{flex:1;display:flex;flex-direction:column;padding:0 0 0}
+
+/* ── TQ Header / Hero ── */
+.tq-hero{padding:32px 24px 0;text-align:center;display:flex;flex-direction:column;align-items:center}
+.tq-moon-wrap{position:relative;margin-bottom:24px}
+.tq-moon-ring{position:absolute;inset:-18px;border-radius:50%;border:1px solid rgba(212,133,154,.2);animation:ringExpand 3s ease-out infinite}
+.tq-moon-ring2{animation-delay:1.5s}
+.tq-moon{width:80px;height:80px;border-radius:50%;background:radial-gradient(ellipse at 35% 30%,#f0c4d4,#d4859a 50%,#9B4F66);position:relative;overflow:hidden;box-shadow:0 0 40px rgba(212,133,154,.4),0 0 80px rgba(212,133,154,.15);animation:float 5s ease-in-out infinite,tqPulse 4s ease-in-out infinite}
+.tq-moon::before{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(ellipse at 28% 28%,rgba(255,255,255,.2),transparent 55%)}
+.tq-moon::after{content:'';position:absolute;width:12%;height:12%;border-radius:50%;background:rgba(0,0,0,.15);top:42%;left:56%}
+.tq-eyebrow{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--rose);opacity:.75;margin-bottom:10px}
+.tq-greeting{font-family:'Playfair Display',serif;font-size:24px;font-weight:400;line-height:1.2;margin-bottom:6px}
+.tq-greeting em{font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tq-sub{font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.75;max-width:300px;margin:0 auto}
+
+/* ── Night Streak ── */
+.tq-streak{padding:20px 24px 0}
+.tq-streak-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.tq-streak-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-s)}
+.tq-streak-ct{font-family:'Playfair Display',serif;font-size:13px;color:var(--rose-l)}
+.tq-pips{display:flex;gap:4px}
+.tq-pip{flex:1;height:4px;border-radius:100px;background:rgba(248,242,255,.06);max-width:24px}
+.tq-pip.done{background:linear-gradient(90deg,var(--rose-d),var(--purple))}
+.tq-pip.now{background:rgba(212,133,154,.18);border:1px solid rgba(212,133,154,.35);animation:nightPipGlow 2s ease-in-out infinite}
+
+/* ── Writers Counter ── */
+.tq-counter{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;margin:16px 24px 0;border-radius:100px;background:rgba(212,133,154,.05);border:1px solid rgba(212,133,154,.12);animation:counterPop .5s ease .2s both}
+.tq-counter-dot{width:6px;height:6px;border-radius:50%;background:var(--rose);animation:breathe 2s ease-in-out infinite}
+.tq-counter-text{font-size:11px;color:var(--ink-m);font-family:'Lora',serif;font-style:italic}
+.tq-counter-num{font-family:'Playfair Display',serif;font-size:13px;color:var(--rose-l);font-style:normal}
+
+/* ── Prompt Card ── */
+.tq-prompt-block{padding:20px 24px 0}
+.tq-prompt-card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px 20px;position:relative;overflow:hidden}
+.tq-prompt-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.3),transparent)}
+.tq-prompt-ey{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.tq-prompt-ey::before{content:'✦';font-size:8px}
+.tq-prompt-text{font-family:'Playfair Display',serif;font-size:19px;font-style:italic;color:var(--ink);line-height:1.45}
+
+/* ── TQ Mood Picker ── */
+.tq-mood-block{padding:16px 24px 0}
+
+/* ── TQ Writing Area ── */
+.tq-write-block{padding:16px 24px 0;flex:1;display:flex;flex-direction:column}
+.tq-write-box{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.tq-write-box::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(248,242,255,.05),transparent)}
+.tq-write-date{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-s);margin-bottom:14px}
+.tq-write-ft{display:flex;justify-content:flex-end;padding-top:10px;border-top:1px solid var(--line);margin-top:10px}
+
+/* ── Seal Button ── */
+.tq-cta-block{padding:16px 24px 8px}
+.tq-seal-btn{width:100%;background:linear-gradient(135deg,var(--rose-d),var(--purple));color:#fff;padding:16px;border-radius:100px;font-size:13px;letter-spacing:.05em;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:0 8px 32px rgba(155,79,102,.4);display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,box-shadow .3s}
+.tq-seal-btn:active{transform:scale(.97);animation:tqSealRipple .3s ease}
+.tq-seal-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ── Whispers Section ── */
+.tq-whispers{padding:20px 24px 0}
+.tq-whispers-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.tq-whispers-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-s)}
+.tq-whispers-toggle{background:none;border:1px solid var(--line);color:var(--ink-s);padding:5px 12px;border-radius:100px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;letter-spacing:.04em}
+.tq-whispers-toggle:hover{border-color:rgba(212,133,154,.2);color:var(--ink-m)}
+.tq-whisper-list{display:flex;flex-direction:column;gap:10px}
+.tq-whisper-card{background:rgba(14,10,24,.8);border:1px solid rgba(248,242,255,.05);border-radius:18px;padding:16px 18px;position:relative;overflow:hidden;animation:whisperFade .5s ease both}
+.tq-whisper-card:nth-child(1){animation-delay:0s}
+.tq-whisper-card:nth-child(2){animation-delay:.1s}
+.tq-whisper-card:nth-child(3){animation-delay:.2s}
+.tq-whisper-card:nth-child(4){animation-delay:.3s}
+.tq-whisper-card:nth-child(5){animation-delay:.4s}
+.tq-whisper-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.1),transparent)}
+.tq-whisper-mood{font-size:16px;margin-bottom:8px}
+.tq-whisper-text{font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.8;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tq-whisper-card.expanded .tq-whisper-text{-webkit-line-clamp:unset;line-clamp:unset}
+.tq-whisper-time{font-size:9px;color:var(--ink-s);margin-top:8px;letter-spacing:.06em}
+.tq-whisper-empty{text-align:center;padding:24px 16px;font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-s);line-height:1.7}
+
+/* ── TQ Sealed State ── */
+.tq-sealed-hero{padding:32px 24px 0;text-align:center;display:flex;flex-direction:column;align-items:center}
+.tq-sealed-badge{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.75;margin-bottom:12px}
+.tq-sealed-h{font-family:'Playfair Display',serif;font-size:26px;font-style:italic;line-height:1.2;margin-bottom:10px}
+.tq-sealed-h em{background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tq-sealed-p{font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.85;max-width:280px;margin:0 auto}
+.tq-sealed-entry-card{margin:20px 24px 0;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;position:relative;overflow:hidden}
+.tq-sealed-entry-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.2),transparent)}
+
+/* ── Match Found Celebration ── */
+.tq-match-found{padding:28px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;animation:fadeUp .6s ease both}
+.tq-match-found-h{font-family:'Playfair Display',serif;font-size:28px;font-style:italic;line-height:1.2;margin-bottom:10px}
+.tq-match-found-h em{background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* ── TQ Tabs (for waiting users) ── */
+.tq-waiting-info{margin:16px 24px 0;padding:14px 16px;background:rgba(201,169,110,.05);border:1px solid rgba(201,169,110,.12);border-radius:16px;display:flex;align-items:center;gap:10px}
+.tq-waiting-ico{font-size:18px;flex-shrink:0;animation:float 4s ease-in-out infinite}
+.tq-waiting-text{font-size:12px;color:var(--ink-m);line-height:1.6;font-family:'Lora',serif;font-style:italic}
+.tq-waiting-text strong{font-weight:400;color:var(--gold-l);font-style:normal}

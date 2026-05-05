@@ -526,7 +526,7 @@ function renderResult(matched) {
 
   const actionBtn = matched
     ? `<button class="btn" onclick="goToJournal()" style="margin-bottom:10px;">✍️ Start writing — Day 1</button>`
-    : `<button class="btn" onclick="renderWaiting();go('s-waiting')" style="margin-bottom:10px;">🔍 Find my match</button>`;
+    : `<button class="btn" onclick="renderWaiting();go('s-waiting')" style="margin-bottom:10px;">✍️ Write your first entry</button>`;
 
   document.getElementById('s-result').innerHTML = `
     <div class="result-tag">Your Connection Profile</div>
@@ -558,62 +558,278 @@ function renderResult(matched) {
 }
 
 // ═══════════════════════════════════════
-// WAITING FOR MATCH
+// TONIGHT'S QUESTION (Waiting Room)
 // ═══════════════════════════════════════
+let tqData = null;
+let tqMood = '🌓';
+
+async function loadTonightsQuestion() {
+  try {
+    tqData = await api('GET', '/tonights-question');
+    return tqData;
+  } catch { tqData = null; return null; }
+}
+
 function renderWaiting() {
+  // Load Tonight's Question data, then render
+  loadTonightsQuestion().then(function(data) {
+    if (!data || data.matched) {
+      // User got matched while loading
+      if (state && state.match) { renderJournal(); go('s-journal'); return; }
+    }
+    renderTonightsQuestion(data);
+  });
+}
+
+function renderTonightsQuestion(data) {
+  if (!state || !state.user || !state.user.archetype) return;
   const arch = archetypes[state.user.archetype];
-  const waitingInfo = state.waitingInfo || {};
-  const day1Prompt = waitingInfo.day1Prompt || (prompts && prompts[0]) || 'Write about your day.';
-  const draft = sessionStorage.getItem('mp-wait-draft') || waitingInfo.savedEntry || '';
+  const d = data || {};
+  const prompt = d.prompt || prompts[0];
+  const hasWritten = !!d.myEntry;
+  const nightsWritten = d.nightsWritten || 0;
+  const writerCount = d.writerCount || 0;
+  const whispers = d.whispers || [];
+  const draft = hasWritten ? d.myEntry.text : (sessionStorage.getItem('mp-tq-draft') || '');
+
+  if (hasWritten) {
+    renderTQSealed(d);
+    return;
+  }
+
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const today = new Date();
+
+  // Night pips (show up to 10)
+  const pipCount = Math.min(nightsWritten + 1, 10);
+  let pipsHTML = '';
+  for (let i = 0; i < pipCount; i++) {
+    if (i < nightsWritten) pipsHTML += '<div class="tq-pip done"></div>';
+    else pipsHTML += '<div class="tq-pip now"></div>';
+  }
+
   document.getElementById('s-waiting').innerHTML = `
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
-      <div style="position:relative;margin-bottom:28px;">
-        <div style="position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(201,169,110,.25);animation:ringExpand 3s ease-out infinite;"></div>
-        <div style="position:absolute;inset:-20px;border-radius:50%;border:1px solid rgba(201,169,110,.25);animation:ringExpand 3s ease-out infinite;animation-delay:1.5s;"></div>
-        <div class="moon-base" style="width:88px;height:88px;box-shadow:0 0 50px rgba(201,169,110,.55),0 0 100px rgba(201,169,110,.2);animation:float 5s ease-in-out infinite;"></div>
+    <div class="tq-body">
+      <div class="nav"><div class="nav-logo"><div class="site-nav-orb" style="width:20px;height:20px;"></div>mentally prepare</div><div class="day-pill">Night ${nightsWritten + 1}</div></div>
+      <div class="tq-hero">
+        <div class="tq-moon-wrap">
+          <div class="tq-moon-ring"></div>
+          <div class="tq-moon-ring tq-moon-ring2"></div>
+          <div class="tq-moon"></div>
+        </div>
+        <div class="tq-eyebrow">Tonight's question</div>
+        <div class="tq-greeting">${getGreeting(state.user.name)}</div>
+        <div class="tq-sub">Write something honest tonight. See what strangers wrote. Your match is on the way.</div>
       </div>
-      <div style="font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.75;margin-bottom:12px;">Waiting for your match</div>
-      <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;line-height:1.2;margin-bottom:14px;"><em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Your archetype: ${arch.emoji} ${arch.name}</em></h2>
-      <div style="font-size:15px;color:var(--ink-m);margin-bottom:18px;">Your match is on their way — usually within 24 hours.</div>
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px;width:100%;max-width:520px;margin:0 auto 18px auto;text-align:left;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;">
-        <div style="font-size:13px;color:var(--ink);margin-bottom:8px;width:100%;max-width:100%;text-align:left;"><b>Day 1 Prompt:</b></div>
-        <div style="font-size:15px;font-style:italic;color:var(--ink-m);margin-bottom:12px;width:100%;max-width:100%;text-align:left;">${escapeHtml(day1Prompt)}</div>
-        <textarea id="wait-draft" placeholder="Start writing while you wait…" style="width:100%;min-width:0;max-width:100%;min-height:90px;border-radius:8px;border:1px solid var(--line);padding:10px;font-size:14px;box-sizing:border-box;margin-bottom:8px;">${escapeHtml(draft)}</textarea>
-        <button class="btn" id="saveWaitEntryBtn" style="margin-top:10px;width:100%;max-width:100%;">Save Day 1 Entry</button>
-        <div id="wait-entry-status" style="font-size:12px;color:var(--ink-s);margin-top:8px;width:100%;max-width:100%;text-align:center;"></div>
+
+      ${writerCount > 0 ? `<div class="tq-counter"><div class="tq-counter-dot"></div><div class="tq-counter-text"><span class="tq-counter-num">${writerCount}</span> ${writerCount === 1 ? 'person' : 'people'} wrote tonight</div></div>` : ''}
+
+      <div class="tq-streak">
+        <div class="tq-streak-top"><div class="tq-streak-lbl">Your nights</div><div class="tq-streak-ct">✦ ${nightsWritten} written</div></div>
+        <div class="tq-pips">${pipsHTML}</div>
       </div>
-      <div style="font-size:12px;color:var(--ink-s);margin-bottom:10px;">You'll be emailed as soon as your match arrives.</div>
+
+      <div class="tq-prompt-block">
+        <div class="tq-prompt-card">
+          <div class="tq-prompt-ey">Tonight's question</div>
+          <div class="tq-prompt-text">${escapeHtml(prompt)}</div>
+        </div>
+      </div>
+
+      <div class="tq-mood-block">
+        <div class="mood-lbl">How are you tonight?</div>
+        <div class="moods">
+          ${['🌑|Heavy','🌒|Quiet','🌓|Okay','🌔|Lighter','🌕|Good'].map(function(m) {
+            var parts = m.split('|');
+            return '<button class="mood ' + (tqMood === parts[0] ? 'on' : '') + '" type="button" data-tq-mood="' + parts[0] + '" aria-pressed="' + (tqMood === parts[0] ? 'true' : 'false') + '"><div class="mood-em">' + parts[0] + '</div><div class="mood-w">' + parts[1] + '</div></button>';
+          }).join('')}
+        </div>
+      </div>
+
+      <div class="writing-tip"><div class="writing-tip-ico">💡</div><div class="writing-tip-text">${getWritingTip(nightsWritten + 1)}</div></div>
+
+      <div class="tq-write-block">
+        <div class="tq-write-box">
+          <div class="tq-write-date">${dayNames[today.getDay()]}, ${today.getDate()} ${monthNames[today.getMonth()]} · Night ${nightsWritten + 1}</div>
+          <textarea id="tq-draft" placeholder="Start writing…">${escapeHtml(draft)}</textarea>
+          <div class="tq-write-ft"><div class="ww" id="tq-ww">${wordCount(draft)} words</div></div>
+        </div>
+      </div>
+
+      <div class="tq-cta-block">
+        <button class="tq-seal-btn" id="tqSealBtn" type="button">🌙 Seal tonight's entry</button>
+        <button class="btn-ghost" id="tqSaveDraftBtn" type="button" style="margin-top:8px;">Save draft</button>
+      </div>
+
+      <div class="tq-waiting-info">
+        <div class="tq-waiting-ico">🔍</div>
+        <div class="tq-waiting-text">Looking for your <strong>${arch.matchName}</strong> match. While you wait, your writing joins the community.</div>
+      </div>
+
+      ${whispers.length > 0 ? renderWhispers(whispers) : ''}
+
+      <div style="height:20px;"></div>
+      ${renderTQTabs('tonight')}
     </div>`;
 
-  document.getElementById('wait-draft').addEventListener('input', function(e) {
-    sessionStorage.setItem('mp-wait-draft', e.target.value);
-  });
-  document.getElementById('saveWaitEntryBtn').addEventListener('click', async function() {
-    const text = document.getElementById('wait-draft').value.trim();
-    if (!text) { document.getElementById('wait-entry-status').textContent = 'Please write something first.'; return; }
-    try {
-      const result = await api('POST', '/waiting-entry', { text });
-      document.getElementById('wait-entry-status').textContent = 'Saved! Your Day 1 entry is ready for your match.';
-      if (state && state.waitingInfo) state.waitingInfo.savedEntry = text;
-      sessionStorage.removeItem('mp-wait-draft');
-      if (result.safety && result.safety.crisis) showSafety();
-      if (result.safety && result.safety.pii) {
-        document.getElementById('wait-entry-status').textContent = 'Saved. Avoid sharing contact details so the match stays anonymous.';
-      }
-    } catch (e) {
-      document.getElementById('wait-entry-status').textContent = e.message || 'Error saving entry.';
-    }
+  // Event listeners
+  document.querySelectorAll('#s-waiting [data-tq-mood]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      tqMood = btn.getAttribute('data-tq-mood');
+      btn.closest('.moods').querySelectorAll('.mood').forEach(function(x) {
+        x.classList.remove('on'); x.setAttribute('aria-pressed', 'false');
+      });
+      btn.classList.add('on'); btn.setAttribute('aria-pressed', 'true');
+    });
   });
 
+  var tqDraft = document.getElementById('tq-draft');
+  if (tqDraft) {
+    tqDraft.addEventListener('input', function() {
+      sessionStorage.setItem('mp-tq-draft', tqDraft.value);
+      var n = tqDraft.value.trim().split(/\s+/).filter(Boolean).length;
+      document.getElementById('tq-ww').textContent = n + ' word' + (n !== 1 ? 's' : '');
+    });
+  }
+
+  var sealBtn = document.getElementById('tqSealBtn');
+  if (sealBtn) sealBtn.addEventListener('click', sealTonightsEntry);
+
+  var saveDraftBtn = document.getElementById('tqSaveDraftBtn');
+  if (saveDraftBtn) saveDraftBtn.addEventListener('click', function() {
+    var area = document.getElementById('tq-draft');
+    if (area) sessionStorage.setItem('mp-tq-draft', area.value);
+    toast('Draft saved ✓');
+  });
+
+  // Poll for match
   clearInterval(matchPollTimer);
-  matchPollTimer = setInterval(async () => {
-    const ok = await loadState();
+  matchPollTimer = setInterval(async function() {
+    var ok = await loadState();
     if (ok && state.match) {
       clearInterval(matchPollTimer);
+      spawnParticles();
       toast('Match found! 🌙');
-      renderJournal(); go('s-journal');
+      setTimeout(function() { renderJournal(); go('s-journal'); }, 600);
     }
   }, 15000);
+}
+
+function renderWhispers(whispers) {
+  if (!whispers || !whispers.length) return '';
+  var showCount = Math.min(whispers.length, 5);
+  var cards = whispers.slice(0, showCount).map(function(w) {
+    var timeAgo = getTimeAgo(w.created_at);
+    return `<div class="tq-whisper-card" onclick="this.classList.toggle('expanded')">
+      <div class="tq-whisper-mood">${w.mood || '🌓'}</div>
+      <div class="tq-whisper-text">${escapeHtml(w.text)}</div>
+      <div class="tq-whisper-time">${timeAgo}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="tq-whispers">
+    <div class="tq-whispers-header">
+      <div class="tq-whispers-lbl">Community whispers</div>
+    </div>
+    <div class="tq-whisper-list">${cards}</div>
+  </div>`;
+}
+
+function getTimeAgo(dateStr) {
+  if (!dateStr) return '';
+  var diff = Date.now() - new Date(dateStr + 'Z').getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return mins + 'm ago';
+  var hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + 'h ago';
+  return Math.floor(hours / 24) + 'd ago';
+}
+
+async function sealTonightsEntry() {
+  var area = document.getElementById('tq-draft');
+  var text = area ? area.value.trim() : '';
+  if (!text) { toast('Write something before sealing ✍️'); return; }
+
+  try {
+    var result = await api('POST', '/tonights-question', { text: text, mood: tqMood });
+    sessionStorage.removeItem('mp-tq-draft');
+
+    if (result.safety && result.safety.crisis) showSafety();
+    if (result.safety && result.safety.pii) {
+      toast('Tip: Avoid sharing personal contact info — anonymity keeps you safe 🔒');
+    }
+
+    // Reload and show sealed state
+    await loadTonightsQuestion();
+    renderTQSealed(tqData);
+    toast('Entry sealed ✦');
+  } catch (e) { toast(e.message); }
+}
+
+function renderTQSealed(data) {
+  if (!state || !state.user) return;
+  var d = data || {};
+  var myEntry = d.myEntry || {};
+  var whispers = d.whispers || [];
+  var nightsWritten = d.nightsWritten || 0;
+  var writerCount = d.writerCount || 0;
+  var arch = archetypes[state.user.archetype];
+
+  document.getElementById('s-waiting').innerHTML = `
+    <div class="tq-body">
+      <div class="nav"><div class="nav-logo"><div class="site-nav-orb" style="width:20px;height:20px;"></div>mentally prepare</div><div class="day-pill">Night ${nightsWritten}</div></div>
+      <div class="tq-sealed-hero">
+        <div class="tq-moon-wrap">
+          <div class="tq-moon-ring"></div>
+          <div class="tq-moon-ring tq-moon-ring2"></div>
+          <div class="tq-moon"></div>
+        </div>
+        <div class="tq-sealed-badge">Entry sealed ✦</div>
+        <h2 class="tq-sealed-h">Written.<br/><em>Shared with strangers.</em></h2>
+        <div class="tq-sealed-p">Your words joined tonight's community. Come back tomorrow for a new question.</div>
+      </div>
+
+      ${writerCount > 0 ? `<div class="tq-counter"><div class="tq-counter-dot"></div><div class="tq-counter-text"><span class="tq-counter-num">${writerCount}</span> ${writerCount === 1 ? 'person' : 'people'} wrote tonight</div></div>` : ''}
+
+      <div class="tq-sealed-entry-card">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-s);">Your entry · ${myEntry.mood || '🌓'}</div><div style="font-size:9px;color:var(--rose-l);">✦ sealed</div></div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.8;">${escapeHtml(myEntry.text || '')}</div>
+      </div>
+
+      <div class="tq-waiting-info">
+        <div class="tq-waiting-ico">🔍</div>
+        <div class="tq-waiting-text">Still looking for your <strong>${arch ? arch.matchName : 'partner'}</strong>. You'll be notified when your match arrives.</div>
+      </div>
+
+      ${whispers.length > 0 ? renderWhispers(whispers) : `<div class="tq-whispers"><div class="tq-whispers-header"><div class="tq-whispers-lbl">Community whispers</div></div><div class="tq-whisper-empty">You're the first to write tonight.<br/>Others will appear as they join.</div></div>`}
+
+      <div style="height:20px;"></div>
+      ${renderTQTabs('tonight')}
+    </div>`;
+
+  // Continue polling for match
+  clearInterval(matchPollTimer);
+  matchPollTimer = setInterval(async function() {
+    var ok = await loadState();
+    if (ok && state.match) {
+      clearInterval(matchPollTimer);
+      spawnParticles();
+      toast('Match found! 🌙');
+      setTimeout(function() { renderJournal(); go('s-journal'); }, 600);
+    }
+  }, 15000);
+}
+
+function renderTQTabs(active) {
+  var tabs = [
+    { id:'tonight', ico:'✍️', lbl:'Tonight', fn:'renderWaiting();go(\'s-waiting\')' },
+    { id:'profile', ico:'🌑', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' }
+  ];
+  return '<div class="tabs">' + tabs.map(function(t) {
+    return '<button class="tab' + (t.id === active ? ' on' : '') + '" type="button" onclick="' + t.fn + '" aria-pressed="' + (t.id === active ? 'true' : 'false') + '"><div class="tab-ico">' + t.ico + '</div><div class="tab-lbl">' + t.lbl + '</div></button>';
+  }).join('') + '</div>';
 }
 
 async function devSetup() {
@@ -1326,6 +1542,8 @@ function renderAbout() {
 // UTILITIES
 // ═══════════════════════════════════════
 function renderTabs(active) {
+  // Use different tabs for waiting vs matched users
+  if (!state || !state.match) return renderTQTabs(active);
   const tabs = [
     { id:'tonight', ico:'✍️', lbl:'Tonight', fn:'goToJournal()' },
     { id:'entries', ico:'🌙', lbl:'Entries', fn:'renderPast();go(\'s-past\')' },
@@ -1348,6 +1566,24 @@ function getGreeting(name) {
 }
 
 function getWritingTip(day) { return writingTips[((day || 1) + new Date().getDate()) % writingTips.length]; }
+
+function spawnParticles() {
+  var overlay = document.createElement('div');
+  overlay.className = 'celebrate-overlay';
+  var colors = ['var(--rose)','var(--gold)','var(--purple-l)','var(--cyan)','#fff'];
+  for (var i = 0; i < 30; i++) {
+    var p = document.createElement('div');
+    p.className = 'confetti';
+    p.style.left = (30 + Math.random() * 40) + '%';
+    p.style.top = (20 + Math.random() * 30) + '%';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDelay = (Math.random() * 0.6) + 's';
+    p.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+    overlay.appendChild(p);
+  }
+  document.body.appendChild(overlay);
+  setTimeout(function() { overlay.remove(); }, 3000);
+}
 
 function getStreakNudge(streak) {
   const nudges = {
