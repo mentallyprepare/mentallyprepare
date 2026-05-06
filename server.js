@@ -16,12 +16,71 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const path = require('path');
 const fs = require('fs');
+const util = require('util');
 const IS_PROD = process.env.NODE_ENV === 'production';
 const FALLBACK_DATA_DIR = IS_PROD ? '/tmp/mentally-prepare-data' : __dirname;
 const requestedDataDir = process.env.DATA_DIR
   || process.env.RAILWAY_VOLUME_MOUNT_PATH
   || (IS_PROD ? '/data/db' : __dirname);
 const Database = require('better-sqlite3');
+
+const MAX_BUFFERED_LOGS = Math.max(100, Number(process.env.ADMIN_LOG_BUFFER_SIZE) || 800);
+const runtimeLogBuffer = [];
+let nextRuntimeLogId = 1;
+
+function normalizeLogArg(arg) {
+  if (arg instanceof Error) return arg.stack || arg.message;
+  return arg;
+}
+
+function recordRuntimeLog(level, args) {
+  try {
+    runtimeLogBuffer.push({
+      id: nextRuntimeLogId++,
+      level,
+      timestamp: new Date().toISOString(),
+      message: util.format(...args.map(normalizeLogArg))
+    });
+    if (runtimeLogBuffer.length > MAX_BUFFERED_LOGS) {
+      runtimeLogBuffer.splice(0, runtimeLogBuffer.length - MAX_BUFFERED_LOGS);
+    }
+  } catch {}
+}
+
+const originalConsole = {
+  log: console.log.bind(console),
+  info: console.info.bind(console),
+  warn: console.warn.bind(console),
+  error: console.error.bind(console)
+};
+
+['log', 'info', 'warn', 'error'].forEach((level) => {
+  console[level] = (...args) => {
+    recordRuntimeLog(level, args);
+    return originalConsole[level](...args);
+  };
+});
+
+function getBufferedLogs({ search = '', level = 'all', sinceMinutes = 0, limit = 200 } = {}) {
+  const normalizedSearch = String(search || '').trim().toLowerCase();
+  const normalizedLevel = String(level || 'all').trim().toLowerCase();
+  const cappedLimit = Math.min(Math.max(Number(limit) || 200, 1), 500);
+  const since = Math.max(Number(sinceMinutes) || 0, 0);
+  const minTimestamp = since > 0 ? Date.now() - (since * 60 * 1000) : 0;
+
+  const filteredEntries = runtimeLogBuffer.filter((entry) => {
+    if (normalizedLevel !== 'all' && entry.level !== normalizedLevel) return false;
+    if (minTimestamp && new Date(entry.timestamp).getTime() < minTimestamp) return false;
+    if (normalizedSearch && !entry.message.toLowerCase().includes(normalizedSearch)) return false;
+    return true;
+  });
+
+  return {
+    total: runtimeLogBuffer.length,
+    count: Math.min(filteredEntries.length, cappedLimit),
+    entries: filteredEntries.slice(-cappedLimit).reverse()
+  };
+}
 
 function getDataDirCandidates(preferredDir) {
   return [preferredDir, FALLBACK_DATA_DIR, __dirname]
@@ -99,6 +158,7 @@ const { registerAppRoutes } = require('./routes/app');
 const registerWaitingEntryRoute = require('./routes/waiting-entry');
 const { registerTonightsQuestionRoutes } = require('./routes/tonights-question');
 const { registerPaymentRoutes } = require('./routes/payments');
+const { registerSilentRoutes, registerSilentAdminRoutes } = require('./routes/silent');
 // ---------------------------------------------------------------
 const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
@@ -304,6 +364,28 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   CREATE INDEX IF NOT EXISTS idx_users_archetype ON users(archetype);
   CREATE INDEX IF NOT EXISTS idx_waitlist_created_at ON waitlist(created_at);
+
+  CREATE TABLE IF NOT EXISTS silent_lines (
+    id              TEXT PRIMARY KEY,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content         TEXT NOT NULL CHECK (length(content) <= 200),
+    status          TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending', 'approved', 'rejected', 'deleted')),
+    moderation_flag TEXT,
+    created_at      DATETIME NOT NULL DEFAULT (datetime('now')),
+    approved_at     DATETIME,
+    expires_at      DATETIME NOT NULL,
+    deleted_at      DATETIME
+  );
+  CREATE INDEX IF NOT EXISTS idx_silent_status_expires ON silent_lines(status, expires_at);
+  CREATE INDEX IF NOT EXISTS idx_silent_user_created   ON silent_lines(user_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS crisis_review (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content    TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 function ensureColumn(tableName, columnName, definition) {
@@ -1176,6 +1258,19 @@ registerTonightsQuestionRoutes(app, {
   HELPLINES
 });
 
+// ─── Silent Room Routes ───────────────────────────────────────
+registerSilentRoutes(app, {
+  apiLimiter,
+  requireAuth,
+  db,
+  scanForSafety,
+  HELPLINES
+});
+registerSilentAdminRoutes(app, {
+  requireAdmin,
+  db
+});
+
 // ─── Daily Note Generation ───────────────────────────────────
 const { getNote } = require('./lib/note-library');
 
@@ -1565,6 +1660,7 @@ registerAdminRoutes(app, {
   db,
   stmts,
   requireAdmin,
+  getBufferedLogs,
   getAdminStats,
   getMatchDay,
   attachWaitingEntriesToMatch,
@@ -1592,6 +1688,29 @@ registerStaticRoutes(app, {
 app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', 'app.html'));
 });
+
+// Silent Room: hard-delete expired lines daily at 3am IST (21:30 UTC)
+(function scheduleSilentCleanup() {
+  const now = new Date();
+  const target = new Date(now);
+  target.setUTCHours(21, 30, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  setTimeout(() => {
+    function doCleanup() {
+      try {
+        const r = db.prepare(`
+          DELETE FROM silent_lines
+          WHERE expires_at < datetime('now')
+             OR (deleted_at IS NOT NULL AND deleted_at < datetime('now', '-1 day'))
+        `).run();
+        if (r.changes) console.log(`  ✦ Silent Room: deleted ${r.changes} expired lines`);
+      } catch (e) { console.error('Silent cleanup error:', e); }
+    }
+    doCleanup();
+    setInterval(doCleanup, 24 * 60 * 60 * 1000);
+  }, target.getTime() - now.getTime());
+  console.log(`  ✦ Silent Room cleanup scheduled (3am IST daily)`);
+})();
 
 // ---------------------------------------
 // GRACEFUL SHUTDOWN

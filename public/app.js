@@ -825,6 +825,7 @@ function renderTQSealed(data) {
 function renderTQTabs(active) {
   var tabs = [
     { id:'tonight', ico:'✍️', lbl:'Tonight', fn:'renderWaiting();go(\'s-waiting\')' },
+    { id:'silent',  ico:'✦',  lbl:'Room',    fn:'showSilentFeed()' },
     { id:'profile', ico:'🌑', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' }
   ];
   return '<div class="tabs">' + tabs.map(function(t) {
@@ -1547,8 +1548,9 @@ function renderTabs(active) {
   const tabs = [
     { id:'tonight', ico:'✍️', lbl:'Tonight', fn:'goToJournal()' },
     { id:'entries', ico:'🌙', lbl:'Entries', fn:'renderPast();go(\'s-past\')' },
-    { id:'profile', ico:'🌑', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' },
+    { id:'silent',  ico:'✦',  lbl:'Room',    fn:'showSilentFeed()' },
     { id:'partner', ico:'🔒', lbl:'Partner', fn:'renderSealed();go(\'s-sealed\')' },
+    { id:'profile', ico:'🌑', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' },
   ];
   return `<div class="tabs">${tabs.map(t =>
     `<button class="tab${t.id===active?' on':''}" type="button" onclick="${t.fn}" aria-pressed="${t.id===active?'true':'false'}"><div class="tab-ico">${t.ico}</div><div class="tab-lbl">${t.lbl}</div></button>`
@@ -2358,6 +2360,256 @@ function revealPartnerEntry() {
   }, 800);
 }
 
+
+// ═══════════════════════════════════════
+// SILENT ROOM
+// ═══════════════════════════════════════
+var silentCursor = null;
+var silentExhausted = false;
+var silentLoading = false;
+var silentPostsToday = 0;
+
+async function showSilentFeed() {
+  silentCursor = null;
+  silentExhausted = false;
+  silentLoading = false;
+
+  document.getElementById('s-silent-feed').innerHTML = `
+    <div class="silent-header">
+      <div class="silent-logo">Silent Room</div>
+      <button class="silent-write-link" id="silentWriteBtn" onclick="showSilentWrite()">Write a line ✦</button>
+    </div>
+    <div class="silent-instruction">One line. No replies. No reactions. Just witnessed.</div>
+    <div class="silent-feed-list" id="silentFeedList">
+      <div class="silent-spinner">· · ·</div>
+    </div>
+    <div id="silentLoadMoreWrap" style="display:none;text-align:center;padding:28px 0 12px">
+      <button class="silent-load-more-btn" onclick="loadMoreSilentFeed()">Load more</button>
+    </div>
+    <div class="silent-mine-link-row">
+      <button class="silent-ghost-link" onclick="showSilentMine()">Your lines →</button>
+    </div>
+    ${renderTabs('silent')}
+  `;
+  go('s-silent-feed');
+
+  // Load rate limit state from mine endpoint
+  try {
+    var mineData = await api('GET', '/silent/mine');
+    var today = new Date().toISOString().slice(0, 10);
+    silentPostsToday = (mineData.lines || []).filter(function(l) {
+      return (l.created_at || '').slice(0, 10) === today;
+    }).length;
+    var btn = document.getElementById('silentWriteBtn');
+    if (btn && silentPostsToday >= 3) {
+      btn.textContent = 'Come back tomorrow';
+      btn.disabled = true;
+      btn.style.opacity = '0.35';
+      btn.style.cursor = 'default';
+    }
+  } catch (e) {}
+
+  loadSilentFeed(true);
+}
+
+async function loadSilentFeed(reset) {
+  if (silentLoading || silentExhausted) return;
+  silentLoading = true;
+  try {
+    var url = '/silent/feed?limit=20';
+    if (!reset && silentCursor) url += '&cursor=' + encodeURIComponent(silentCursor);
+    var data = await api('GET', url);
+    var list = document.getElementById('silentFeedList');
+    if (!list) return;
+
+    if (reset) list.innerHTML = '';
+
+    var lines = data.lines || [];
+    if (lines.length === 0 && reset) {
+      silentExhausted = true;
+      list.innerHTML = '<div class="silent-empty">The room is quiet tonight.<br><em>Be the first.</em></div>';
+      return;
+    }
+
+    lines.forEach(function(line, i) {
+      var block = document.createElement('div');
+      block.className = 'silent-line-block';
+      block.style.animationDelay = (i * 0.07) + 's';
+      block.innerHTML = '<p class="silent-line-text">' + escapeHtml(line.content) + '</p>';
+      list.appendChild(block);
+    });
+
+    silentCursor = data.next_cursor || null;
+    silentExhausted = !data.next_cursor;
+
+    var loadWrap = document.getElementById('silentLoadMoreWrap');
+    if (loadWrap) loadWrap.style.display = silentExhausted ? 'none' : 'block';
+
+    if (lines.length > 0 && silentExhausted) {
+      var end = document.createElement('div');
+      end.className = 'silent-end-msg';
+      end.textContent = 'You have read everything in the room tonight. Come back when more arrive.';
+      list.appendChild(end);
+    }
+  } catch (e) {
+    var list = document.getElementById('silentFeedList');
+    if (list) list.innerHTML = '<div class="silent-empty">Couldn\'t load the room. Try again.</div>';
+  } finally {
+    silentLoading = false;
+  }
+}
+
+function loadMoreSilentFeed() {
+  loadSilentFeed(false);
+}
+
+function showSilentWrite() {
+  document.getElementById('s-silent-write').innerHTML = `
+    <div class="silent-write-wrap">
+      <div class="silent-header">
+        <button class="silent-back-btn" onclick="showSilentFeed()">←</button>
+        <div class="silent-logo">Silent Room</div>
+        <div style="width:40px"></div>
+      </div>
+      <div class="silent-write-instruction">One line. No replies. No reactions. Just witnessed.</div>
+      <div class="silent-compose-area">
+        <textarea
+          class="silent-textarea"
+          id="silentTextarea"
+          maxlength="200"
+          placeholder="What are you carrying tonight?"
+          oninput="updateSilentCounter()"
+          autofocus
+        ></textarea>
+        <div class="silent-counter-row">
+          <span class="silent-counter" id="silentCounter">0 / 200</span>
+        </div>
+      </div>
+      <div class="silent-release-wrap">
+        <button class="silent-release-btn" id="silentReleaseBtn" onclick="submitSilentLine()">Release</button>
+        <div class="silent-vanish-note">Disappears in 7 days.</div>
+      </div>
+      <div class="silent-crisis-link">
+        <a href="#" onclick="showSafety();return false;">Need help? Crisis resources →</a>
+      </div>
+    </div>
+  `;
+  go('s-silent-write');
+}
+
+function updateSilentCounter() {
+  var ta = document.getElementById('silentTextarea');
+  var ct = document.getElementById('silentCounter');
+  if (!ta || !ct) return;
+  var len = ta.value.length;
+  ct.textContent = len + ' / 200';
+  ct.style.color = len > 180 ? 'var(--rose)' : 'var(--ink-s)';
+}
+
+async function submitSilentLine() {
+  var ta = document.getElementById('silentTextarea');
+  var btn = document.getElementById('silentReleaseBtn');
+  if (!ta || !btn) return;
+
+  var content = ta.value.trim();
+  if (!content) { toast('Write something first.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  try {
+    var result = await api('POST', '/silent', { content: content });
+
+    if (result.status === 'crisis_intercepted') {
+      // Show safety overlay with extra message
+      document.getElementById('s-silent-write').innerHTML += `
+        <div class="silent-crisis-overlay" id="silentCrisisOverlay">
+          <div class="silent-crisis-card">
+            <div class="silent-crisis-ico">💚</div>
+            <p class="silent-crisis-msg">${escapeHtml(result.message)}</p>
+            <button class="btn" onclick="document.getElementById('silentCrisisOverlay').remove();showSilentFeed()">I'm okay, return to room</button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (result.status === 'approved') {
+      toast('Released. ✦');
+    } else {
+      toast('Shared — being reviewed before it goes live.');
+    }
+    silentPostsToday++;
+    showSilentFeed();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Release';
+    toast(e.message || 'Something went wrong.');
+  }
+}
+
+function showSilentMine() {
+  document.getElementById('s-silent-mine').innerHTML = `
+    <div class="silent-header">
+      <button class="silent-back-btn" onclick="showSilentFeed()">←</button>
+      <div class="silent-logo">Your lines</div>
+      <div style="width:40px"></div>
+    </div>
+    <div class="silent-mine-sub">Your last 7 days. They will disappear naturally.</div>
+    <div class="silent-mine-list" id="silentMineList">
+      <div class="silent-spinner">· · ·</div>
+    </div>
+  `;
+  go('s-silent-mine');
+
+  api('GET', '/silent/mine').then(function(data) {
+    var list = document.getElementById('silentMineList');
+    if (!list) return;
+    var lines = data.lines || [];
+    if (!lines.length) {
+      list.innerHTML = `
+        <div class="silent-empty">You haven't written anything yet.<br>
+        <button class="silent-ghost-link" style="margin-top:14px" onclick="showSilentWrite()">Write your first line →</button></div>
+      `;
+      return;
+    }
+    list.innerHTML = lines.map(function(l) {
+      var isPending = l.status === 'pending';
+      return `
+        <div class="silent-mine-item" data-id="${escapeHtml(l.id)}">
+          <p class="silent-mine-text">${escapeHtml(l.content)}</p>
+          ${isPending ? '<div class="silent-pending-note">Being read by a moderator.</div>' : ''}
+          <button class="silent-delete-btn" onclick="deleteSilentLine('${escapeHtml(l.id)}', this)">Delete</button>
+        </div>
+      `;
+    }).join('');
+  }).catch(function() {
+    var list = document.getElementById('silentMineList');
+    if (list) list.innerHTML = '<div class="silent-empty">Couldn\'t load your lines.</div>';
+  });
+}
+
+async function deleteSilentLine(id, btn) {
+  if (!confirm('Delete this line?')) return;
+  btn.disabled = true;
+  try {
+    var res = await fetch('/api/silent/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      credentials: 'same-origin'
+    });
+    if (!res.ok) throw new Error('Delete failed');
+    var item = btn.closest('.silent-mine-item');
+    if (item) {
+      item.style.opacity = '0';
+      item.style.transition = 'opacity 0.3s';
+      setTimeout(function() { item.remove(); }, 300);
+    }
+    toast('Deleted.');
+  } catch (e) {
+    btn.disabled = false;
+    toast('Couldn\'t delete. Try again.');
+  }
+}
 
 // ═══════════════════════════════════════
 // FLOATING WORDS CYCLER (Landing Problem Section)
