@@ -6,6 +6,7 @@ function registerAdminRoutes(app, deps) {
     db,
     stmts,
     requireAdmin,
+    getBufferedLogs,
     getAdminStats,
     getMatchDay,
     attachWaitingEntriesToMatch,
@@ -71,6 +72,34 @@ function registerAdminRoutes(app, deps) {
       res.json(getAdminStats());
     } catch (e) {
       res.status(500).json({ error: 'Failed to load stats' });
+    }
+  });
+
+  app.get('/admin/logs', requireAdmin, (req, res) => {
+    try {
+      const level = String(req.query.level || 'all').trim().toLowerCase();
+      const search = String(req.query.q || '').trim();
+      const sinceMinutes = Number(req.query.since) || 0;
+      const limit = Number(req.query.limit) || 200;
+      const format = String(req.query.format || '').trim().toLowerCase();
+      const logs = getBufferedLogs({ level, search, sinceMinutes, limit });
+      if (format === 'csv') {
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="logs.csv"');
+        const csv = [
+          'id,timestamp,level,message',
+          ...logs.entries.map(e => [e.id, JSON.stringify(e.timestamp), e.level, '"' + String(e.message).replace(/"/g, '""') + '"'].join(','))
+        ].join('\n');
+        return res.send(csv);
+      } else if (format === 'json') {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="logs.json"');
+        return res.send(JSON.stringify(logs.entries, null, 2));
+      } else {
+        res.json(logs);
+      }
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to load logs' });
     }
   });
 
