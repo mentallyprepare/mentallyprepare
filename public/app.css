@@ -368,9 +368,9 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .trait-fill-p{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--rose-d),var(--purple));position:relative;overflow:hidden}
 .trait-fill-p::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shimmer 4s ease infinite}
 .stats-row{padding:20px 24px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 10px;text-align:center;position:relative;overflow:hidden}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center;position:relative;overflow:hidden}
 .stat::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.18),transparent)}
-.stat-n{font-family:'Playfair Display',serif;font-size:24px;color:var(--rose-l);line-height:1;margin-bottom:4px}
+.stat-n{font-family:'Playfair Display',serif;font-size:20px;color:var(--rose-l);line-height:1;margin-bottom:3px}
 .stat-l{font-size:9.5px;color:var(--ink-s);line-height:1.4}
 .partner-sec{padding:20px 24px 0}
 .partner-card-p{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .2s;width:100%;text-align:left;color:inherit;font:inherit}
@@ -545,7 +545,7 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .letter-text{font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.8}
 
 /* ── Enhanced Profile (Stardust-inspired) ── */
-.profile-planet-card{background:linear-gradient(135deg,rgba(14,10,30,.95),rgba(20,14,40,.9));border:1px solid rgba(248,242,255,.08);border-radius:24px;padding:28px 20px;margin:0 24px;position:relative;overflow:hidden;text-align:center}
+.profile-planet-card{background:linear-gradient(135deg,rgba(14,10,30,.95),rgba(20,14,40,.9));border:1px solid rgba(248,242,255,.08);border-radius:20px;padding:22px 18px;margin:0 24px;position:relative;overflow:hidden;text-align:center}
 .profile-planet-card::before{content:'';position:absolute;inset:0;border-radius:24px;background:radial-gradient(ellipse at 50% 40%,var(--orb-color,rgba(94,196,212,.05)),transparent 60%);pointer-events:none}
 .profile-planet-card .cosmic-orb{margin:16px auto 20px}
 
@@ -667,7 +667,7 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 
 /* ── Badges ── */
 .badges-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 24px;margin-top:16px}
-.badge-item{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
+.badge-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 5px;text-align:center;position:relative;overflow:hidden;transition:all .3s}
 .badge-item::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.12),transparent)}
 .badge-item.earned{border-color:rgba(201,169,110,.25);background:linear-gradient(135deg,rgba(201,169,110,.06),rgba(123,94,167,.04))}
 .badge-item.locked{opacity:.35;filter:grayscale(.6)}
