@@ -1179,6 +1179,23 @@ function renderProfile() {
       }).join('')}
     </div>
     ${state.connectionScore > 0 ? renderConnectionScore(state.connectionScore) : ''}
+    <div class="prof-arch-detail reveal-on-scroll" style="padding:20px 24px 0;">
+      <div style="background:linear-gradient(135deg,rgba(123,94,167,.07),rgba(212,133,154,.05));border:1px solid rgba(123,94,167,.15);border-radius:20px;padding:20px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,167,.3),transparent);"></div>
+        <div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--purple-l);margin-bottom:10px;display:flex;align-items:center;gap:6px;">✦ About your archetype</div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.8;margin-bottom:16px;">${arch.description}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="background:rgba(126,200,160,.06);border:1px solid rgba(126,200,160,.12);border-radius:14px;padding:14px;">
+            <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">✦ Strengths</div>
+            ${arch.strengths.map(s => `<div style="font-size:11.5px;color:var(--ink-m);line-height:1.6;padding:3px 0;display:flex;align-items:flex-start;gap:6px;"><span style="color:var(--green);font-size:8px;margin-top:4px;flex-shrink:0;">●</span>${escapeHtml(s)}</div>`).join('')}
+          </div>
+          <div style="background:rgba(212,133,154,.06);border:1px solid rgba(212,133,154,.12);border-radius:14px;padding:14px;">
+            <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);margin-bottom:8px;">✦ Growth edges</div>
+            ${arch.growth.map(g => `<div style="font-size:11.5px;color:var(--ink-m);line-height:1.6;padding:3px 0;display:flex;align-items:flex-start;gap:6px;"><span style="color:var(--rose);font-size:8px;margin-top:4px;flex-shrink:0;">●</span>${escapeHtml(g)}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="stats-row" id="profile-stats">
       <div class="stat reveal-on-scroll"><div class="stat-n" data-target="${state.entries.length}">0</div><div class="stat-l">Entries written</div></div>
       <div class="stat reveal-on-scroll"><div class="stat-n" data-target="${state.streak}" data-prefix="🔥">🔥0</div><div class="stat-l">Day streak</div></div>
@@ -1221,6 +1238,25 @@ function renderProfile() {
       <div class="dp-pips" id="dp-pips"></div>
       <div class="dp-sub"><span>${Math.max(0,21-day)} nights</span> until the reveal.</div>
     </div></div>` : ''}
+    ${!state.match ? `<div class="reveal-on-scroll" style="padding:20px 24px 0;">
+      <div style="background:linear-gradient(135deg,rgba(201,169,110,.06),rgba(212,133,154,.05));border:1px solid rgba(201,169,110,.15);border-radius:20px;padding:22px 20px;text-align:center;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.3),transparent);"></div>
+        <div style="font-size:28px;margin-bottom:10px;">🌙</div>
+        <div style="font-family:'Playfair Display',serif;font-size:18px;font-style:italic;color:var(--ink);margin-bottom:6px;">Begin your 21-day journey</div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:12.5px;color:var(--ink-m);line-height:1.7;max-width:280px;margin:0 auto 16px;">Get matched with someone from a different college whose emotional pattern complements yours.</div>
+        <button onclick="go('s-tonight')" style="background:linear-gradient(135deg,var(--rose-d),var(--purple));color:var(--ink);padding:12px 28px;border-radius:50px;font-size:13px;font-weight:500;letter-spacing:.5px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .3s;">Write tonight's entry →</button>
+      </div>
+    </div>` : ''}
+    <div class="reveal-on-scroll" style="padding:20px 24px 0;">
+      <button onclick="showSilentRoom()" style="width:100%;background:rgba(123,94,167,.06);border:1px solid rgba(123,94,167,.15);border-radius:20px;padding:18px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .3s;text-align:left;color:inherit;font:inherit;" onmouseover="this.style.borderColor='rgba(123,94,167,.35)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(123,94,167,.15)';this.style.transform='none'">
+        <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,rgba(123,94,167,.2),rgba(123,94,167,.08));border:1px solid rgba(123,94,167,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">✦</div>
+        <div style="flex:1;">
+          <div style="font-family:'Playfair Display',serif;font-size:15px;font-style:italic;color:var(--ink);margin-bottom:3px;">The Silent Room</div>
+          <div style="font-size:11px;color:var(--ink-s);line-height:1.5;">One line. No replies. Just witnessed.</div>
+        </div>
+        <div style="font-size:16px;color:var(--purple-l);">›</div>
+      </button>
+    </div>
     <div style="padding:20px 24px 0;"><div class="sec-ey" style="display:flex;align-items:center;justify-content:space-between;"><span>Badges</span><span style="font-family:'Playfair Display',serif;font-size:12px;color:var(--gold-l);text-transform:none;letter-spacing:0;">${countEarnedBadges()}/${badges.length}</span></div></div>
     <div class="badges-grid">${renderBadges()}</div>
     <div class="spacer"></div>
