@@ -128,7 +128,7 @@ a{color:inherit;text-decoration:none}
 .marquee-item{font-family:'Playfair Display',serif;font-style:italic;font-size:clamp(18px,2.5vw,28px);color:var(--ink-s);white-space:nowrap;display:flex;align-items:center;gap:20px}
 .marquee-dot{width:6px;height:6px;border-radius:50%;background:var(--rose);opacity:.4}
 
-section{position:relative;z-index:1;padding:100px 24px;overflow:hidden}
+section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .section-inner{max-width:1100px;margin:0 auto}
 .section-label{display:inline-flex;align-items:center;gap:8px;font-size:11px;color:var(--rose);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
 .section-label::before{content:'';width:20px;height:1px;background:var(--rose)}
@@ -446,11 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="hero-left">
       <div class="hero-badge">
         <span class="hero-badge-dot"></span>
-        April 2026 · Limited Trial
-      </div>
-      <div class="hero-badge" style="animation-delay:.08s;border-color:rgba(123,94,167,.3);background:rgba(123,94,167,.1);">
-        <span class="hero-badge-dot" style="background:var(--purple-l)"></span>
-        <span style="color:var(--purple-l)">✦ Silent Room — now live</span>
+        For college students · Free
       </div>
       <h1 class="hero-h1">What if a stranger <em>understood you</em> better than your friends?</h1>
       <p class="hero-sub">Write anonymously in this emotional journal for 21 days. A student from another college writes back. On Day 21, you both decide — reveal, or stay beautifully unknown.</p>
@@ -497,27 +493,35 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </section>
 
-<div class="marquee-wrap">
-  <div class="marquee" id="marquee">
-    <span class="marquee-item"><span class="marquee-dot"></span>Pure anonymity</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Words over looks</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Just honest writing</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Matched by emotional blueprint</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>21 days of connection</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>For college students in India</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Free for students</span>
-    <span class="marquee-item"><span class="marquee-dot" style="background:var(--purple-l)"></span>The Silent Room</span>
-    <span class="marquee-item"><span class="marquee-dot" style="background:var(--purple-l)"></span>One line. No replies.</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Pure anonymity</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Words over looks</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Just honest writing</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Matched by emotional blueprint</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>21 days of connection</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>For college students in India</span>
-    <span class="marquee-item"><span class="marquee-dot"></span>Free for students</span>
-    <span class="marquee-item"><span class="marquee-dot" style="background:var(--purple-l)"></span>The Silent Room</span>
-    <span class="marquee-item"><span class="marquee-dot" style="background:var(--purple-l)"></span>One line. No replies.</span>
+<section class="testimonials" id="l-stories" data-section="stories" style="padding:80px 24px 60px;">
+  <div class="section-inner" style="max-width:620px;">
+    <div class="reveal" style="text-align:center;">
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(22px,3vw,32px);font-weight:400;font-style:italic;color:var(--ink);line-height:1.4;margin-bottom:32px;letter-spacing:-.5px;">Why this exists</h2>
+    </div>
+    <div class="reveal delay-1" style="max-width:520px;margin:0 auto;">
+      <div style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.6vw,16.5px);color:var(--ink-m);line-height:1.9;">
+        <p style="margin-bottom:1.2em;">I think I am tired in a way that people do not really notice. Not the kind of tired that comes from sleep, but the kind that comes from carrying your own thoughts all the time.</p>
+        <p style="margin-bottom:1.2em;">The most intense parts of me are private. The fear, the ambition, the jealousy, the hope, the insecurity. Most people only see fragments.</p>
+        <p style="margin-bottom:1.5em;padding-left:1.2em;border-left:2px solid rgba(212,133,154,.25);color:var(--ink-s);">I am lonelier in my mind than I admit in real life. Not because I have no one — but because depth makes me vulnerable, and love would mean being fully seen.</p>
+        <p style="margin-bottom:1.2em;">I do not think I am broken. I think I am unfinished.</p>
+        <p>I built this for everyone else who is too.</p>
+      </div>
+      <div style="margin-top:28px;padding-top:18px;border-top:1px solid rgba(248,242,255,.06);text-align:center;">
+        <div style="font-size:13px;font-weight:500;color:var(--ink);">Anushka Kumar</div>
+        <div style="font-size:11px;color:var(--ink-s);margin-top:3px;">Founder</div>
+      </div>
+    </div>
   </div>
+</section>
+
+<div style="display:flex;align-items:center;justify-content:center;gap:28px;padding:36px 24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;z-index:1;">
+  <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(12px,1.4vw,14px);color:var(--ink-s);letter-spacing:.3px;">Anonymous</span>
+  <span style="width:4px;height:4px;border-radius:50%;background:var(--rose);opacity:.4;flex-shrink:0;"></span>
+  <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(12px,1.4vw,14px);color:var(--ink-s);letter-spacing:.3px;">21 days</span>
+  <span style="width:4px;height:4px;border-radius:50%;background:var(--purple-l);opacity:.4;flex-shrink:0;"></span>
+  <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(12px,1.4vw,14px);color:var(--ink-s);letter-spacing:.3px;">Free for students</span>
+  <span style="width:4px;height:4px;border-radius:50%;background:var(--gold);opacity:.4;flex-shrink:0;"></span>
+  <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(12px,1.4vw,14px);color:var(--ink-s);letter-spacing:.3px;">Words over looks</span>
 </div>
 
 <section class="how" id="how">
@@ -592,7 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
       <div class="sr-room-footer">
         <span class="sr-room-footer-dot"></span>
-        These are example lines. Real ones are read by strangers who understand.
+        Someone, somewhere, just read this.
         <span class="sr-room-footer-dot"></span>
       </div>
     </div>
@@ -605,30 +609,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </section>
 
 <div id="stories" aria-hidden="true"></div>
-<section class="testimonials" id="l-stories" data-section="stories">
-  <div class="section-inner">
-    <div class="reveal">
-      <span class="section-label">Founder Note</span>
-      <h2 class="section-h2">A note from Anushka</h2>
-    </div>
-    <div class="founder-note-card reveal delay-1" style="max-width:540px;margin:32px auto 0 auto;padding:2.5rem 2rem 2rem 2rem;background:var(--color-bg-secondary);border-radius:1.5rem;box-shadow:0 2px 16px 0 rgba(0,0,0,0.04);">
-      <div class="founder-note-body" style="font-size:1.13rem;line-height:1.7;color:var(--ink-m);">
-        <p>I think I am tired in a way that people do not really notice. Not the kind of tired that comes from sleep, but the kind that comes from carrying your own thoughts all the time.</p>
-        <p>The most intense parts of me are private. The fear, the ambition, the jealousy, the hope, the insecurity. Most people only see fragments. They do not see how much I question everything after everyone leaves.</p>
-        <blockquote style="margin:1.5em 0 1.5em 0;padding-left:1.2em;border-left:3px solid rgba(212,133,154,.3);font-style:italic;color:var(--ink-s);">
-          I am lonelier in my mind than I admit in real life. Not because I have no one — but because depth makes me vulnerable, and love would mean being fully seen.
-        </blockquote>
-        <p>I do not think I am broken. I think I am unfinished.</p>
-        <p>I built this for everyone else who is too.</p>
-      </div>
-      <div class="founder-note-meta" style="margin-top:2.2rem;">
-        <hr style="border:none;border-top:1px solid var(--color-border-tertiary);margin-bottom:1rem;"/>
-        <div style="font-size:14px;font-weight:500;">Anushka Kumar</div>
-        <div style="font-size:12px;color:var(--ink-s);margin-top:2px;">Founder, Mentally Prepare &middot; </div>
-      </div>
-    </div>
-  </div>
-</section>
 
 <section class="cta-section" id="cta">
   <div class="cta-bg"><div class="cta-orb cta-orb-1"></div></div>
