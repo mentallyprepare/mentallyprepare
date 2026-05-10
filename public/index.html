@@ -260,6 +260,7 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
   .cta-form{flex-direction:column}
   .footer-inner{flex-direction:column;gap:16px}
   .sr-room{padding:32px 20px 28px}
+  #l-stories [style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr!important}
   .sr-room-meta{display:none}
   .sr-cta-row{flex-direction:column;align-items:center;gap:10px}
   .sr-time{display:none}
@@ -268,70 +269,14 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 </head>
 
 <body>
-<div class="logo-header" style="display:flex;justify-content:center;align-items:center;padding:32px 0 16px 0;width:100%;background:transparent;">
-  <svg style="max-width:420px;width:90vw;height:auto;" viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg">
-    <!-- ...existing SVG code... -->
-  </svg>
-</div>
-
-<!-- EMAIL SIGNUP FORM -->
-<section style="display:none;padding: 40px 24px; text-align: center; background: var(--card); border-radius: 24px; max-width: 500px; margin: 40px auto;">
-  <h2 style="font-family:'Playfair Display',serif;font-size:28px;margin-bottom:16px;color:var(--rose)">Get Daily Reminders</h2>
-  <p style="font-size:15px;color:var(--ink-m);margin-bottom:24px">Sign up to receive daily email reminders to write your journal entry.</p>
-  <form id="emailSignupForm">
-    <input type="email" id="emailInput" name="email" placeholder="Your email address" required style="padding:12px 18px;border-radius:8px;border:1px solid var(--rose);margin-bottom:12px;width:70%;font-size:15px;">
-    <br>
-    <button type="submit" style="background:linear-gradient(135deg,var(--rose),var(--purple));color:var(--ink);padding:12px 32px;border-radius:60px;font-size:15px;font-weight:500;letter-spacing:1px;border:none;cursor:pointer;">Sign Up</button>
-  </form>
-  <div id="emailSignupMsg" style="margin-top:16px;font-size:14px;color:var(--green);"></div>
-</section>
-
 <script>
-// Email signup form handler
 document.addEventListener('DOMContentLoaded', function() {
-  const form = document.getElementById('emailSignupForm');
-  const input = document.getElementById('emailInput');
-  const msg = document.getElementById('emailSignupMsg');
-  if (form) {
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      msg.textContent = '';
-      const email = input.value.trim();
-      if (!email) {
-        msg.textContent = 'Please enter your email.';
-        msg.style.color = 'var(--rose)';
-        return;
-      }
-      fetch('/api/reminder-signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.ok) {
-          msg.textContent = 'Signed up! You will receive daily reminders.';
-          msg.style.color = 'var(--green)';
-          form.reset();
-        } else {
-          msg.textContent = data.error || 'Something went wrong.';
-          msg.style.color = 'var(--rose)';
-        }
-      })
-      .catch(() => {
-        msg.textContent = 'Network error. Please try again.';
-        msg.style.color = 'var(--rose)';
-      });
-    });
-  }
-
-  // Smooth scroll with offset for nav links
   document.querySelectorAll('.nav-links a[href="#l-stories"], .nav-links a[href="#stories"]').forEach(function(link) {
     link.addEventListener('click', function(e) {
       var target = document.getElementById('l-stories') || document.getElementById('stories');
       if (target) {
         e.preventDefault();
-        var y = target.getBoundingClientRect().top + window.pageYOffset - 80; // 80px offset for fixed nav
+        var y = target.getBoundingClientRect().top + window.pageYOffset - 80;
         window.scrollTo({ top: y, behavior: 'smooth' });
       }
     });
@@ -420,18 +365,17 @@ document.addEventListener('DOMContentLoaded', function() {
       <circle cx="178" cy="264" r="0.7" fill="#e879f9" opacity="0.3"/>
       <circle cx="34" cy="155" r="1.0" fill="#a78bfa" opacity="0.3"/>
       <circle cx="186" cy="72" r="1.1" fill="#c084fc" opacity="0.4"/>
-      <text x="244" y="144" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="url(#textGrad2)" letter-spacing="2">mentally</text>
-      <text x="244" y="202" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="400" font-style="italic" fill="url(#accentGrad2)" letter-spacing="1">prepare</text>
-      <line x1="244" y1="213" x2="590" y2="213" stroke="url(#ruleLine)" stroke-width="0.8"/>
-      <text x="245" y="236" font-family="'Helvetica Neue', Arial, sans-serif" font-size="10" font-weight="400" fill="#7c5aa8" letter-spacing="4.5">21-DAY ANONYMOUS EMOTIONAL RESET</text>
+      <text x="244" y="158" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="url(#textGrad2)" letter-spacing="2">mentally</text>
+      <text x="244" y="216" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="400" font-style="italic" fill="url(#accentGrad2)" letter-spacing="1">prepare</text>
     </svg>
   </a>
   <div class="nav-links">
     <a href="#how">How It Works</a>
+    <a href="#silent-room">Silent Room</a>
     <a href="#l-stories">Stories</a>
     <a href="/app">Log In</a>
   </div>
-  <a class="nav-cta" href="/app">Get Started</a>
+  <a class="nav-cta" href="/app">Start tonight</a>
   <button class="nav-menu-btn" id="menuBtn" onclick="toggleMenu()">&#9776;</button>
 </nav>
 
@@ -446,13 +390,13 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="hero-left">
       <div class="hero-badge">
         <span class="hero-badge-dot"></span>
-        For college students · Free
+        21-day anonymous emotional reset
       </div>
       <h1 class="hero-h1">What if a stranger <em>understood you</em> better than your friends?</h1>
-      <p class="hero-sub">Write anonymously in this emotional journal for 21 days. A student from another college writes back. On Day 21, you both decide — reveal, or stay beautifully unknown.</p>
+      <p class="hero-sub">Write anonymously for 21 days. A student from another college writes back. On Day 21, you both decide — reveal, or stay beautifully unknown.</p>
 
-      <a class="hero-cta-btn" href="/app">Get Started →</a>
-      <div class="hero-note">Free. Completely anonymous. Takes 3 minutes to start.</div>
+      <a class="hero-cta-btn" href="/app">Begin writing tonight</a>
+      <div class="hero-note">Free. Anonymous. Takes 3 minutes.</div>
     </div>
 
     <div class="hero-right" id="hero3d">
@@ -469,19 +413,19 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
 
         <div class="float-card float-card-1">
-          <span class="fc-icon">&#128221;</span>
-          <div class="fc-title">Day 7</div>
-          <div class="fc-desc">"When do you become distant, even when you want closeness?"</div>
+          <span class="fc-icon">🌙</span>
+          <div class="fc-title">Tonight</div>
+          <div class="fc-desc">"What are you carrying that nobody knows about?"</div>
         </div>
         <div class="float-card float-card-2">
-          <span class="fc-icon">&#127761;</span>
+          <span class="fc-icon">🪐</span>
           <div class="fc-title">Matched</div>
-          <div class="fc-desc">Paired with someone whose emotional pattern complements yours</div>
+          <div class="fc-desc">Someone from a different college reads your words</div>
         </div>
         <div class="float-card float-card-3">
-          <span class="fc-icon">&#10024;</span>
+          <span class="fc-icon">💫</span>
           <div class="fc-title">Day 21</div>
-          <div class="fc-desc">Both choose: reveal your name, or stay anonymous forever</div>
+          <div class="fc-desc">Reveal — or stay beautifully unknown forever</div>
         </div>
 
         <div class="orbit-dot orbit-dot-1"></div>
@@ -514,14 +458,29 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </section>
 
-<div style="display:flex;align-items:center;justify-content:center;gap:28px;padding:36px 24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;z-index:1;">
-  <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(12px,1.4vw,14px);color:var(--ink-s);letter-spacing:.3px;">Anonymous</span>
-  <span style="width:4px;height:4px;border-radius:50%;background:var(--rose);opacity:.4;flex-shrink:0;"></span>
-  <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(12px,1.4vw,14px);color:var(--ink-s);letter-spacing:.3px;">21 days</span>
-  <span style="width:4px;height:4px;border-radius:50%;background:var(--purple-l);opacity:.4;flex-shrink:0;"></span>
-  <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(12px,1.4vw,14px);color:var(--ink-s);letter-spacing:.3px;">Free for students</span>
-  <span style="width:4px;height:4px;border-radius:50%;background:var(--gold);opacity:.4;flex-shrink:0;"></span>
-  <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(12px,1.4vw,14px);color:var(--ink-s);letter-spacing:.3px;">Words over looks</span>
+<div style="overflow:hidden;padding:44px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;z-index:1;background:linear-gradient(90deg,var(--bg) 0%,transparent 8%,transparent 92%,var(--bg) 100%);">
+  <div style="display:flex;gap:56px;animation:marqueeScroll 32s linear infinite;width:max-content;">
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"When did you last feel fully seen?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What are you carrying that nobody knows about?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"When do you become distant, even when you want closeness?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What kind of tired are you that sleep doesn't fix?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What would you say if no one knew it was you?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"When did you last feel fully seen?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What are you carrying that nobody knows about?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"When do you become distant, even when you want closeness?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What kind of tired are you that sleep doesn't fix?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+    <span style="font-family:'Lora',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What would you say if no one knew it was you?"</span>
+    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
+  </div>
 </div>
 
 <section class="how" id="how">
@@ -609,16 +568,42 @@ document.addEventListener('DOMContentLoaded', function() {
 </section>
 
 <div id="stories" aria-hidden="true"></div>
+<section id="l-stories" style="padding:120px 24px;text-align:center;position:relative;z-index:1;">
+  <div class="section-inner">
+    <div class="reveal">
+      <span class="section-label">Stories</span>
+      <h2 class="section-h2">What happens when you <em>stay honest</em> for 21 days</h2>
+      <p class="section-p" style="margin:0 auto 56px;max-width:500px;">These are real accounts from people who completed 21 days. Names are anonymized. Cities and years are real.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto;" class="reveal delay-1">
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.2),transparent);"></div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;margin-bottom:20px;">"I started Day 1 thinking this was a cute experiment. By Day 14 I was writing things I'd never said out loud. My partner didn't fix anything — they just kept showing up. That mattered more than I expected."</div>
+        <div style="font-size:11px;color:var(--ink-s);">2024 · Pune · Engineering, 2nd year</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,167,.2),transparent);"></div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;margin-bottom:20px;">"We both said yes on Day 21. It was terrifying. She went to a college I'd never heard of in Kerala. We still message. Not every day. But when it matters. I think that's how it should be."</div>
+        <div style="font-size:11px;color:var(--ink-s);">2025 · Delhi · Commerce, 3rd year</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.2),transparent);"></div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;margin-bottom:20px;">"I said no on Day 21. He said yes. I still don't know his name. But I know he cried on Day 11 over something his father said, and somehow that made me feel less alone with my own family stuff."</div>
+        <div style="font-size:11px;color:var(--ink-s);">2025 · Bangalore · Psychology, final year</div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section class="cta-section" id="cta">
   <div class="cta-bg"><div class="cta-orb cta-orb-1"></div></div>
   <div class="cta-inner reveal">
     <h2 class="cta-h2">Ready to be honest?</h2>
-    <p class="cta-p">An anonymous 21-day journal experiment. Worst case, you spend 5 minutes a day being honest with yourself.</p>
+    <p class="cta-p">An anonymous 21-day journal experiment. Worst case, you spend 5 minutes a night being honest with yourself.</p>
     <div class="cta-form">
-      <a class="hero-cta-btn" href="/app">Get Started →</a>
+      <a class="hero-cta-btn" href="/app">Start tonight →</a>
     </div>
-    <div class="cta-note">100% free. Runs right in your browser. Takes 3 minutes to start.</div>
+    <div class="cta-note">Free · Anonymous · Cohort opens monthly · limited spots</div>
   </div>
 </section>
 
