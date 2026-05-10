@@ -404,6 +404,20 @@ ensureColumn('waitlist', 'archetype', 'TEXT');
 ensureColumn('waitlist', 'invited_at', 'TEXT');
 ensureColumn('matches', 'constellation_name', 'TEXT');
 
+// Silent Room — presence/witness columns
+ensureColumn('silent_lines', 'seen_count', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('silent_lines', 'resonance_count', 'INTEGER NOT NULL DEFAULT 0');
+
+// Resonance dedup table (one resonance per user per line)
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS silent_resonance (
+    line_id  TEXT NOT NULL REFERENCES silent_lines(id) ON DELETE CASCADE,
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (line_id, user_id)
+  )
+`).run();
+
 function handleLiveness(req, res) {
   res.json({ status: 'ok' });
 }

@@ -1128,6 +1128,29 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .silent-crisis-ico{font-size:36px}
 .silent-crisis-msg{font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.85}
 
+/* ── Silent Room — Presence counter ── */
+.silent-presence-row{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 24px 0}
+.silent-presence-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;animation:srDotBreathe 2.5s ease-in-out infinite}
+.silent-presence-text{font-size:11px;color:var(--ink-s);letter-spacing:.04em}
+
+/* ── Silent Room — Seen + Resonance ── */
+.silent-line-meta{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+.silent-seen-count{font-size:10px;color:var(--ink-s);letter-spacing:.04em;opacity:.7}
+.silent-resonate-btn{background:none;border:1px solid rgba(248,242,255,.08);border-radius:100px;padding:4px 12px;font-size:10px;color:var(--ink-s);cursor:pointer;letter-spacing:.03em;transition:all .25s;white-space:nowrap}
+.silent-resonate-btn:hover{border-color:rgba(123,94,167,.3);color:var(--purple-l)}
+.silent-resonate-btn.resonated{border-color:rgba(123,94,167,.4);color:var(--purple-l);background:rgba(123,94,167,.07)}
+.silent-resonate-btn:disabled{opacity:.5;cursor:default}
+
+/* ── Silent Room — Post-submission transition ── */
+.silent-transition-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;flex:1;padding:48px 32px;min-height:60vh;animation:srFadeIn .6s ease both}
+.silent-transition-count{font-family:'Playfair Display',serif;font-size:72px;font-weight:700;color:var(--ink);line-height:1;margin-bottom:6px;background:linear-gradient(135deg,var(--rose-l),var(--purple-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.silent-transition-label{font-size:13px;color:var(--ink-s);letter-spacing:.06em;margin-bottom:32px}
+.silent-transition-msg{font-family:'Lora',serif;font-style:italic;font-size:16px;color:var(--ink-m);line-height:1.85}
+.silent-transition-divider{width:60px;height:1px;background:var(--line);margin:28px auto}
+.silent-transition-witness{max-width:420px}
+.silent-transition-witness-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-s);margin-bottom:12px}
+.silent-transition-witness-line{font-family:'Lora',serif;font-style:italic;font-size:15px;color:var(--ink-m);line-height:1.75}
+
 /* My lines screen */
 .silent-mine-sub{text-align:center;font-size:11px;color:var(--ink-s);padding:8px 32px 4px;font-style:italic}
 .silent-mine-list{padding:12px 24px;flex:1;display:flex;flex-direction:column;gap:0}

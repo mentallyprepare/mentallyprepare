@@ -20,8 +20,9 @@ function registerSilentRoutes(app, deps) {
       VALUES (?, ?, ?, 'pending', datetime('now', '+7 days'))
     `),
     setFlag: db.prepare(`UPDATE silent_lines SET moderation_flag = ? WHERE id = ?`),
+
     getFeed: db.prepare(`
-      SELECT rowid, id, content FROM silent_lines
+      SELECT rowid, id, content, seen_count, resonance_count FROM silent_lines
       WHERE status = 'approved'
         AND expires_at > datetime('now')
         AND deleted_at IS NULL
@@ -29,7 +30,7 @@ function registerSilentRoutes(app, deps) {
       LIMIT ?
     `),
     getFeedAfter: db.prepare(`
-      SELECT rowid, id, content FROM silent_lines
+      SELECT rowid, id, content, seen_count, resonance_count FROM silent_lines
       WHERE status = 'approved'
         AND expires_at > datetime('now')
         AND deleted_at IS NULL
@@ -37,8 +38,28 @@ function registerSilentRoutes(app, deps) {
       ORDER BY rowid DESC
       LIMIT ?
     `),
+
+    // Presence: lines written today
+    getPresenceCount: db.prepare(`
+      SELECT COUNT(*) as c FROM silent_lines
+      WHERE status = 'approved'
+        AND created_at >= datetime('now', 'start of day')
+        AND deleted_at IS NULL
+    `),
+
+    // Random approved line for post-submission screen
+    getRandomLine: db.prepare(`
+      SELECT content FROM silent_lines
+      WHERE status = 'approved'
+        AND expires_at > datetime('now')
+        AND deleted_at IS NULL
+      ORDER BY RANDOM()
+      LIMIT 1
+    `),
+
     getMine: db.prepare(`
-      SELECT id, content, status, created_at, expires_at FROM silent_lines
+      SELECT id, content, status, created_at, expires_at, seen_count, resonance_count
+      FROM silent_lines
       WHERE user_id = ?
         AND status IN ('pending', 'approved')
         AND deleted_at IS NULL
@@ -53,7 +74,38 @@ function registerSilentRoutes(app, deps) {
       WHERE id = ? AND user_id = ? AND status != 'deleted'
     `),
     logCrisis: db.prepare(`INSERT INTO crisis_review (user_id, content) VALUES (?, ?)`),
+
+    // Seen / resonance
+    incrementSeen: db.prepare(`
+      UPDATE silent_lines SET seen_count = seen_count + 1
+      WHERE id = ? AND status = 'approved'
+    `),
+    hasResonated: db.prepare(`
+      SELECT 1 FROM silent_resonance WHERE line_id = ? AND user_id = ?
+    `),
+    addResonance: db.prepare(`
+      INSERT OR IGNORE INTO silent_resonance (line_id, user_id) VALUES (?, ?)
+    `),
+    incrementResonance: db.prepare(`
+      UPDATE silent_lines SET resonance_count = resonance_count + 1 WHERE id = ?
+    `),
+    removeResonance: db.prepare(`
+      DELETE FROM silent_resonance WHERE line_id = ? AND user_id = ?
+    `),
+    decrementResonance: db.prepare(`
+      UPDATE silent_lines SET resonance_count = MAX(0, resonance_count - 1) WHERE id = ?
+    `),
   };
+
+  // GET /api/silent/presence — how many people wrote tonight
+  app.get('/api/silent/presence', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const count = sl.getPresenceCount.get().c;
+      res.json({ count });
+    } catch (e) {
+      res.json({ count: 0 });
+    }
+  });
 
   // POST /api/silent — submit a line
   app.post('/api/silent', apiLimiter, requireAuth, async (req, res) => {
@@ -82,7 +134,7 @@ function registerSilentRoutes(app, deps) {
       if (!/\p{L}/u.test(content)) return res.status(400).json({ error: 'Use words.' });
       if (/https?:\/\/|www\./i.test(content)) return res.status(400).json({ error: 'No links here. Just words.' });
 
-      // Crisis & PII (reuse existing scanner)
+      // Crisis & PII
       const safety = scanForSafety(content);
       if (safety.crisis) {
         sl.logCrisis.run(userId, content);
@@ -100,7 +152,7 @@ function registerSilentRoutes(app, deps) {
         });
       }
 
-      // OpenAI moderation (optional — only runs when OPENAI_API_KEY is set)
+      // OpenAI moderation (optional)
       let status = 'approved';
       let flag = null;
       if (process.env.OPENAI_API_KEY) {
@@ -124,10 +176,16 @@ function registerSilentRoutes(app, deps) {
         if (flag) sl.setFlag.run(flag, id);
       }
 
+      // Fetch presence count + a random line for the transition screen
+      const presenceCount = sl.getPresenceCount.get().c;
+      const randomLine = sl.getRandomLine.get();
+
       res.status(201).json({
         id,
         status,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        presence_count: presenceCount,
+        random_line: randomLine ? randomLine.content : null
       });
     } catch (e) {
       console.error('Silent create error:', e);
@@ -143,13 +201,45 @@ function registerSilentRoutes(app, deps) {
       const rows = cursor
         ? sl.getFeedAfter.all(cursor, limit)
         : sl.getFeed.all(limit);
-      // Strip rowid before sending to client; use it only as the pagination cursor
-      const lines = rows.map(({ id, content }) => ({ id, content }));
+
+      const userId = req.session.userId;
+
+      // Strip rowid, include counts
+      const lines = rows.map(({ rowid, id, content, seen_count, resonance_count }) => {
+        // Increment seen_count for each line the user loads
+        sl.incrementSeen.run(id);
+        const resonated = !!sl.hasResonated.get(id, userId);
+        return { id, content, seen_count: seen_count + 1, resonance_count, resonated };
+      });
       const next_cursor = rows.length === limit ? rows[rows.length - 1].rowid : null;
       res.json({ lines, next_cursor });
     } catch (e) {
       console.error('Silent feed error:', e);
       res.status(500).json({ error: 'Failed to load feed' });
+    }
+  });
+
+  // POST /api/silent/:id/resonate — toggle resonance
+  app.post('/api/silent/:id/resonate', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.userId;
+
+      const existing = sl.hasResonated.get(id, userId);
+      if (existing) {
+        // Un-resonate
+        sl.removeResonance.run(id, userId);
+        sl.decrementResonance.run(id);
+        res.json({ resonated: false });
+      } else {
+        // Resonate
+        const added = sl.addResonance.run(id, userId);
+        if (added.changes) sl.incrementResonance.run(id);
+        res.json({ resonated: true });
+      }
+    } catch (e) {
+      console.error('Silent resonate error:', e);
+      res.status(500).json({ error: 'Failed to resonate' });
     }
   });
 
@@ -203,7 +293,6 @@ async function callOpenAIModeration(content) {
 function registerSilentAdminRoutes(app, deps) {
   const { requireAdmin, db } = deps;
 
-  // Pending moderation queue
   app.get('/admin/silent-pending', requireAdmin, (req, res) => {
     try {
       res.json(db.prepare(`
@@ -235,7 +324,6 @@ function registerSilentAdminRoutes(app, deps) {
     } catch (e) { res.status(500).json({ error: 'Failed to reject' }); }
   });
 
-  // Crisis intercepts log
   app.get('/admin/silent-flagged', requireAdmin, (req, res) => {
     try {
       res.json(db.prepare(
@@ -244,7 +332,6 @@ function registerSilentAdminRoutes(app, deps) {
     } catch (e) { res.status(500).json({ error: 'Failed to load flagged content' }); }
   });
 
-  // Manual cleanup trigger (Railway cron also calls this)
   app.post('/admin/silent/cleanup', requireAdmin, (req, res) => {
     try {
       const r = db.prepare(`

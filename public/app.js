@@ -2405,6 +2405,8 @@ var silentExhausted = false;
 var silentLoading = false;
 var silentPostsToday = 0;
 
+function showSilentRoom() { showSilentFeed(); }
+
 async function showSilentFeed() {
   silentCursor = null;
   silentExhausted = false;
@@ -2414,6 +2416,10 @@ async function showSilentFeed() {
     <div class="silent-header">
       <div class="silent-logo">Silent Room</div>
       <button class="silent-write-link" id="silentWriteBtn" onclick="showSilentWrite()">Write a line ✦</button>
+    </div>
+    <div class="silent-presence-row" id="silentPresenceRow">
+      <span class="silent-presence-dot"></span>
+      <span class="silent-presence-text" id="silentPresenceText">loading…</span>
     </div>
     <div class="silent-instruction">One line. No replies. No reactions. Just witnessed.</div>
     <div class="silent-feed-list" id="silentFeedList">
@@ -2428,6 +2434,15 @@ async function showSilentFeed() {
     ${renderTabs('silent')}
   `;
   go('s-silent-feed');
+
+  // Load presence count
+  api('GET', '/silent/presence').then(function(d) {
+    var el = document.getElementById('silentPresenceText');
+    if (el) el.textContent = (d.count || 0) + ' people have written here tonight';
+  }).catch(function() {
+    var el = document.getElementById('silentPresenceText');
+    if (el) el.textContent = 'A few people here tonight';
+  });
 
   // Load rate limit state from mine endpoint
   try {
@@ -2471,7 +2486,20 @@ async function loadSilentFeed(reset) {
       var block = document.createElement('div');
       block.className = 'silent-line-block';
       block.style.animationDelay = (i * 0.07) + 's';
-      block.innerHTML = '<p class="silent-line-text">' + escapeHtml(line.content) + '</p>';
+      var seenCount = line.seen_count || 0;
+      var resonanceCount = line.resonance_count || 0;
+      var resonated = line.resonated || false;
+      block.innerHTML =
+        '<p class="silent-line-text">' + escapeHtml(line.content) + '</p>' +
+        '<div class="silent-line-meta">' +
+          '<span class="silent-seen-count">👁 seen by ' + seenCount + '</span>' +
+          '<button class="silent-resonate-btn' + (resonated ? ' resonated' : '') + '" ' +
+            'data-id="' + escapeHtml(line.id) + '" ' +
+            'data-resonated="' + resonated + '" ' +
+            'onclick="toggleResonance(this)">' +
+            'I felt this too · <span class="silent-res-count">' + resonanceCount + '</span>' +
+          '</button>' +
+        '</div>';
       list.appendChild(block);
     });
 
@@ -2497,6 +2525,43 @@ async function loadSilentFeed(reset) {
 
 function loadMoreSilentFeed() {
   loadSilentFeed(false);
+}
+
+async function toggleResonance(btn) {
+  if (btn.disabled) return;
+  btn.disabled = true;
+  var id = btn.dataset.id;
+  var wasResonated = btn.dataset.resonated === 'true';
+  var countEl = btn.querySelector('.silent-res-count');
+  var count = parseInt(countEl.textContent) || 0;
+
+  // Optimistic UI
+  if (wasResonated) {
+    btn.classList.remove('resonated');
+    btn.dataset.resonated = 'false';
+    countEl.textContent = Math.max(0, count - 1);
+  } else {
+    btn.classList.add('resonated');
+    btn.dataset.resonated = 'true';
+    countEl.textContent = count + 1;
+  }
+
+  try {
+    await api('POST', '/silent/' + id + '/resonate', {});
+  } catch (e) {
+    // Revert on error
+    if (wasResonated) {
+      btn.classList.add('resonated');
+      btn.dataset.resonated = 'true';
+      countEl.textContent = count;
+    } else {
+      btn.classList.remove('resonated');
+      btn.dataset.resonated = 'false';
+      countEl.textContent = count;
+    }
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function showSilentWrite() {
@@ -2570,13 +2635,34 @@ async function submitSilentLine() {
       return;
     }
 
-    if (result.status === 'approved') {
-      toast('Released. ✦');
-    } else {
-      toast('Shared — being reviewed before it goes live.');
-    }
     silentPostsToday++;
-    showSilentFeed();
+
+    // Post-submission transition screen
+    var presenceCount = result.presence_count || 0;
+    var randomLine = result.random_line || null;
+    var wrap = document.getElementById('s-silent-write');
+    if (wrap) {
+      wrap.innerHTML = `
+        <div class="silent-transition-wrap" id="silentTransitionScreen">
+          <div class="silent-transition-count">${presenceCount}</div>
+          <div class="silent-transition-label">people are in this room tonight</div>
+          <div class="silent-transition-msg">
+            Your words are here now.<br>Someone will read them.
+          </div>
+          ${randomLine ? `
+          <div class="silent-transition-divider"></div>
+          <div class="silent-transition-witness">
+            <div class="silent-transition-witness-lbl">Someone else wrote tonight</div>
+            <div class="silent-transition-witness-line">"${escapeHtml(randomLine)}"</div>
+          </div>` : ''}
+        </div>
+      `;
+    }
+
+    // Auto-transition to feed after 3.5s
+    setTimeout(function() {
+      showSilentFeed();
+    }, 3500);
   } catch (e) {
     btn.disabled = false;
     btn.textContent = 'Release';
