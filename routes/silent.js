@@ -39,18 +39,19 @@ function registerSilentRoutes(app, deps) {
       LIMIT ?
     `),
 
-    // Presence: lines written today
+    // Presence: distinct writers today
     getPresenceCount: db.prepare(`
-      SELECT COUNT(*) as c FROM silent_lines
+      SELECT COUNT(DISTINCT user_id) as c FROM silent_lines
       WHERE status = 'approved'
         AND created_at >= datetime('now', 'start of day')
         AND deleted_at IS NULL
     `),
 
-    // Random approved line for post-submission screen
-    getRandomLine: db.prepare(`
+    // Random approved line from someone else for post-submission screen
+    getRandomLineExcludingUser: db.prepare(`
       SELECT content FROM silent_lines
       WHERE status = 'approved'
+        AND user_id != ?
         AND expires_at > datetime('now')
         AND deleted_at IS NULL
       ORDER BY RANDOM()
@@ -67,6 +68,13 @@ function registerSilentRoutes(app, deps) {
     `),
     getById: db.prepare(`
       SELECT id, user_id FROM silent_lines WHERE id = ? AND deleted_at IS NULL
+    `),
+    getApprovedById: db.prepare(`
+      SELECT id, resonance_count FROM silent_lines
+      WHERE id = ?
+        AND status = 'approved'
+        AND expires_at > datetime('now')
+        AND deleted_at IS NULL
     `),
     softDelete: db.prepare(`
       UPDATE silent_lines
@@ -94,6 +102,9 @@ function registerSilentRoutes(app, deps) {
     `),
     decrementResonance: db.prepare(`
       UPDATE silent_lines SET resonance_count = MAX(0, resonance_count - 1) WHERE id = ?
+    `),
+    getResonanceCount: db.prepare(`
+      SELECT resonance_count FROM silent_lines WHERE id = ?
     `),
   };
 
@@ -172,13 +183,13 @@ function registerSilentRoutes(app, deps) {
       if (status === 'approved') {
         sl.insertApproved.run(id, userId, content);
       } else {
-        sl.insertPending.run(id, userId, content, status);
+        sl.insertPending.run(id, userId, content);
         if (flag) sl.setFlag.run(flag, id);
       }
 
       // Fetch presence count + a random line for the transition screen
       const presenceCount = sl.getPresenceCount.get().c;
-      const randomLine = sl.getRandomLine.get();
+      const randomLine = sl.getRandomLineExcludingUser.get(userId);
 
       res.status(201).json({
         id,
@@ -225,18 +236,25 @@ function registerSilentRoutes(app, deps) {
       const { id } = req.params;
       const userId = req.session.userId;
 
+      const line = sl.getApprovedById.get(id);
+      if (!line) return res.status(404).json({ error: 'Line not found' });
+
       const existing = sl.hasResonated.get(id, userId);
+      let resonated;
       if (existing) {
         // Un-resonate
-        sl.removeResonance.run(id, userId);
-        sl.decrementResonance.run(id);
-        res.json({ resonated: false });
+        const removed = sl.removeResonance.run(id, userId);
+        if (removed.changes) sl.decrementResonance.run(id);
+        resonated = false;
       } else {
         // Resonate
         const added = sl.addResonance.run(id, userId);
         if (added.changes) sl.incrementResonance.run(id);
-        res.json({ resonated: true });
+        resonated = true;
       }
+
+      const updated = sl.getResonanceCount.get(id);
+      res.json({ resonated, resonance_count: updated ? updated.resonance_count : 0 });
     } catch (e) {
       console.error('Silent resonate error:', e);
       res.status(500).json({ error: 'Failed to resonate' });
