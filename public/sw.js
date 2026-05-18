@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-v4';
+const CACHE_NAME = 'mp-v8';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icon-192.svg'

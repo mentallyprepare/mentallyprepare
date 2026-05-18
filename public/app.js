@@ -99,6 +99,93 @@ const writingTips = [
   'There\'s no wrong way to do this. Just show up and be honest.'
 ];
 
+const fallbackPromptChoices = [
+  { text: 'What did you pretend was okay today?', category: 'Honest' },
+  { text: 'What is one thing you wish someone noticed?', category: 'Something unsaid' },
+  { text: 'What felt heavy, even if it looked small?', category: 'Deep' },
+  { text: 'What is one tiny thing you survived today?', category: 'Tiny win' },
+  { text: 'What do you want your anonymous partner to understand?', category: 'Honest' },
+  { text: 'What are you not ready to say out loud yet?', category: 'Something unsaid' },
+  { text: 'What softened today, even a little?', category: 'Light' },
+  { text: 'What are you carrying that nobody can see?', category: 'Deep' },
+  { text: 'What would feel honest to write tonight?', category: 'Honest' },
+  { text: 'What do you need without explaining why?', category: 'What I need tonight' }
+];
+
+function normalizePromptText(text) {
+  return String(text || '').replace(/^"|"$/g, '').trim();
+}
+
+function getPromptChoiceSet() {
+  const fromState = state && state.match && Array.isArray(state.match.promptChoices) ? state.match.promptChoices : [];
+  const base = fromState.length ? fromState : fallbackPromptChoices;
+  const offset = promptChoiceOffset % base.length;
+  return base.slice(offset).concat(base.slice(0, offset)).slice(0, 3);
+}
+
+function renderPromptChooser() {
+  const choices = getPromptChoiceSet();
+  if (!selectedPrompt && choices.length) selectedPrompt = normalizePromptText(choices[0].text);
+  return `
+    <div class="prompt-chooser reveal-on-scroll">
+      <div class="prompt-chooser-kicker">Tonight's note</div>
+      <h3 class="prompt-chooser-title">Choose what feels easiest tonight.</h3>
+      <p class="prompt-chooser-sub">You can follow a prompt, or ignore all of them and write what is real.</p>
+      <div class="prompt-choice-list">
+        ${choices.map(function(choice) {
+          const text = normalizePromptText(choice.text);
+          const active = selectedPrompt === text;
+          return `<button class="prompt-choice ${active ? 'selected' : ''}" type="button" data-prompt-choice="${escapeHtml(text)}">
+            <span class="prompt-choice-cat">${escapeHtml(choice.category || 'Prompt')}</span>
+            <span class="prompt-choice-text">${escapeHtml(text)}</span>
+          </button>`;
+        }).join('')}
+      </div>
+      <div class="prompt-choice-actions">
+        <button class="prompt-small-btn" type="button" id="usePromptBtn">Use this prompt</button>
+        <button class="prompt-small-btn ghost" type="button" id="shufflePromptBtn">Show me another</button>
+        <button class="prompt-small-btn ghost" type="button" id="ownPromptBtn">I'll write my own</button>
+      </div>
+    </div>`;
+}
+
+function bindPromptChooser() {
+  document.querySelectorAll('#s-journal [data-prompt-choice]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      selectedPrompt = btn.getAttribute('data-prompt-choice');
+      document.querySelectorAll('#s-journal .prompt-choice').forEach(function(item) { item.classList.remove('selected'); });
+      btn.classList.add('selected');
+    });
+  });
+  const useBtn = document.getElementById('usePromptBtn');
+  if (useBtn) useBtn.addEventListener('click', function() {
+    const area = document.getElementById('journal-draft');
+    if (area && selectedPrompt && !area.value.trim()) {
+      area.value = selectedPrompt + '\n\n';
+      updateWordCount(area);
+      area.focus();
+    }
+  });
+  const shuffleBtn = document.getElementById('shufflePromptBtn');
+  if (shuffleBtn) shuffleBtn.addEventListener('click', function() {
+    const base = state && state.match && Array.isArray(state.match.promptChoices) && state.match.promptChoices.length ? state.match.promptChoices : fallbackPromptChoices;
+    promptChoiceOffset = (promptChoiceOffset + 3) % base.length;
+    selectedPrompt = null;
+    renderJournal();
+  });
+  const ownBtn = document.getElementById('ownPromptBtn');
+  if (ownBtn) ownBtn.addEventListener('click', function() {
+    selectedPrompt = null;
+    document.querySelectorAll('#s-journal .prompt-choice').forEach(function(item) { item.classList.remove('selected'); });
+    const area = document.getElementById('journal-draft');
+    if (area) {
+      area.placeholder = 'Start with the sentence you keep avoiding...';
+      area.focus();
+    }
+    toast('Write freely. No prompt needed.');
+  });
+}
+
 // ═══════════════════════════════════════
 // LOCAL STATE
 // ═══════════════════════════════════════
@@ -109,6 +196,8 @@ let localArchetype = '';
 let currentMood = '🌓';
 let matchPollTimer = null;
 let countdownTimer = null;
+let selectedPrompt = null;
+let promptChoiceOffset = 0;
 
 // ═══════════════════════════════════════
 // STARS
@@ -863,7 +952,7 @@ function renderJournal() {
   if (!state || !state.match) return;
   const day = state.match.day;
   const arch = archetypes[state.user.archetype];
-  const matchArch = archetypes[state.match.partner.archetype];
+  const matchArch = state.match.partner ? archetypes[state.match.partner.archetype] : null;
   const prompt = state.match.currentPrompt;
   const draft = sessionStorage.getItem('mp-draft') || '';
   const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -914,11 +1003,13 @@ function renderJournal() {
     ${nudgesHTML}
     ${partnerInactiveCard}
     ${connScoreHTML}
+    <div id="partner-status-module"></div>
     <div class="streak reveal-on-scroll" id="streak-constellation">
       <div class="streak-top"><div class="streak-lbl">Your constellation</div><div class="streak-ct">🔥 ${state.streak} days</div></div>
       <div id="constellation-container">${renderConstellation(state.match, state.entries, state.partnerEntries, day)}</div>
     </div>
-    <div id="daily-note-container" style="padding:0 0 0;"></div>
+    <div id="daily-note-container"></div>
+    ${renderPromptChooser()}
     <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until entries unseal</div></div>
     <div class="prompt-block reveal-on-scroll">
       <div class="eyebrow">${state.specialDay ? '✦ ' + state.specialDay.title : 'Tonight\'s prompt'}</div>
@@ -950,7 +1041,7 @@ function renderJournal() {
         <button class="btn-ghost" id="journalReportBtn" type="button" style="margin-top:8px;font-size:12px;float:right;">Report something unsafe</button>
       </div>
     </div>
-    // Report inappropriate content in journal entry
+
     ${state.streak >= 3 ? `<div class="streak-nudge reveal-on-scroll"><div class="streak-nudge-inner"><span style="font-size:16px;">🔥</span><div class="streak-nudge-text">${getStreakNudge(state.streak)}</div></div></div>` : ''}
     <div class="cta-block">
       <button class="btn" id="sealEntryBtn" type="button">Seal tonight's note</button>
@@ -970,6 +1061,8 @@ function renderJournal() {
   if (sealEntryBtn) sealEntryBtn.addEventListener('click', sealEntry);
   const saveDraftBtn = document.getElementById('saveDraftBtn');
   if (saveDraftBtn) saveDraftBtn.addEventListener('click', saveDraft);
+  bindPromptChooser();
+  renderPartnerStatusModule('partner-status-module');
   // Nudge dismiss handlers
   document.querySelectorAll('[data-dismiss]').forEach(btn => {
     btn.addEventListener('click', async function() {
@@ -1033,7 +1126,7 @@ async function sealEntry() {
   if (!text) { toast('Write something before sealing ✍️'); return; }
 
   try {
-    const result = await api('POST', '/entry', { text, mood: currentMood });
+    const result = await api('POST', '/entry', { text, mood: currentMood, selectedPrompt: selectedPrompt || null });
     sessionStorage.removeItem('mp-draft');
     currentMood = '🌓';
     await loadState();
@@ -1103,12 +1196,12 @@ function renderSealed() {
       if (statusEl) statusEl.innerHTML = 'Writing now… ' + typingDots();
     } else if (ps.status === 'recent') {
       if (statusEl) statusEl.textContent = 'Last active recently';
-    } else if (ps.status === 'inactive') {
+    } else if (ps.status === 'quiet') {
       if (statusEl) statusEl.textContent = 'Taking a break';
       if (bannerEl) bannerEl.innerHTML = `<div class="switch-banner"><div class="switch-banner-ico">💤</div><div class="switch-banner-text">Your partner hasn't written in ${ps.daysSinceActive} days. They might be taking a break.</div></div>`;
     } else if (ps.status === 'dormant') {
-      if (statusEl) statusEl.textContent = `Inactive for ${ps.daysSinceActive} days`;
-      if (bannerEl) bannerEl.innerHTML = `<div class="switch-banner"><div class="switch-banner-ico">⚡</div><div class="switch-banner-text">Your partner hasn't been active in ${ps.daysSinceActive} days. You can switch to a new partner.</div><button class="switch-banner-btn" onclick="switchPartner()">Switch</button></div>`;
+      if (statusEl) statusEl.textContent = `Quiet for ${ps.daysSinceActive} days`;
+      if (bannerEl) bannerEl.innerHTML = `<div class="switch-banner"><div class="switch-banner-ico">⚡</div><div class="switch-banner-text">Your partner has been quiet for a while. You can keep waiting, or quietly look for someone new.</div><button class="switch-banner-btn" onclick="openSwitchPartnerModal()">Find a new match</button></div>`;
     }
   });
 
@@ -1337,13 +1430,15 @@ function renderSettings() {
       <button class="si" type="button" onclick="logout()"><div class="si-ico">&#128682;</div><div class="si-lbl">Log out</div><div class="si-arrow">&#8250;</div></button>
       <button class="si" type="button" style="border-color:rgba(212,133,154,.15);" onclick="deleteAccount()"><div class="si-ico">&#128465;&#65039;</div><div class="si-lbl" style="color:rgba(212,133,154,.7);">Delete my account</div><div class="si-arrow">&#8250;</div></button>
     </div>
+    </div>
+    ${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? `
     <div style="padding:20px 24px 0;">
       <div style="font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-s);margin-bottom:12px;">Developer Tools</div>
     </div>
     <div class="settings-list">
       ${state && state.match ? `<button class="si" type="button" onclick="devAdvance()"><div class="si-ico">&#9193;</div><div class="si-lbl">Jump to Day 21</div><div class="si-arrow">&#8250;</div></button>` : ''}
       ${state && state.match ? `<button class="si" type="button" onclick="devPartnerReveal()"><div class="si-ico">&#129309;</div><div class="si-lbl">Partner says "yes" to reveal</div><div class="si-arrow">&#8250;</div></button>` : ''}
-    </div>
+    </div>` : ''}
     <div class="spacer"></div>`;
 }
 
@@ -1363,19 +1458,91 @@ async function checkPartnerStatus() {
   } catch { return null; }
 }
 
+function partnerStatusHtml(ps, compact) {
+  if (!ps) {
+    return `<div class="partner-status-panel"><div class="partner-status-title">Checking your anonymous room...</div><p class="partner-status-copy">Opening your room gently.</p></div>`;
+  }
+  const title = ps.friendlyTitle || (ps.hasPartner ? 'Your anonymous partner is here.' : 'We are still looking for the right anonymous match.');
+  const copy = ps.friendlyMessage || 'You can keep writing while the room settles.';
+  const meta = ps.hasPartner ? `${ps.partnerEntryCount || 0} opened note${ps.partnerEntryCount === 1 ? '' : 's'}` : 'waiting room';
+  const switchActions = ps.canSwitch ? `
+    <div class="partner-status-actions">
+      <button class="prompt-small-btn ghost" type="button" data-keep-waiting>Keep waiting</button>
+      <button class="prompt-small-btn" type="button" data-open-switch>Find a new match</button>
+    </div>` : '';
+  return `<div class="partner-status-panel ${compact ? 'compact' : ''}">
+    <div class="partner-status-kicker">Your anonymous partner</div>
+    <div class="partner-status-title">${escapeHtml(title)}</div>
+    <p class="partner-status-copy">${escapeHtml(copy)}</p>
+    <div class="partner-status-meta">
+      <span>${escapeHtml(meta)}</span>
+      <span>${ps.switchesRemaining || 0} quiet switch${ps.switchesRemaining === 1 ? '' : 'es'} left</span>
+    </div>
+    ${switchActions}
+  </div>`;
+}
+
+async function renderPartnerStatusModule(id, compact) {
+  const mount = document.getElementById(id);
+  if (!mount) return;
+  mount.innerHTML = partnerStatusHtml(null, compact);
+  const ps = await checkPartnerStatus();
+  if (!document.getElementById(id)) return;
+  mount.innerHTML = partnerStatusHtml(ps, compact);
+  const switchBtn = mount.querySelector('[data-open-switch]');
+  if (switchBtn) switchBtn.addEventListener('click', openSwitchPartnerModal);
+  const waitBtn = mount.querySelector('[data-keep-waiting]');
+  if (waitBtn) waitBtn.addEventListener('click', function() { toast('You are not stuck. We will keep the room open.'); });
+}
+
+function openSwitchPartnerModal() {
+  const existing = document.getElementById('switchPartnerModal');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'mp-modal-overlay';
+  overlay.id = 'switchPartnerModal';
+  overlay.innerHTML = `
+    <div class="mp-modal-card">
+      <div class="mp-modal-kicker">Quiet rematch</div>
+      <h3 class="mp-modal-title">Find someone new?</h3>
+      <p class="mp-modal-copy">Your partner has been quiet for a while. You can keep waiting, or we can quietly look for a new anonymous match for you. Your previous exchange will stay private.</p>
+      <div class="mp-modal-actions">
+        <button class="prompt-small-btn ghost" type="button" id="switchCancelBtn">Keep waiting</button>
+        <button class="prompt-small-btn" type="button" id="switchConfirmBtn">Find new match</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  document.getElementById('switchCancelBtn').addEventListener('click', function() { overlay.remove(); });
+  document.getElementById('switchConfirmBtn').addEventListener('click', switchPartner);
+}
+
 async function switchPartner() {
-  if (!confirm('Switch to a new partner? Your previous entries will be kept but won\'t be revealed to the new partner.')) return;
+  const modal = document.getElementById('switchPartnerModal');
+  const confirmBtn = document.getElementById('switchConfirmBtn');
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Looking...';
+  }
+  toast('Looking for someone on a similar emotional frequency...', 3200);
   try {
     const result = await api('POST', '/switch-partner');
     await loadState();
+    if (modal) modal.remove();
     if (result.matched) {
-      toast('New partner found! Your journey continues 🌙');
+      toast(result.message || 'You have a new anonymous match. Start gently tonight.', 3200);
       renderJournal(); go('s-journal');
     } else {
-      toast('Looking for a new partner...');
+      toast(result.message || 'We are still looking for the right anonymous match. You can write tonight while we search.', 3600);
       renderWaiting(); go('s-waiting');
     }
-  } catch (e) { toast(e.message); }
+  } catch (e) {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Find new match';
+    }
+    toast(e.message || 'Something did not save. Try once more.');
+  }
 }
 
 // ═══════════════════════════════════════
@@ -1486,17 +1653,6 @@ async function checkReveal() {
   }
 }
 
-function spawnParticles() {
-  const pc = document.getElementById('particles');
-  const colours = ['#EBB4C2','#E8D0A0','#B09FCC','#F8F2FF','#D4859A'];
-  for(let i=0;i<30;i++){
-    const p = document.createElement('div'); p.className='particle';
-    const sz = Math.random()*6+3;
-    p.style.cssText = `width:${sz}px;height:${sz}px;background:${colours[~~(Math.random()*colours.length)]};left:${30+Math.random()*40}%;top:${25+Math.random()*15}%;animation-delay:${Math.random()*.3}s;animation-duration:${.8+Math.random()*.6}s;`;
-    pc.appendChild(p);
-    setTimeout(() => p.remove(), 1500);
-  }
-}
 
 function renderRevealed() {
   if (!state.reveal || !state.reveal.partner) return;
@@ -1986,7 +2142,7 @@ function toggleSiteMenu() {
 if ('serviceWorker' in navigator) {
   // Clear ALL old caches first
   caches.keys().then(names => {
-    names.forEach(n => { if (n !== 'mp-v4') caches.delete(n); });
+    names.forEach(n => { if (n !== 'mp-v7') caches.delete(n); });
   });
   navigator.serviceWorker.getRegistrations().then(regs => {
     // Unregister any old SWs, then register fresh
@@ -2481,7 +2637,7 @@ async function loadSilentFeed(reset) {
     var lines = data.lines || [];
     if (lines.length === 0 && reset) {
       silentExhausted = true;
-      list.innerHTML = '<div class="silent-empty">The room is quiet tonight.<br><em>Be the first.</em></div>';
+      list.innerHTML = '<div class="silent-empty">No one has left a line here yet.<br><em>You can be the first quiet voice.</em></div>';
       return;
     }
 
@@ -2520,7 +2676,7 @@ async function loadSilentFeed(reset) {
     }
   } catch (e) {
     var list = document.getElementById('silentFeedList');
-    if (list) list.innerHTML = '<div class="silent-empty">Couldn\'t load the room. Try again.</div>';
+    if (list) list.innerHTML = '<div class="silent-empty">We could not open this yet.<br><em>Refresh gently.</em></div>';
   } finally {
     silentLoading = false;
   }
@@ -2700,8 +2856,8 @@ function showSilentMine() {
     var lines = data.lines || [];
     if (!lines.length) {
       list.innerHTML = `
-        <div class="silent-empty">You haven't written anything yet.<br>
-        <button class="silent-ghost-link" style="margin-top:14px" onclick="showSilentWrite()">Write your first line →</button></div>
+        <div class="silent-empty">Nothing here yet.<br>
+        <button class="silent-ghost-link" style="margin-top:14px" onclick="showSilentWrite()">Write your first quiet line →</button></div>
       `;
       return;
     }

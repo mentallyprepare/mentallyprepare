@@ -117,23 +117,7 @@ function initializeDatabase(preferredDir) {
   throw new Error(`No usable SQLite data directory available: ${lastError ? lastError.message : 'unknown error'}`);
 }
 
-function resolveDataDir(preferredDir) {
-  const candidates = [preferredDir, FALLBACK_DATA_DIR, __dirname]
-    .filter((dir, idx, arr) => dir && arr.indexOf(dir) === idx);
-  for (const candidate of candidates) {
-    try {
-      if (!fs.existsSync(candidate)) {
-        fs.mkdirSync(candidate, { recursive: true });
-        console.log('Created directory:', candidate);
-      }
-      fs.accessSync(candidate, fs.constants.W_OK);
-      return candidate;
-    } catch (e) {
-      console.error('Data directory unavailable:', candidate, e.message);
-    }
-  }
-  throw new Error('No writable data directory available');
-}
+// resolveDataDir removed — initializeDatabase() handles data dir resolution.
 const { DATA_DIR, DB_PATH, db } = initializeDatabase(requestedDataDir);
 if (IS_PROD && DATA_DIR === __dirname) {
   console.warn('Using app directory for data storage. SQLite data will be ephemeral until a Railway volume is mounted.');
@@ -162,7 +146,8 @@ const { registerSilentRoutes, registerSilentAdminRoutes } = require('./routes/si
 // ---------------------------------------------------------------
 const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
-const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome } = require('./email-service');
+const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome, sendMatchFoundNotification, sendDailyPromptReminder, sendPartnerWroteReminder } = require('./email-service');
+const cron = require('node-cron');
 
 
 const app = express();
@@ -388,6 +373,7 @@ db.exec(`
   );
 `);
 
+// INTERNAL ONLY — never call with user input (uses string interpolation in SQL).
 function ensureColumn(tableName, columnName, definition) {
   try {
     db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
@@ -403,6 +389,7 @@ ensureColumn('waitlist', 'year', 'TEXT');
 ensureColumn('waitlist', 'archetype', 'TEXT');
 ensureColumn('waitlist', 'invited_at', 'TEXT');
 ensureColumn('matches', 'constellation_name', 'TEXT');
+ensureColumn('users', 'login_email_sent_at', 'TEXT');
 
 // Silent Room — presence/witness columns
 ensureColumn('silent_lines', 'seen_count', 'INTEGER NOT NULL DEFAULT 0');
@@ -572,6 +559,7 @@ const stmts = {
   updateUserConsent: db.prepare('UPDATE users SET consent_given = ?, consent_withdrawn_at = ? WHERE id = ?'),
   updateUserSwitch: db.prepare('UPDATE users SET switch_count = ? WHERE id = ?'),
   updatePushSub: db.prepare('UPDATE users SET push_subscription = ? WHERE id = ?'),
+  updateLoginEmailTime: db.prepare('UPDATE users SET login_email_sent_at = ? WHERE id = ?'),
   deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
 
   getMatch: db.prepare('SELECT * FROM matches WHERE user1_id = ? OR user2_id = ?'),
@@ -758,6 +746,18 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   referrerPolicy: { policy: 'no-referrer' }
 }));
+// --- Stripe webhook MUST be registered BEFORE express.json() ---
+// (Stripe needs the raw body for signature verification)
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+  console.log('  ✦ Stripe configured');
+}
+if (stripe && process.env.STRIPE_WEBHOOK_SECRET) {
+  const { registerStripeWebhook } = require('./routes/payments');
+  registerStripeWebhook(app, { stripe, stmts, express });
+}
+
 app.use(express.json({ limit: '16kb' }));
 
 // Keep Railway health checks independent from session middleware.
@@ -774,7 +774,23 @@ function setStaticCacheHeaders(res, filePath) {
   res.setHeader('Cache-Control', 'public, max-age=3600');
 }
 
-// Serve app.html at root
+// --- HTTPS redirect (production) — BEFORE static files ---
+if (IS_PROD) {
+  app.use((req, res, next) => {
+    if (req.path === '/health' || req.path === '/ready' || req.path === '/api/health' || req.path === '/api/ready') {
+      return next();
+    }
+    const forwardedProto = req.header('x-forwarded-proto');
+    const host = req.header('host');
+    if (forwardedProto && forwardedProto !== 'https' && host) {
+      return res.redirect('https://' + host + req.url);
+    }
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+  });
+}
+
+// Serve index.html at root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -834,26 +850,12 @@ const sessionConfig = {
 const sessionStore = createSessionStore();
 if (sessionStore) {
   sessionConfig.store = sessionStore;
+  console.log('  ✦ Session store: SQLite');
+} else {
+  console.warn('  ⚠ Session store: IN-MEMORY (logins reset on restart)');
 }
 
 app.use(session(sessionConfig));
-
-// --- HTTPS redirect (production) --------
-if (IS_PROD) {
-  app.use((req, res, next) => {
-    if (req.path === '/health' || req.path === '/ready' || req.path === '/api/health' || req.path === '/api/ready') {
-      return next();
-    }
-    const forwardedProto = req.header('x-forwarded-proto');
-    const host = req.header('host');
-    // Only force HTTPS when the proxy explicitly tells us the request came over HTTP.
-    if (forwardedProto && forwardedProto !== 'https' && host) {
-      return res.redirect('https://' + host + req.url);
-    }
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    next();
-  });
-}
 
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
@@ -1062,8 +1064,8 @@ function getAdaptivePrompt(entries, day) {
 
 function getMoodInsights(entries) {
   if (entries.length < 3) return null;
-  const moodMap = { '??': 1, '??': 2, '??': 3, '??': 4, '??': 5 };
-  const moodLabels = { '??': 'Heavy', '??': 'Quiet', '??': 'Okay', '??': 'Lighter', '??': 'Good' };
+  const moodMap = { '🌑': 1, '🌒': 2, '🌓': 3, '🌔': 4, '🌕': 5 };
+  const moodLabels = { '🌑': 'Heavy', '🌒': 'Quiet', '🌓': 'Okay', '🌔': 'Lighter', '🌕': 'Good' };
 
   const moodTrend = entries.slice().sort((a, b) => a.day - b.day)
     .map(e => ({ day: e.day, mood: e.mood, value: moodMap[e.mood] || 3 }));
@@ -1102,6 +1104,17 @@ function attemptMatch(userId) {
   if (!targetType) return null;
 
   let candidates = stmts.findCandidates.all(targetType, user.college, userId).map(parseUser);
+
+  // Fallback if no strict candidates are found matching the exact archetype or different college rules
+  if (candidates.length === 0) {
+    const fallbackStmt = db.prepare(`
+      SELECT * FROM users
+      WHERE archetype IS NOT NULL
+        AND id != ?
+        AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
+    `);
+    candidates = fallbackStmt.all(userId).map(parseUser);
+  }
 
   // Gender preference filtering
   if (user.match_gender_pref && user.match_gender_pref !== 'any') {
@@ -1155,6 +1168,11 @@ function attemptMatch(userId) {
   if (partner) {
     const result = stmts.insertMatch.run(userId, partner.id);
     attachWaitingEntriesToMatch(result.lastInsertRowid, [userId, partner.id]);
+
+    // Dispatch match found emails asynchronously
+    sendMatchFoundNotification(user.email, user.name, partner.archetype).catch(err => console.error("Match email error:", err));
+    sendMatchFoundNotification(partner.email, partner.name, user.archetype).catch(err => console.error("Match email error:", err));
+
     return result.lastInsertRowid;
   }
   return null;
@@ -1210,6 +1228,8 @@ function deleteMatchData(matchId) {
   stmts.deleteMatchSnapshots.run(matchId);
   stmts.deleteMatchDailyNotes.run(matchId);
   try { stmts.deleteMatchSealedPicks.run(matchId); } catch {}
+  try { db.prepare('DELETE FROM archetype_snapshots WHERE match_id = ?').run(matchId); } catch {}
+  try { db.prepare('DELETE FROM daily_notes WHERE match_id = ?').run(matchId); } catch {}
   stmts.deleteMatchById.run(matchId);
 }
 
@@ -1274,12 +1294,7 @@ if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
   console.log('  ? Razorpay configured');
 }
 
-// --- Stripe Setup -----------------------
-let stripe = null;
-if (process.env.STRIPE_SECRET_KEY) {
-  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-  console.log('  ? Stripe configured');
-}
+// Stripe was initialized above (before express.json) for webhook support
 
 registerPaymentRoutes(app, {
   apiLimiter,
@@ -1308,9 +1323,11 @@ registerAppRoutes(app, {
   attemptMatch,
   attachWaitingEntriesToMatch,
   complementary,
+  deleteMatchData,
   deleteUserDataTx,
   vapidKeys,
-  IS_PROD
+  IS_PROD,
+  sendMatchFoundNotification
 });
 // Register waiting-entry route
 registerWaitingEntryRoute(app, {
@@ -1474,23 +1491,10 @@ app.get('/api/partner-wrote-today', apiLimiter, requireAuth, (req, res) => {
   res.json({ partnerWrote: !!partnerEntry });
 });
 
-// ─── Push Notification Scheduler ─────────────────────────────
-function sendPushToUser(row, title, body) {
-  if (!row.push_subscription || !vapidKeys) return;
-  try {
-    const sub = JSON.parse(row.push_subscription);
-    const payload = JSON.stringify({ title, body, url: '/app' });
-    webpush.sendNotification(sub, payload).catch(err => {
-      if (err.statusCode === 410 || err.statusCode === 404) {
-        stmts.updatePushSub.run(null, row.id);
-      }
-    });
-  } catch {}
-}
+// ─── Email Notification Scheduler Using Node-Cron ─────────────────────────────
 
 // 9pm IST = 15:30 UTC — daily prompt reminder
 function send9pmReminders() {
-  if (!vapidKeys) return;
   const rows = stmts.getActiveMatchUsers.all();
   for (const row of rows) {
     const day = getMatchDay(row.started_at);
@@ -1500,15 +1504,17 @@ function send9pmReminders() {
     if (!match) continue;
     const todayEntry = stmts.getEntry.get(row.id, match.id, day);
     if (!todayEntry) {
-      sendPushToUser(row, 'Tonight\'s prompt is waiting ✍️', `Day ${day} of 21 — your 5-minute ritual.`);
+      const user = parseUser(stmts.getUserById.get(row.id));
+      if (user) {
+        sendDailyPromptReminder(user.email, user.name, day).catch(err => console.error('Failed to send daily prompt reminder', err));
+      }
     }
   }
-  console.log('  ✦ 9pm: Sent prompt reminders');
+  console.log('  ✦ 9pm: Sent prompt email reminders');
 }
 
 // 10pm IST = 16:30 UTC — conditional "partner wrote" notification
 function send10pmReminders() {
-  if (!vapidKeys) return;
   const rows = stmts.getActiveMatchUsers.all();
   for (const row of rows) {
     const day = getMatchDay(row.started_at);
@@ -1517,90 +1523,47 @@ function send10pmReminders() {
     if (!match) continue;
     const todayEntry = stmts.getEntry.get(row.id, match.id, day);
     if (todayEntry) continue; // already wrote
+
     const partnerId = getPartnerId(match, row.id);
     const partnerEntry = stmts.getEntry.get(partnerId, match.id, day);
     if (partnerEntry) {
-      sendPushToUser(row, 'Your partner wrote today.', 'Don\'t leave them waiting. ✦');
+      const user = parseUser(stmts.getUserById.get(row.id));
+      const partner = parseUser(stmts.getUserById.get(partnerId));
+      if (user && partner) {
+        sendPartnerWroteReminder(user.email, user.name, partner.name, day).catch(err => console.error('Failed to send partner wrote reminder', err));
+      }
     }
   }
-  console.log('  ✦ 10pm: Sent partner-wrote reminders');
+  console.log('  ✦ 10pm: Sent partner-wrote email reminders');
 }
 
-// 11:30pm IST = 18:00 UTC — final seal warning
-function send1130pmReminders() {
-  if (!vapidKeys) return;
-  const rows = stmts.getActiveMatchUsers.all();
-  for (const row of rows) {
-    const day = getMatchDay(row.started_at);
-    if (day > 21) continue;
-    const match = stmts.getMatch.get(row.id, row.id);
-    if (!match) continue;
-    const todayEntry = stmts.getEntry.get(row.id, match.id, day);
-    if (!todayEntry) {
-      sendPushToUser(row, '30 minutes until today seals. 🌙', 'Write something true before midnight.');
-    }
-  }
-  console.log('  ✦ 11:30pm: Sent seal warning reminders');
-}
-
-// Midnight IST = 18:30 UTC — unseal partner entry
+// Midnight IST = 18:30 UTC — unseal partner entry + note generation
 function sendMidnightUnseals() {
-  if (!vapidKeys) return;
-  const rows = stmts.getActiveMatchUsers.all();
-  for (const row of rows) {
-    const day = getMatchDay(row.started_at);
-    if (day < 2 || day > 21) continue;
-    const match = stmts.getMatch.get(row.id, row.id);
-    if (!match) continue;
-    const partnerId = getPartnerId(match, row.id);
-    const prevEntry = stmts.getEntry.get(partnerId, match.id, day - 1);
-    if (prevEntry) {
-      sendPushToUser(row, 'Your partner\'s words are ready. 🌙', 'Tap to unseal their entry.');
-    }
-  }
-  // Also generate today's notes for all users
   generateDailyNotesForAll();
-  console.log('  ✦ Midnight: Sent unseal notifications, generated notes');
+  console.log('  ✦ Midnight: Generated daily notes');
 }
 
-// 8am IST = 02:30 UTC — morning note card arrived
-function send8amNotes() {
-  if (!vapidKeys) return;
-  const rows = stmts.getActiveMatchUsers.all();
-  for (const row of rows) {
-    const day = getMatchDay(row.started_at);
-    if (day > 21) continue;
-    const note = stmts.getDailyNote.get(row.id, day);
-    if (note && !note.opened_at) {
-      sendPushToUser(row, 'Your note arrived. ✦', 'A message written for you overnight.');
-    }
-  }
-  console.log('  ✦ 8am: Sent morning note notifications');
-}
-
-// Schedule all notification slots
+// Schedule all notification slots using node-cron
 function scheduleNotifications() {
-  const now = new Date();
+  // 9 PM IST is 15:30 UTC
+  cron.schedule('30 15 * * *', () => {
+    console.log('Running 9pm Reminders...');
+    send9pmReminders();
+  });
 
-  const slots = [
-    { utcHour: 2, utcMin: 30, label: '8am note', fn: send8amNotes },
-    { utcHour: 15, utcMin: 30, label: '9pm prompt', fn: send9pmReminders },
-    { utcHour: 16, utcMin: 30, label: '10pm partner', fn: send10pmReminders },
-    { utcHour: 18, utcMin: 0, label: '11:30pm seal', fn: send1130pmReminders },
-    { utcHour: 18, utcMin: 30, label: 'midnight unseal', fn: sendMidnightUnseals },
-  ];
+  // 10 PM IST is 16:30 UTC
+  cron.schedule('30 16 * * *', () => {
+    console.log('Running 10pm Reminders...');
+    send10pmReminders();
+  });
 
-  for (const slot of slots) {
-    const target = new Date(now);
-    target.setUTCHours(slot.utcHour, slot.utcMin, 0, 0);
-    if (target <= now) target.setDate(target.getDate() + 1);
-    const delay = target.getTime() - now.getTime();
-    setTimeout(() => {
-      slot.fn();
-      setInterval(slot.fn, 24 * 60 * 60 * 1000);
-    }, delay);
-    console.log(`  ✦ ${slot.label} notifications scheduled (in ${Math.round(delay / 60000)} min)`);
-  }
+  // Midnight IST is 18:30 UTC
+  cron.schedule('30 18 * * *', () => {
+    console.log('Running Midnight Tasks...');
+    sendMidnightUnseals();
+  });
+
+  console.log('  ✦ Cron schedules loaded for email reminders');
 }
 scheduleNotifications();
 
@@ -1609,16 +1572,9 @@ setTimeout(() => {
   try { generateDailyNotesForAll(); } catch (e) { console.error('Note generation startup error:', e); }
 }, 5000);
 
-// ---------------------------------------
-// PRIVACY & STATIC ROUTES
-// Serve privacy.html and terms.html as static pages
-app.get('/privacy', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
-});
-app.get('/terms', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
-});
-// ---------------------------------------
+// --- Duplicate /privacy, /terms, /admin routes removed ---
+// These are handled by registerStaticRoutes() and registerAdminRoutes()
+
 // ---------------------------------------
 // EMAIL REMINDER SIGNUP
 // ---------------------------------------
@@ -1642,8 +1598,7 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
     sendEmail({
       to: emailClean,
       subject,
-      text,
-      bcc: 'mymentallyprepare.com@mymentallyprepare.com'
+      text
     })
       .then(() => {
         console.log('Sent welcome reminder to', emailClean);
@@ -1656,14 +1611,6 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
   } catch (e) {
     res.status(500).json({ error: 'Failed to save email' });
   }
-});
-
-// ---------------------------------------
-// ADMIN ROUTES
-// ---------------------------------------
-// Serve admin panel
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 function requireAdmin(req, res, next) {
@@ -1737,6 +1684,7 @@ registerAdminRoutes(app, {
   stmts,
   requireAdmin,
   getBufferedLogs,
+  authLimiter,
   getAdminStats,
   getMatchDay,
   attachWaitingEntriesToMatch,
@@ -1760,7 +1708,7 @@ registerStaticRoutes(app, {
   rootDir: __dirname
 });
 
-// Send announcement (POST /admin/announce)
+// 404 catch-all
 // 404
 app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', 'app.html'));

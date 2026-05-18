@@ -16,6 +16,7 @@ function registerAppRoutes(app, deps) {
     attemptMatch,
     attachWaitingEntriesToMatch,
     complementary,
+    deleteMatchData,
     deleteUserDataTx,
     vapidKeys,
     IS_PROD
@@ -33,6 +34,131 @@ function registerAppRoutes(app, deps) {
     14: { type: 'weekly_ritual', title: 'The Mirror Entry', prompt: '"Read your Day 1 entry. Now write what you\u2019d say to that version of yourself."', badge: '🪞' },
     21: { type: 'final_night', title: 'The Last Night', prompt: '"Would you like to know who has been writing to you?"', badge: '✦' }
   };
+
+  const promptChoiceLibrary = [
+    { text: 'What did you pretend was okay today?', category: 'Honest' },
+    { text: 'What is one thing you wish someone noticed?', category: 'Something unsaid' },
+    { text: 'What felt heavy, even if it looked small?', category: 'Deep' },
+    { text: 'What is one tiny thing you survived today?', category: 'Tiny win' },
+    { text: 'What do you want your anonymous partner to understand?', category: 'Honest' },
+    { text: 'What are you not ready to say out loud yet?', category: 'Something unsaid' },
+    { text: 'What softened today, even a little?', category: 'Light' },
+    { text: 'What are you carrying that nobody can see?', category: 'Deep' },
+    { text: 'What would feel honest to write tonight?', category: 'Honest' },
+    { text: 'What do you need without explaining why?', category: 'What I need tonight' },
+    { text: 'Where did you feel a little outside of everyone?', category: 'Deep' },
+    { text: 'What sentence have you been avoiding?', category: 'Something unsaid' }
+  ];
+
+  function getPromptChoices(day, currentPrompt, specialDay) {
+    const offset = Math.max(day - 1, 0) % promptChoiceLibrary.length;
+    const rotated = promptChoiceLibrary.slice(offset).concat(promptChoiceLibrary.slice(0, offset));
+    const choices = [];
+    if (currentPrompt) {
+      choices.push({
+        text: String(currentPrompt).replace(/^"|"$/g, ''),
+        category: specialDay ? specialDay.title : 'Tonight'
+      });
+    }
+    for (const item of rotated) {
+      if (choices.length >= 6) break;
+      if (!choices.some(choice => choice.text === item.text)) choices.push(item);
+    }
+    return choices;
+  }
+
+  function cleanSelectedPrompt(value) {
+    if (typeof value !== 'string') return null;
+    const clean = value.trim().replace(/\s+/g, ' ');
+    if (!clean || clean.toLowerCase() === 'custom' || clean.toLowerCase() === 'write_my_own') return null;
+    return clean.slice(0, 220);
+  }
+
+  function buildPartnerStatus({ hasPartner, daysSinceActive = null, partnerEntryCount = 0, switchCount = 0 }) {
+    const switchesRemaining = Math.max(0, 2 - (switchCount || 0));
+    if (!hasPartner) {
+      return {
+        hasPartner: false,
+        status: 'waiting',
+        daysSinceActive: null,
+        partnerEntryCount: 0,
+        canSwitch: false,
+        switchesRemaining,
+        reason: 'no_partner',
+        friendlyTitle: 'We are still looking for the right anonymous match.',
+        friendlyMessage: 'You can write tonight while we search. Your first note will stay ready.',
+        nextSwitchAvailableAt: null,
+        actionLabel: null
+      };
+    }
+
+    const canSwitchByQuiet = daysSinceActive >= 5;
+    const canSwitch = canSwitchByQuiet && switchesRemaining > 0;
+    const nextSwitchAvailableAt = !canSwitchByQuiet
+      ? new Date(Date.now() + Math.max(0, 5 - daysSinceActive) * 86400000).toISOString()
+      : null;
+    let status = daysSinceActive === 0 ? 'active' : daysSinceActive <= 2 ? 'recent' : daysSinceActive <= 4 ? 'quiet' : 'dormant';
+    let friendlyTitle = partnerEntryCount > 0 ? 'Your anonymous exchange is open.' : 'Your anonymous partner is here.';
+    let friendlyMessage = partnerEntryCount > 0
+      ? 'Some notes have already opened. Tonight can add one more quiet truth.'
+      : 'They may take a little time to write. You can still seal your note tonight.';
+    let reason = 'ok';
+    let actionLabel = 'Keep writing';
+
+    if (status === 'quiet') {
+      friendlyTitle = 'Your partner has been quiet for a while.';
+      friendlyMessage = 'Some people take longer to return. If they stay away, you will be able to quietly find someone new.';
+      reason = 'waiting_period';
+      actionLabel = 'Keep waiting';
+    }
+    if (status === 'dormant') {
+      friendlyTitle = 'Your partner has been quiet for a while.';
+      if (switchesRemaining > 0) {
+        friendlyMessage = 'You can keep waiting, or we can quietly look for a new anonymous match. Your previous exchange stays private.';
+        reason = 'switch_available';
+        actionLabel = 'Find a new match';
+      } else {
+        friendlyMessage = 'You have already changed partners for this cycle. You can keep writing privately while this one completes.';
+        reason = 'switch_limit_reached';
+        actionLabel = 'Keep writing';
+      }
+    }
+
+    return {
+      hasPartner: true,
+      status,
+      daysSinceActive,
+      partnerEntryCount,
+      canSwitch,
+      switchesRemaining,
+      reason,
+      friendlyTitle,
+      friendlyMessage,
+      nextSwitchAvailableAt,
+      actionLabel
+    };
+  }
+
+  function clearMatchForSwitch(matchId) {
+    const tablesWithMatchId = [
+      'comments',
+      'reveals',
+      'reactions',
+      'nudges',
+      'sealed_room_picks',
+      'archetype_snapshots',
+      'daily_notes',
+      'entries'
+    ];
+    for (const table of tablesWithMatchId) {
+      try {
+        db.prepare(`DELETE FROM ${table} WHERE match_id = ?`).run(matchId);
+      } catch (e) {
+        // Older databases may not have every optional table yet.
+      }
+    }
+    stmts.deleteMatchById.run(matchId);
+  }
 
   // --- Connection score calculation ---
   function calcConnectionScore(userEntries, partnerEntries, matchDay) {
@@ -106,6 +232,7 @@ function registerAppRoutes(app, deps) {
           id: match.id,
           day,
           currentPrompt,
+          promptChoices: getPromptChoices(day, currentPrompt, specialDay),
           partner: partner ? { archetype: partner.archetype, scores: partner.scores } : null,
           startedAt: match.started_at
         };
@@ -236,7 +363,7 @@ function registerAppRoutes(app, deps) {
   app.post('/api/entry', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
-      const { text, mood } = req.body;
+      const { text, mood, selectedPrompt } = req.body;
       if (!text || !text.trim()) return res.status(400).json({ error: 'Entry text required' });
       if (text.length > 5000) return res.status(400).json({ error: 'Entry too long (max 5000 chars)' });
 
@@ -249,8 +376,8 @@ function registerAppRoutes(app, deps) {
       const day = getMatchDay(match.started_at);
       if (day > 21) return res.status(400).json({ error: 'Journey complete' });
 
-      const prompt = prompts[(day - 1) % prompts.length];
-      stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '??', prompt);
+      const prompt = cleanSelectedPrompt(selectedPrompt) || prompts[(day - 1) % prompts.length];
+      stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
 
       res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, helplines: safety.crisis ? HELPLINES : null } });
     } catch (e) {
@@ -262,24 +389,24 @@ function registerAppRoutes(app, deps) {
   app.get('/api/partner-status', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
+      const user = stmts.getUserById.get(userId);
       const match = stmts.getMatch.get(userId, userId);
-      if (!match) return res.json({ hasPartner: false });
+      if (!match) return res.json(buildPartnerStatus({ hasPartner: false, switchCount: user ? user.switch_count : 0 }));
 
       const partnerId = getPartnerId(match, userId);
       const partner = stmts.getUserById.get(partnerId);
-      if (!partner) return res.json({ hasPartner: false });
+      if (!partner) return res.json(buildPartnerStatus({ hasPartner: false, switchCount: user ? user.switch_count : 0 }));
 
       const lastActive = partner.last_active_date ? new Date(partner.last_active_date) : new Date(partner.created_at);
       const daysSinceActive = Math.floor((Date.now() - lastActive.getTime()) / 86400000);
       const partnerEntryCount = db.prepare('SELECT COUNT(*) as c FROM entries WHERE user_id = ? AND match_id = ?').get(partnerId, match.id).c;
 
-      res.json({
+      res.json(buildPartnerStatus({
         hasPartner: true,
         daysSinceActive,
         partnerEntryCount,
-        canSwitch: daysSinceActive >= 5,
-        status: daysSinceActive === 0 ? 'active' : daysSinceActive <= 2 ? 'recent' : daysSinceActive <= 4 ? 'inactive' : 'dormant'
-      });
+        switchCount: user ? user.switch_count : 0
+      }));
     } catch (e) {
       console.error('Partner status error:', e);
       res.status(500).json({ error: 'Failed to check partner status' });
@@ -293,7 +420,12 @@ function registerAppRoutes(app, deps) {
       if (!user) return res.status(404).json({ error: 'User not found' });
 
       if ((user.switch_count || 0) >= 2) {
-        return res.status(400).json({ error: 'Maximum 2 partner switches per cycle' });
+        return res.status(400).json({
+          error: 'You have already changed partners for this cycle. You can keep writing privately while this one completes.',
+          ok: false,
+          switchesRemaining: 0,
+          state: 'blocked'
+        });
       }
 
       const match = stmts.getMatch.get(userId, userId);
@@ -305,18 +437,43 @@ function registerAppRoutes(app, deps) {
       const daysSinceActive = Math.floor((Date.now() - lastActive.getTime()) / 86400000);
 
       if (daysSinceActive < 5) {
-        return res.status(400).json({ error: 'Your partner was active recently. Switch is available after 5 days of inactivity.' });
+        return res.status(400).json({
+          error: 'Your partner has been quiet, but we will give them a little more time. If they stay away, you will be able to quietly find someone new.',
+          ok: false,
+          switchesRemaining: Math.max(0, 2 - (user.switch_count || 0)),
+          state: 'too_soon'
+        });
       }
 
-      stmts.deleteMatch.run(match.id);
       const newCount = (user.switch_count || 0) + 1;
-      stmts.updateUserSwitch.run(newCount, userId);
+
+      db.transaction(() => {
+        // Existing product behavior removes the old match container and its attached entries.
+        // The user-facing copy promises privacy rather than future access to that old exchange.
+        clearMatchForSwitch(match.id);
+        stmts.updateUserSwitch.run(newCount, userId);
+      })();
 
       const newMatchId = attemptMatch(userId);
-      res.json({ ok: true, matched: !!newMatchId, switchesRemaining: 2 - newCount });
+      res.json({
+        ok: true,
+        matched: !!newMatchId,
+        newMatchCreated: !!newMatchId,
+        switchesRemaining: 2 - newCount,
+        state: newMatchId ? 'matched' : 'waiting',
+        waitingState: newMatchId ? null : 'searching',
+        previousExchangePrivate: true,
+        message: newMatchId
+          ? 'You have a new anonymous match. Start gently tonight.'
+          : 'We are still looking for the right anonymous match. You can write tonight while we search.'
+      });
     } catch (e) {
       console.error('Switch error:', e);
-      res.status(500).json({ error: 'Failed to switch partner' });
+      res.status(500).json({
+        ok: false,
+        state: 'error',
+        error: 'We could not look for a new match just now. Please try once more.'
+      });
     }
   });
 
@@ -466,7 +623,7 @@ function registerAppRoutes(app, deps) {
         'Is it strange that I feel like I know you?',
         'I wonder if you\'re having a good day today.'
       ];
-      const moods = ['??', '??', '??', '??', '??'];
+      const moods = ['🌑', '🌒', '🌓', '🌔', '🌕'];
       for (let d = 1; d < day; d++) {
         const existing = stmts.getEntry.get(partnerId, match.id, d);
         if (!existing) {
@@ -503,7 +660,7 @@ function registerAppRoutes(app, deps) {
         'I feel like I know you.',
         'I wonder about your day.'
       ];
-      const moods = ['??', '??', '??', '??', '??'];
+      const moods = ['🌑', '🌒', '🌓', '🌔', '🌕'];
       for (let day = 1; day <= 21; day++) {
         const existing = stmts.getEntry.get(partnerId, match.id, day);
         if (!existing) {

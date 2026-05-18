@@ -6,6 +6,8 @@ function registerAuthRoutes(app, deps) {
     stmts,
     sendLoginWelcome
   } = deps;
+  const { sendEmail } = require('../lib/email');
+  const BASE_URL = process.env.APP_BASE_URL || 'https://mymentallyprepare.com';
 
   const resetTokens = new Map();
 
@@ -59,9 +61,15 @@ function registerAuthRoutes(app, deps) {
       const reference = isNaN(signupDate.getTime()) ? Date.now() : signupDate.getTime();
       const dayNumber = Math.min(Math.max(Math.floor((Date.now() - reference) / (1000 * 60 * 60 * 24)) + 1, 1), 21);
       res.json({ ok: true });
-      if (sendLoginWelcome) {
-        sendLoginWelcome(user.email, user.name, dayNumber)
-          .catch(err => console.error('Login email failed:', err));
+
+      // Spam prevention via DB instead of memory map
+      const lastSent = user.login_email_sent_at ? new Date(user.login_email_sent_at).getTime() : 0;
+      if (Date.now() - lastSent > 24 * 60 * 60 * 1000) {
+        if (sendLoginWelcome) {
+          sendLoginWelcome(user.email, user.name, dayNumber)
+            .then(() => stmts.updateLoginEmailTime.run(new Date().toISOString(), user.id))
+            .catch(err => console.error('Login email failed:', err));
+        }
       }
     } catch (e) {
       console.error('Login error:', e);
@@ -83,7 +91,24 @@ function registerAuthRoutes(app, deps) {
       const token = crypto.randomBytes(32).toString('hex');
       resetTokens.set(token, { userId: user.id, expires: Date.now() + 15 * 60 * 1000 });
       console.log(`  ✉ Password reset token for ${user.email}: ${token}`);
-      res.json({ ok: true, message: 'If that email exists, a reset link has been generated.' });
+
+      const resetLink = `${BASE_URL}?screen=s-reset&code=${token}`;
+      const emailHtml = `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333;">
+          <h2 style="font-weight:400;">Password Reset</h2>
+          <p>Someone requested a password reset for your Mentally Prepare account.</p>
+          <p>If this was you, click the link below to reset your password. This link expires in 15 minutes.</p>
+          <div style="margin:30px 0;">
+            <a href="${resetLink}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;">Reset Password</a>
+          </div>
+          <p style="font-size:12px;color:#666;">Or copy this code manually: <strong>${token}</strong></p>
+          <p style="font-size:12px;color:#999;margin-top:40px;">If you didn't request this, you can safely ignore this email.</p>
+        </div>
+      `;
+
+      sendEmail(user.email, 'reset your password ✦', emailHtml).catch(e => console.error('Failed to send reset email:', e));
+
+      res.json({ ok: true, message: 'If that email exists, a reset link has been sent.' });
     } catch (e) {
       console.error('Forgot password error:', e);
       res.status(500).json({ error: 'Something went wrong' });

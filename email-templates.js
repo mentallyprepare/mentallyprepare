@@ -1,4 +1,5 @@
-const SITE_URL = 'https://mentallyprepare.in';
+const { BASE_URL } = require('./lib/config');
+const SITE_URL = BASE_URL;
 const BRAND = {
   background: '#08050F',
   card: '#0E0A18',
@@ -206,8 +207,84 @@ function loginWelcomeEmail(name, dayNumber) {
   return buildTemplate({ content: body });
 }
 
+function matchFoundEmail(name, partnerArchetype) {
+  const first = firstName(name);
+  const body = `
+    <div style="text-align:center; font-size:40px; line-height:1; margin-bottom:12px;">🌟</div>
+    <h1 style="margin:0; font-size:32px; text-transform:none;">your journey begins, ${first}</h1>
+    <p style="margin:8px 0 0; color:${BRAND.gold}; font-weight:600;">✦ we found your partner ✦</p>
+    ${dividerHtml(BRAND.gold, BRAND.violet)}
+    <p style="margin:16px 0 16px;">you have been matched with a ${partnerArchetype || 'stranger'}. their story is entirely different from yours, yet you might find unexpected parallels.</p>
+    <p style="margin:0 0 16px;">head to your journal to write your day 1 entry. don't overthink it, just tell the truth.</p>
+    <div style="text-align:center; margin:32px 0;">
+      <a href="${SITE_URL}/journal" style="
+        display:inline-block;
+        padding:14px 36px;
+        border-radius:999px;
+        background: linear-gradient(135deg, ${BRAND.roseDark}, ${BRAND.purple});
+        color:${BRAND.text};
+        font-weight:600;
+        text-decoration:none;
+      ">✦ Open your journal</a>
+    </div>
+  `;
+  return buildTemplate({ content: body });
+}
+
+function dailyPromptReminderEmail(name, dayNumber) {
+  const first = firstName(name);
+  const emoji = getMoonForDay(dayNumber);
+  const body = `
+    <div style="text-align:center; font-size:40px; line-height:1; margin-bottom:12px;">${emoji}</div>
+    <h1 style="margin:0; font-size:32px; text-transform:none;">tonight's prompt is waiting</h1>
+    <p style="margin:8px 0 0; color:${BRAND.violet}; font-weight:600;">day ${dayNumber} of 21</p>
+    ${dividerHtml(BRAND.purple, BRAND.violet)}
+    <p style="margin:16px 0 16px;">${first}, your 5-minute ritual awaits. take a moment to reflect and write your entry before the day ends.</p>
+    <div style="text-align:center; margin:24px 0;">
+      <a href="${SITE_URL}/journal" style="
+        display:inline-block;
+        padding:10px 28px;
+        border-radius:999px;
+        border:1px solid ${BRAND.purple};
+        color:${BRAND.text};
+        font-weight:600;
+        text-decoration:none;
+      ">View tonight's prompt →</a>
+    </div>
+  `;
+  return buildTemplate({ content: body });
+}
+
+function partnerWroteEmail(name, partnerName, dayNumber) {
+  const first = firstName(name);
+  const emoji = getMoonForDay(dayNumber);
+  const pName = partnerName ? firstName(partnerName) : 'your partner';
+  const body = `
+    <div style="text-align:center; font-size:40px; line-height:1; margin-bottom:12px;">${emoji}</div>
+    <h1 style="margin:0; font-size:32px; text-transform:none;">${pName} wrote today</h1>
+    <p style="margin:8px 0 0; color:${BRAND.violet}; font-weight:600;">day ${dayNumber} of 21</p>
+    ${dividerHtml(BRAND.purple, BRAND.violet)}
+    <p style="margin:16px 0 16px;">${first}, ${pName} has shared their entry for today. don't leave them waiting.</p>
+    <div style="text-align:center; margin:24px 0;">
+      <a href="${SITE_URL}/journal" style="
+        display:inline-block;
+        padding:10px 28px;
+        border-radius:999px;
+        border:1px solid ${BRAND.purple};
+        color:${BRAND.text};
+        font-weight:600;
+        text-decoration:none;
+      ">Write your entry →</a>
+    </div>
+  `;
+  return buildTemplate({ content: body });
+}
+
 module.exports = {
   waitlistConfirmationEmail,
   waitlistAcceptedEmail,
-  loginWelcomeEmail
+  loginWelcomeEmail,
+  matchFoundEmail,
+  dailyPromptReminderEmail,
+  partnerWroteEmail
 };

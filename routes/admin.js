@@ -7,6 +7,7 @@ function registerAdminRoutes(app, deps) {
     stmts,
     requireAdmin,
     getBufferedLogs,
+    authLimiter,
     getAdminStats,
     getMatchDay,
     attachWaitingEntriesToMatch,
@@ -175,7 +176,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.post('/admin/manual-match', requireAdmin, (req, res) => {
+  app.post('/admin/manual-match', authLimiter, requireAdmin, (req, res) => {
     try {
       const userA = findUserByIdentifier(req.body.user1_id);
       const userB = findUserByIdentifier(req.body.user2_id);
@@ -260,7 +261,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.post('/api/admin/invite', requireAdmin, async (req, res) => {
+  app.post('/api/admin/invite', authLimiter, requireAdmin, async (req, res) => {
     try {
       const email = String(req.body.email || '').trim().toLowerCase();
       if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -278,7 +279,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.post('/admin/remove-user', requireAdmin, (req, res) => {
+  app.post('/admin/remove-user', authLimiter, requireAdmin, (req, res) => {
     try {
       const user = findUserByIdentifier(req.body.user_id);
       if (!user) return res.status(404).json({ error: 'User not found' });
@@ -289,7 +290,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.post('/admin/end-match', requireAdmin, (req, res) => {
+  app.post('/admin/end-match', authLimiter, requireAdmin, (req, res) => {
     try {
       const matchId = Number(req.body.match_id);
       if (!Number.isInteger(matchId) || matchId <= 0) return res.status(400).json({ error: 'Valid match ID required' });
@@ -302,7 +303,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.post('/admin/unmatch-user', requireAdmin, (req, res) => {
+  app.post('/admin/unmatch-user', authLimiter, requireAdmin, (req, res) => {
     try {
       const user = findUserByIdentifier(req.body.user_id);
       if (!user) return res.status(404).json({ error: 'User not found' });
@@ -318,7 +319,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.post('/admin/dismiss-report', requireAdmin, (req, res) => {
+  app.post('/admin/dismiss-report', authLimiter, requireAdmin, (req, res) => {
     try {
       const reportId = Number(req.body.report_id);
       if (!Number.isInteger(reportId) || reportId <= 0) return res.status(400).json({ error: 'Valid report ID required' });

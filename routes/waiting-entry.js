@@ -5,7 +5,7 @@ module.exports = function(app, deps) {
   app.post('/api/waiting-entry', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
-      const { text } = req.body;
+      const { text, mood, selectedPrompt } = req.body;
       if (!text || !text.trim()) return res.status(400).json({ error: 'Entry text required' });
       if (text.length > 5000) return res.status(400).json({ error: 'Entry too long (max 5000 chars)' });
 
@@ -14,8 +14,10 @@ module.exports = function(app, deps) {
       if (match) return res.status(400).json({ error: 'Already matched' });
 
       const safety = scanForSafety(text);
-      const prompt = prompts[0];
-      stmts.upsertWaitingEntry.run(userId, text.trim(), '??', prompt);
+      const prompt = (typeof selectedPrompt === 'string' && selectedPrompt.trim())
+        ? selectedPrompt.trim().replace(/\s+/g, ' ').slice(0, 220)
+        : prompts[0];
+      stmts.upsertWaitingEntry.run(userId, text.trim(), mood || '🌓', prompt);
 
       res.json({ ok: true, safety: { crisis: safety.crisis, pii: safety.pii, helplines: safety.crisis ? HELPLINES : null } });
     } catch (e) {

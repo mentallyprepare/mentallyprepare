@@ -31,3 +31,6 @@ prod2-err.log
 server.js.bak
 server-old.js
 tmp-mentallyprepare-redeploy/
+sendgrid.env
+test-email.js
+test-sendgrid-integrated.js

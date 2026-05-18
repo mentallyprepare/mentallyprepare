@@ -297,6 +297,7 @@ a:focus-visible{
 .cd{font-family:'Playfair Display',serif;font-size:32px;color:var(--gold-l);letter-spacing:.08em;margin-bottom:5px;margin-top:16px}
 .cd-sub{font-size:11px;color:var(--ink-s)}
 .prompt-block{padding:24px 24px 0}
+.prompt-block{display:none}
 .prompt-text{font-family:'Playfair Display',serif;font-size:20px;font-style:italic;color:var(--ink);line-height:1.45}
 .dare{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:9.5px;letter-spacing:.08em;background:rgba(232,168,124,.08);border:1px solid rgba(232,168,124,.2);color:rgba(232,168,124,.85);padding:5px 12px;border-radius:100px}
 .mood-block{padding:20px 24px 0}
@@ -682,11 +683,39 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .writing-tip-ico{font-size:14px;flex-shrink:0;margin-top:1px}
 .writing-tip-text{font-family:'Lora',serif;font-style:italic;font-size:11.5px;color:var(--ink-m);line-height:1.6}
 
+/* Desktop app polish: keep ritual panels intimate, not stretched dashboard blocks */
+@media (min-width:760px){
+  #app-area{display:flex;justify-content:center}
+  .screen{min-height:calc(100vh - 72px)}
+  .streak{padding:14px 18px 0}
+  .streak-top{margin-bottom:6px}
+  #constellation-container{padding:0}
+  .constellation-wrap{gap:4px;padding:0}
+  .constellation-svg{max-width:150px;height:86px}
+  .constellation-name{font-size:12.5px}
+  .constellation-days{font-size:8px}
+  #daily-note-container{padding:0 18px}
+  .note-card{padding:16px;border-radius:18px}
+  .note-observation{font-size:12.5px;line-height:1.75}
+  .note-permission{font-size:12.5px;line-height:1.7}
+  .note-question-block{padding:11px 12px}
+  .note-question-text{font-size:13.5px}
+  .special-day-banner{margin:12px 18px 0;padding:13px 16px}
+  .special-day-title{font-size:16px}
+  .prompt-chooser,.partner-status-panel{margin:12px 18px 0;padding:16px}
+  .prompt-block{display:none}
+  .moon-block{display:none}
+  .silent-feed-list{padding:14px 0 8px}
+  .silent-line-block{padding:28px 24px}
+  .silent-line-text{max-width:420px;font-size:15.5px;line-height:1.65}
+  .silent-line-meta{margin-top:10px}
+}
+
 /* ── Responsive ── */
 @media (display-mode: standalone){body{padding-top:env(safe-area-inset-top)}}
 @media (max-width:380px){.splash-h{font-size:30px}.slide-h{font-size:24px}.q-text{font-size:17px}.result-type{font-size:22px}.rev-name{font-size:34px}.wait-h,.tap-h,.yes-h{font-size:28px}.p-user-name{font-size:20px}}
 /* ── App Layout ── */
-.app-wrap{max-width:660px;margin:0 auto;padding-top:72px;min-height:100vh;position:relative}
+.app-wrap{width:min(100%,560px);margin:0 auto;padding-top:72px;min-height:100vh;position:relative}
 
 /* ── Website Navbar ── */
 @keyframes breathe{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.15);opacity:1}}
@@ -917,7 +946,7 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .note-fb-btn.ghost{background:transparent;border-color:var(--line);color:var(--ink-s)}
 .note-fb-btn:hover{transform:scale(1.03)}
 .note-feedback-done{font-size:11px;color:var(--gold-l);text-align:center;padding:8px;opacity:.8;font-style:italic;font-family:'Lora',serif}
-.note-word{display:inline-block;opacity:0;animation:wordFadeIn .4s ease forwards}
+.note-word{display:inline-block;opacity:0;animation:wordFadeIn .4s ease forwards;margin-right:.28em}
 .note-archive-item{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;position:relative;overflow:hidden;margin-bottom:8px}
 .note-archive-item::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.1),transparent)}
 .note-archive-day{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-s);margin-bottom:7px}
@@ -959,6 +988,38 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .partner-reveal-arch{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--rose);opacity:.65}
 .partner-reveal-lines{display:flex;flex-direction:column;gap:6px}
 .partner-reveal-line{font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.9;opacity:0;animation:lineFadeIn .6s ease forwards}
+
+/* Handcrafted journal choice and partner state */
+.prompt-chooser,.partner-status-panel{margin:16px 24px 0;padding:20px;border:1px solid rgba(248,242,255,.09);border-radius:18px;background:linear-gradient(145deg,rgba(14,10,24,.96),rgba(24,15,36,.9));position:relative;overflow:hidden}
+.prompt-chooser::before,.partner-status-panel::before,.mp-modal-card::before{content:'';position:absolute;inset:0 0 auto;height:1px;background:linear-gradient(90deg,transparent,rgba(247,183,200,.32),transparent)}
+.prompt-chooser-kicker,.partner-status-kicker,.mp-modal-kicker{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--rose-l);opacity:.72;margin-bottom:8px}
+.prompt-chooser-title,.partner-status-title,.mp-modal-title{font-family:'Playfair Display',serif;font-weight:400;font-size:22px;line-height:1.16;color:var(--ink);margin-bottom:8px}
+.prompt-chooser-title{font-style:italic}
+.prompt-chooser-sub,.partner-status-copy,.mp-modal-copy{font-family:'Lora',serif;font-style:italic;font-size:13px;line-height:1.8;color:var(--ink-m)}
+.prompt-choice-list{display:grid;gap:10px;margin-top:16px}
+.prompt-choice{width:100%;text-align:left;background:rgba(248,242,255,.035);border:1px solid rgba(248,242,255,.08);border-radius:14px;padding:14px 15px;color:var(--ink);cursor:pointer;transition:border-color .2s,background .2s,transform .2s}
+.prompt-choice:hover,.prompt-choice.selected{border-color:rgba(247,183,200,.38);background:rgba(247,183,200,.075);transform:translateY(-1px)}
+.prompt-choice-cat{display:block;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-l);opacity:.7;margin-bottom:6px}
+.prompt-choice-text{display:block;font-family:'Lora',serif;font-style:italic;font-size:14px;line-height:1.65;color:var(--ink)}
+.prompt-choice-actions,.partner-status-actions,.mp-modal-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.prompt-small-btn{flex:1;min-height:42px;border:1px solid rgba(247,183,200,.26);background:linear-gradient(135deg,rgba(155,79,102,.88),rgba(137,108,181,.78));color:#fff;border-radius:999px;padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:.04em;cursor:pointer}
+.prompt-small-btn.ghost{background:transparent;color:var(--ink-m);border-color:var(--line)}
+.partner-status-panel{border-color:rgba(232,208,160,.13);background:linear-gradient(145deg,rgba(9,7,18,.98),rgba(20,13,34,.92))}
+.partner-status-panel.compact{margin:14px 24px 0}
+.partner-status-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-s)}
+.mp-modal-overlay{position:fixed;inset:0;z-index:260;background:rgba(8,5,15,.78);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:center;padding:20px}
+.mp-modal-card{width:min(420px,100%);border:1px solid rgba(247,183,200,.18);border-radius:22px;background:linear-gradient(145deg,#0e0a18,#171023);padding:24px;position:relative;box-shadow:0 24px 80px rgba(0,0,0,.45)}
+.mp-modal-title{font-size:28px}
+.mp-modal-actions .prompt-small-btn{min-height:46px}
+
+@media (max-width:520px){
+  .prompt-chooser,.partner-status-panel{margin-left:16px;margin-right:16px;padding:18px 16px;border-radius:16px}
+  .prompt-choice-actions,.partner-status-actions,.mp-modal-actions{flex-direction:column}
+  .prompt-small-btn{width:100%;flex:auto}
+  .prompt-chooser-title,.partner-status-title{font-size:20px}
+  .mp-modal-overlay{align-items:flex-end;padding:14px}
+  .mp-modal-card{border-radius:20px;padding:22px 18px;margin-bottom:max(10px,env(safe-area-inset-bottom))}
+}
 
 /* ══════════════════════════════════════════
    TONIGHT'S QUESTION — Waiting Room
@@ -1242,4 +1303,41 @@ textarea,#journal-draft,#tq-draft,.silent-textarea{font-family:var(--font-displa
   .arch-row,.pref-grid{gap:10px}.moods{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.mood{padding:8px 4px}.mood-w{font-size:9px}
   #journal-draft,#tq-draft{font-size:23px!important;min-height:210px}
   .silent-header{padding:18px 18px 0}.silent-line-block{padding:36px 22px}
+}
+
+/* Final app polish overrides. Keep these after Silent Room base styles. */
+#app-area .app-wrap{width:min(100%,560px);max-width:560px}
+#app-area .prompt-block{display:none}
+@media (min-width:760px){
+  #app-area{display:flex;justify-content:center}
+  #app-area .app-wrap{width:560px;max-width:560px}
+  #app-area .screen{min-height:calc(100vh - 72px)}
+  #app-area .streak{padding:12px 18px 0}
+  #app-area .streak-top{margin-bottom:6px}
+  #app-area #constellation-container{padding:0}
+  #app-area .constellation-wrap{gap:4px;padding:0}
+  #app-area .constellation-svg{max-width:136px;height:78px}
+  #app-area .constellation-name{font-size:12px}
+  #app-area .constellation-days{font-size:8px;letter-spacing:.12em}
+  #app-area #daily-note-container{padding:0 18px;margin-top:2px}
+  #app-area .note-card{padding:15px;border-radius:18px}
+  #app-area .note-observation{font-size:12px;line-height:1.7}
+  #app-area .note-permission{font-size:12px;line-height:1.65}
+  #app-area .note-question-block{padding:10px 12px}
+  #app-area .note-question-text{font-size:13px}
+  #app-area .special-day-banner{margin:10px 18px 0;padding:12px 15px}
+  #app-area .special-day-title{font-size:15.5px}
+  #app-area .special-day-sub{font-size:10.5px}
+  #app-area .prompt-chooser,
+  #app-area .partner-status-panel{margin:10px 18px 0;padding:15px;border-radius:16px}
+  #app-area .moon-block{display:none}
+  #app-area .silent-header{padding:14px 20px 0}
+  #app-area .silent-logo{font-size:13px}
+  #app-area .silent-instruction{font-size:11px;padding:8px 28px 0}
+  #app-area .silent-feed-list{padding:10px 0 8px}
+  #app-area .silent-line-block{padding:24px 24px}
+  #app-area .silent-line-text{max-width:390px!important;font-size:14px!important;line-height:1.62!important}
+  #app-area .silent-line-meta{margin-top:9px;gap:8px}
+  #app-area .silent-seen-count,
+  #app-area .silent-resonate-btn{font-size:9px}
 }
