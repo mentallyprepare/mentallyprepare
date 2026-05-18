@@ -2547,7 +2547,14 @@ async function toggleResonance(btn) {
   }
 
   try {
-    await api('POST', '/silent/' + id + '/resonate', {});
+    var result = await api('POST', '/silent/' + id + '/resonate', {});
+    if (result && typeof result.resonated === 'boolean') {
+      btn.classList.toggle('resonated', result.resonated);
+      btn.dataset.resonated = result.resonated ? 'true' : 'false';
+    }
+    if (result && typeof result.resonance_count === 'number') {
+      countEl.textContent = result.resonance_count;
+    }
   } catch (e) {
     // Revert on error
     if (wasResonated) {

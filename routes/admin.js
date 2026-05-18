@@ -55,13 +55,31 @@ function registerAdminRoutes(app, deps) {
       const rows = db.prepare(`
         SELECT
           u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at,
-          EXISTS (
-            SELECT 1 FROM matches m WHERE m.user1_id = u.id OR m.user2_id = u.id
-          ) as has_match
+          (
+            SELECT m.id FROM matches m
+            WHERE m.user1_id = u.id OR m.user2_id = u.id
+            ORDER BY m.started_at DESC
+            LIMIT 1
+          ) as match_id,
+          (
+            SELECT CASE WHEN m.user1_id = u.id THEN m.user2_id ELSE m.user1_id END
+            FROM matches m
+            WHERE m.user1_id = u.id OR m.user2_id = u.id
+            ORDER BY m.started_at DESC
+            LIMIT 1
+          ) as partner_id,
+          (
+            SELECT p.name
+            FROM matches m
+            JOIN users p ON p.id = CASE WHEN m.user1_id = u.id THEN m.user2_id ELSE m.user1_id END
+            WHERE m.user1_id = u.id OR m.user2_id = u.id
+            ORDER BY m.started_at DESC
+            LIMIT 1
+          ) as partner_name
         FROM users u
         ORDER BY u.created_at DESC
       `).all();
-      res.json(rows.map(row => ({ ...row, has_match: !!row.has_match })));
+      res.json(rows.map(row => ({ ...row, has_match: !!row.match_id })));
     } catch (e) {
       res.status(500).json({ error: 'Failed to load users' });
     }
@@ -170,12 +188,28 @@ function registerAdminRoutes(app, deps) {
       // if (complementary[userA.archetype] !== userB.archetype) {
       //   return res.status(400).json({ error: 'Archetypes are not complementary' });
       // }
-      if (stmts.getMatch.get(userA.id, userA.id) || stmts.getMatch.get(userB.id, userB.id)) {
-        return res.status(400).json({ error: 'One or both users are already matched' });
+      const existingA = stmts.getMatch.get(userA.id, userA.id);
+      const existingB = stmts.getMatch.get(userB.id, userB.id);
+      const forceRematch = req.body.force_rematch === true || req.body.forceRematch === true;
+      if ((existingA || existingB) && !forceRematch) {
+        return res.status(400).json({
+          error: 'One or both users are already matched. Check “End existing matches first” to rematch them.'
+        });
       }
-      const result = stmts.insertMatch.run(userA.id, userB.id);
-      attachWaitingEntriesToMatch(result.lastInsertRowid, [userA.id, userB.id]);
-      res.json({ ok: true, match_id: result.lastInsertRowid });
+
+      const result = db.transaction(() => {
+        const endedMatchIds = [];
+        const matchesToEnd = new Set([existingA && existingA.id, existingB && existingB.id].filter(Boolean));
+        for (const matchId of matchesToEnd) {
+          deleteMatchData(matchId);
+          endedMatchIds.push(matchId);
+        }
+        const inserted = stmts.insertMatch.run(userA.id, userB.id);
+        attachWaitingEntriesToMatch(inserted.lastInsertRowid, [userA.id, userB.id]);
+        return { matchId: inserted.lastInsertRowid, endedMatchIds };
+      })();
+
+      res.json({ ok: true, match_id: result.matchId, ended_match_ids: result.endedMatchIds });
     } catch (e) {
       res.status(e.statusCode || 500).json({ error: e.message || 'Failed to create manual match' });
     }
@@ -220,6 +254,22 @@ function registerAdminRoutes(app, deps) {
       res.json({ ok: true });
     } catch (e) {
       res.status(500).json({ error: 'Failed to end match' });
+    }
+  });
+
+  app.post('/admin/unmatch-user', requireAdmin, (req, res) => {
+    try {
+      const user = findUserByIdentifier(req.body.user_id);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      const match = stmts.getMatch.get(user.id, user.id);
+      if (!match) return res.status(404).json({ error: 'User is not currently matched' });
+
+      const partnerId = match.user1_id === user.id ? match.user2_id : match.user1_id;
+      db.transaction(() => deleteMatchData(match.id))();
+      res.json({ ok: true, match_id: match.id, user_id: user.id, partner_id: partnerId });
+    } catch (e) {
+      res.status(e.statusCode || 500).json({ error: e.message || 'Failed to unmatch user' });
     }
   });
 

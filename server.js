@@ -661,6 +661,7 @@ const stmts = {
   // Archetype snapshots
   insertSnapshot: db.prepare('INSERT INTO archetype_snapshots (user_id, match_id, day, scores, archetype) VALUES (?, ?, ?, ?, ?)'),
   getSnapshots: db.prepare('SELECT * FROM archetype_snapshots WHERE user_id = ? AND match_id = ? ORDER BY day ASC'),
+  deleteMatchSnapshots: db.prepare('DELETE FROM archetype_snapshots WHERE match_id = ?'),
 
   // Daily notes
   getDailyNote: db.prepare('SELECT * FROM daily_notes WHERE user_id = ? AND day = ?'),
@@ -678,6 +679,7 @@ const stmts = {
   updateNoteLanded: db.prepare("UPDATE daily_notes SET landed = ?, opened_at = COALESCE(opened_at, datetime('now')) WHERE user_id = ? AND day = ?"),
   markNoteOpened: db.prepare("UPDATE daily_notes SET opened_at = COALESCE(opened_at, datetime('now')) WHERE user_id = ? AND day = ?"),
   deleteUserDailyNotes: db.prepare('DELETE FROM daily_notes WHERE user_id = ?'),
+  deleteMatchDailyNotes: db.prepare('DELETE FROM daily_notes WHERE match_id = ?'),
 
   // Sealed room picks
   upsertSealedPick: db.prepare(`
@@ -1147,6 +1149,8 @@ function deleteMatchData(matchId) {
   stmts.deleteMatchReveals.run(matchId);
   stmts.deleteMatchReactions.run(matchId);
   stmts.deleteMatchNudges.run(matchId);
+  stmts.deleteMatchSnapshots.run(matchId);
+  stmts.deleteMatchDailyNotes.run(matchId);
   try { stmts.deleteMatchSealedPicks.run(matchId); } catch {}
   stmts.deleteMatchById.run(matchId);
 }
