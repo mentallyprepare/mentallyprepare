@@ -6,7 +6,7 @@ async function api(method, path, body) {
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   const res = await fetch('/api' + path, opts);
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Something went wrong');
+  if (!res.ok) throw new Error(data.error || 'Something did not save. Try once more.');
   return data;
 }
 
@@ -172,7 +172,7 @@ function startApp() {
 function showLanding() {
   document.getElementById('landing').style.display = '';
   document.getElementById('app-area').style.display = 'none';
-  document.getElementById('navCta').textContent = 'Start Your Journey';
+  document.getElementById('navCta').textContent = 'Begin tonight';
   document.getElementById('navCta').onclick = function() { startApp(); };
   window.scrollTo(0, 0);
 }
@@ -255,7 +255,10 @@ function bindStaticUi() {
 (async function init() {
   bindStaticUi();
   const loggedIn = await loadState();
-  if (!loggedIn) return; // stay on landing
+  if (!loggedIn) {
+    if (window.location.pathname.indexOf('/app') === 0) startApp();
+    return;
+  }
 
   // Auto-start app for logged-in users
   startApp();
@@ -515,7 +518,7 @@ function renderConnectionScore(score) {
       <svg viewBox="0 0 100 100"><circle class="score-ring-bg" cx="50" cy="50" r="45"/><circle class="score-ring-fill" cx="50" cy="50" r="45" style="stroke-dashoffset:${offset}"/></svg>
       <div class="score-ring-value">${score}</div>
     </div>
-    <div class="score-info"><div class="score-label">Connection Score</div><div class="score-desc">${desc}</div></div>
+    <div class="score-info"><div class="score-label">Writing rhythm</div><div class="score-desc">${desc}</div></div>
   </div>`;
 }
 
@@ -525,8 +528,8 @@ function renderResult(matched) {
   const s = state.user.scores;
 
   const actionBtn = matched
-    ? `<button class="btn" onclick="goToJournal()" style="margin-bottom:10px;">✍️ Start writing — Day 1</button>`
-    : `<button class="btn" onclick="renderWaiting();go('s-waiting')" style="margin-bottom:10px;">✍️ Write your first entry</button>`;
+    ? `<button class="btn" onclick="goToJournal()" style="margin-bottom:10px;">Write Day 1</button>`
+    : `<button class="btn" onclick="renderWaiting();go('s-waiting')" style="margin-bottom:10px;">Write while you wait</button>`;
 
   document.getElementById('s-result').innerHTML = `
     <div class="result-tag">Your Connection Profile</div>
@@ -652,19 +655,19 @@ function renderTonightsQuestion(data) {
       <div class="tq-write-block">
         <div class="tq-write-box">
           <div class="tq-write-date">${dayNames[today.getDay()]}, ${today.getDate()} ${monthNames[today.getMonth()]} · Night ${nightsWritten + 1}</div>
-          <textarea id="tq-draft" placeholder="Start writing…">${escapeHtml(draft)}</textarea>
+          <textarea id="tq-draft" placeholder="Write one honest thing tonight...">${escapeHtml(draft)}</textarea>
           <div class="tq-write-ft"><div class="ww" id="tq-ww">${wordCount(draft)} words</div></div>
         </div>
       </div>
 
       <div class="tq-cta-block">
-        <button class="tq-seal-btn" id="tqSealBtn" type="button">🌙 Seal tonight's entry</button>
+        <button class="tq-seal-btn" id="tqSealBtn" type="button">Seal tonight's note</button>
         <button class="btn-ghost" id="tqSaveDraftBtn" type="button" style="margin-top:8px;">Save draft</button>
       </div>
 
       <div class="tq-waiting-info">
         <div class="tq-waiting-ico">🔍</div>
-        <div class="tq-waiting-text">Looking for your <strong>${arch.matchName}</strong> match. While you wait, your writing joins the community.</div>
+        <div class="tq-waiting-text">Finding someone on a similar emotional frequency. While you wait, this note stays private to your room.</div>
       </div>
 
       ${whispers.length > 0 ? renderWhispers(whispers) : ''}
@@ -730,7 +733,7 @@ function renderWhispers(whispers) {
 
   return `<div class="tq-whispers">
     <div class="tq-whispers-header">
-      <div class="tq-whispers-lbl">Community whispers</div>
+      <div class="tq-whispers-lbl">Anonymous fragments</div>
     </div>
     <div class="tq-whisper-list">${cards}</div>
   </div>`;
@@ -803,7 +806,7 @@ function renderTQSealed(data) {
         <div class="tq-waiting-text">Still looking for your <strong>${arch ? arch.matchName : 'partner'}</strong>. You'll be notified when your match arrives.</div>
       </div>
 
-      ${whispers.length > 0 ? renderWhispers(whispers) : `<div class="tq-whispers"><div class="tq-whispers-header"><div class="tq-whispers-lbl">Community whispers</div></div><div class="tq-whisper-empty">You're the first to write tonight.<br/>Others will appear as they join.</div></div>`}
+      ${whispers.length > 0 ? renderWhispers(whispers) : `<div class="tq-whispers"><div class="tq-whispers-header"><div class="tq-whispers-lbl">Anonymous fragments</div></div><div class="tq-whisper-empty">No one has left a line here yet.<br/>Yours can be the first quiet mark.</div></div>`}
 
       <div style="height:20px;"></div>
       ${renderTQTabs('tonight')}
@@ -942,15 +945,15 @@ function renderJournal() {
     <div class="write-block reveal-on-scroll">
       <div class="write-box">
         <div class="write-date">${dayNames[today.getDay()]}, ${today.getDate()} ${monthNames[today.getMonth()]} · Day ${day}</div>
-        <textarea id="journal-draft" placeholder="${state.specialDay && state.specialDay.type === 'unsent_letter' ? 'Dear stranger, I want you to know...' : 'Start writing…'}">${escapeHtml(draft)}</textarea>
+        <textarea id="journal-draft" placeholder="${state.specialDay && state.specialDay.type === 'unsent_letter' ? 'Dear stranger, I want you to know...' : 'Write one honest thing tonight...'}">${escapeHtml(draft)}</textarea>
         <div class="write-ft"><div class="ww" id="ww">${wordCount(draft)} words</div><div id="word-milestone"></div></div>
-        <button class="btn-ghost" id="journalReportBtn" type="button" style="margin-top:8px;font-size:12px;float:right;">Report inappropriate content</button>
+        <button class="btn-ghost" id="journalReportBtn" type="button" style="margin-top:8px;font-size:12px;float:right;">Report something unsafe</button>
       </div>
     </div>
     // Report inappropriate content in journal entry
     ${state.streak >= 3 ? `<div class="streak-nudge reveal-on-scroll"><div class="streak-nudge-inner"><span style="font-size:16px;">🔥</span><div class="streak-nudge-text">${getStreakNudge(state.streak)}</div></div></div>` : ''}
     <div class="cta-block">
-      <button class="btn" id="sealEntryBtn" type="button">🌙 Seal tonight's entry</button>
+      <button class="btn" id="sealEntryBtn" type="button">Seal tonight's note</button>
       <button class="btn-ghost" id="saveDraftBtn" type="button" style="margin-top:8px;">Save draft</button>
     </div>
     ${renderTabs('tonight')}`;
@@ -1242,9 +1245,9 @@ function renderProfile() {
       <div style="background:linear-gradient(135deg,rgba(201,169,110,.05),rgba(212,133,154,.04));border:1px solid rgba(201,169,110,.12);border-radius:16px;padding:18px 16px;text-align:center;position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.25),transparent);"></div>
         <div style="font-size:22px;margin-bottom:8px;">🌙</div>
-        <div style="font-family:'Playfair Display',serif;font-size:15px;font-style:italic;color:var(--ink);margin-bottom:5px;">Begin your 21-day journey</div>
-        <div style="font-family:'Lora',serif;font-style:italic;font-size:11.5px;color:var(--ink-m);line-height:1.65;max-width:260px;margin:0 auto 12px;">Get matched with someone whose emotional pattern complements yours.</div>
-        <button onclick="go('s-tonight')" style="background:linear-gradient(135deg,var(--rose-d),var(--purple));color:var(--ink);padding:10px 24px;border-radius:50px;font-size:12px;font-weight:500;letter-spacing:.5px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .3s;">Write tonight's entry →</button>
+        <div style="font-family:'Playfair Display',serif;font-size:15px;font-style:italic;color:var(--ink);margin-bottom:5px;">Begin the 21-day experiment</div>
+        <div style="font-family:'Lora',serif;font-style:italic;font-size:11.5px;color:var(--ink-m);line-height:1.65;max-width:260px;margin:0 auto 12px;">Write while we look for someone who can meet your words carefully.</div>
+        <button onclick="goToJournal()" style="background:linear-gradient(135deg,var(--rose-d),var(--purple));color:var(--ink);padding:10px 24px;border-radius:50px;font-size:12px;font-weight:500;letter-spacing:.5px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .3s;">Write tonight's note →</button>
       </div>
     </div>` : ''}
     <div class="reveal-on-scroll" style="padding:14px 24px 0;">
@@ -2673,7 +2676,7 @@ async function submitSilentLine() {
   } catch (e) {
     btn.disabled = false;
     btn.textContent = 'Release';
-    toast(e.message || 'Something went wrong.');
+    toast(e.message || 'Something did not load. Try once more.');
   }
 }
 
