@@ -161,17 +161,32 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .section-h2 em{font-style:italic;color:var(--rose-l);font-weight:400}
 .section-p{font-family:'Newsreader',serif;font-size:clamp(15px,1.6vw,18px);color:var(--ink-m);line-height:1.75;max-width:600px}
 
-.how{text-align:center}
-.how-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:52px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.how-step{min-height:260px;padding:34px 26px 30px;text-align:left;position:relative;border-right:1px solid var(--line);transition:background .35s,border-color .35s}
-.how-step:last-child{border-right:none}
-.how-step:hover{background:rgba(248,242,255,.025);border-color:rgba(212,133,154,.18)}
-.how-step::before{content:'';position:absolute;top:-1px;left:26px;width:44px;height:1px;background:var(--rose);opacity:.65}
-.how-step-top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:46px}
-.how-step-num{font-family:'Manrope',sans-serif;font-size:11px;color:var(--rose);letter-spacing:2.6px;text-transform:uppercase}
-.how-step-mark{width:42px;height:42px;border-radius:50%;border:1px solid rgba(248,242,255,.14);display:flex;align-items:center;justify-content:center;color:var(--gold-l);font-family:'Newsreader',serif;font-size:16px;background:rgba(248,242,255,.025)}
-.how-step-h{font-family:'Newsreader',serif;font-size:clamp(22px,2.2vw,28px);font-weight:620;line-height:1.08;margin-bottom:14px}
-.how-step-p{font-size:14px;color:var(--ink-m);line-height:1.75;max-width:240px}
+.how{text-align:center;background:radial-gradient(circle at 20% 24%,rgba(95,183,232,.08),transparent 28%),radial-gradient(circle at 80% 66%,rgba(217,199,255,.08),transparent 30%)}
+.how .section-h2{margin-bottom:0}
+.how-map{position:relative;min-height:660px;margin-top:54px;border:1px solid rgba(248,242,255,.12);border-radius:30px;overflow:hidden;background:
+  radial-gradient(circle at 18% 76%,rgba(217,199,255,.18),transparent 18%),
+  radial-gradient(circle at 78% 22%,rgba(95,183,232,.16),transparent 20%),
+  linear-gradient(145deg,rgba(31,20,66,.78),rgba(10,8,27,.9) 56%,rgba(5,4,17,.96));box-shadow:0 36px 90px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.05);text-align:left}
+.how-map::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.45) 0 1px,transparent 1.5px),radial-gradient(circle,rgba(133,240,255,.35) 0 1px,transparent 1.5px);background-size:92px 92px,137px 137px;background-position:18px 24px,58px 72px;opacity:.28}
+.how-map::after{content:'';position:absolute;left:-4%;right:-4%;bottom:-96px;height:190px;border-radius:50% 50% 0 0;background:radial-gradient(circle at 24% 28%,rgba(255,255,255,.9) 0 2px,transparent 3px),radial-gradient(circle at 48% 38%,rgba(130,110,164,.32) 0 28px,transparent 29px),linear-gradient(180deg,#e7d8ff 0%,#b9a5dd 42%,#79679e 100%);opacity:.9}
+.how-route{position:absolute;inset:86px 78px 126px;width:calc(100% - 156px);height:420px;opacity:.8}
+.how-route path{fill:none;stroke:rgba(248,242,255,.38);stroke-width:2;stroke-dasharray:8 12;stroke-linecap:round}
+.how-rocket-mini{position:absolute;left:48%;top:43%;width:72px;height:72px;transform:rotate(-18deg);filter:drop-shadow(0 0 18px rgba(133,240,255,.22));animation:rocketDrift 7s ease-in-out infinite;z-index:2}
+.how-rocket-mini::before{content:'';position:absolute;left:22px;top:12px;width:34px;height:42px;border-radius:60% 60% 48% 48%;background:linear-gradient(135deg,#f8f7ff 0%,#87e9f8 52%,#5fb7e8 100%);transform:skewY(-8deg)}
+.how-rocket-mini::after{content:'';position:absolute;left:9px;top:43px;width:24px;height:20px;border-radius:50%;background:radial-gradient(circle,rgba(255,244,197,.95),rgba(255,150,112,.58) 55%,transparent 70%);filter:blur(.2px)}
+.how-rocket-window{position:absolute;left:37px;top:24px;width:11px;height:11px;border-radius:50%;background:#6c4ca0;border:3px solid rgba(255,255,255,.7);z-index:1}
+.how-missions{position:absolute;inset:0;z-index:3;list-style:none;margin:0;padding:0}
+.how-node{position:absolute;width:min(255px,26vw);padding:0}
+.how-node-1{left:62px;top:54px}.how-node-2{right:82px;top:56px}.how-node-3{left:410px;bottom:58px}.how-node-4{right:62px;bottom:58px}
+.how-pin{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin-bottom:16px;color:#fff;font-family:'Newsreader',serif;font-size:18px;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.9),rgba(133,240,255,.7) 24%,rgba(95,183,232,.34) 55%,rgba(217,199,255,.14) 100%);box-shadow:0 0 0 1px rgba(255,255,255,.16),0 0 26px rgba(133,240,255,.2)}
+.how-node-2 .how-pin,.how-node-4 .how-pin{margin-left:auto}
+.how-copy{padding:18px 18px 16px;border-radius:18px;border:1px solid rgba(248,242,255,.12);background:rgba(8,5,20,.56);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.how-kicker{display:block;font-family:'Manrope',sans-serif;font-size:10px;line-height:1;color:var(--rose-l);letter-spacing:2.2px;text-transform:uppercase;margin-bottom:10px}
+.how-step-h{font-family:'Newsreader',serif;font-size:clamp(21px,2.2vw,28px);font-weight:620;line-height:1.05;margin-bottom:10px}
+.how-step-p{font-size:13.5px;color:var(--ink-m);line-height:1.65}
+.how-orb{position:absolute;border-radius:50%;z-index:1;pointer-events:none}
+.how-orb-a{width:94px;height:94px;right:30%;top:38px;background:linear-gradient(135deg,rgba(217,199,255,.55),rgba(95,183,232,.2));box-shadow:inset -12px -10px 0 rgba(18,12,44,.18)}
+.how-orb-b{width:42px;height:42px;left:38%;top:188px;background:linear-gradient(135deg,rgba(255,225,177,.7),rgba(212,133,154,.28))}
 
 .proof{background:linear-gradient(180deg,transparent,rgba(14,10,24,.5),transparent);text-align:center}
 .proof-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:50px}
@@ -265,9 +280,11 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
   .hero-cta-btn{margin:0 auto}
   .hero-right{margin-top:20px}
   .stardust-showcase{height:500px;transform:scale(.92)}
-  .how-steps{grid-template-columns:repeat(2,1fr)}
-  .how-step:nth-child(2){border-right:none}
-  .how-step:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .how-map{min-height:720px}
+  .how-route{inset:92px 58px 138px;width:calc(100% - 116px);height:470px}
+  .how-node{width:min(285px,38vw)}
+  .how-node-1{left:48px;top:58px}.how-node-2{right:48px;top:72px}.how-node-3{left:86px;bottom:72px}.how-node-4{right:54px;bottom:66px}
+  .how-rocket-mini{left:45%;top:45%}
   .sr-room{padding:40px 28px 32px}
 }
 /* Mobile nav helpers — hidden by default, shown on small screens */
@@ -292,15 +309,17 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
   .hero-right{display:flex;margin-top:10px}
   .stardust-showcase{height:380px;transform:scale(.68);transform-origin:top center;margin-bottom:-110px}
   .form-row{flex-direction:column}
-  .how-steps{grid-template-columns:1fr;margin-top:38px;border-top:none;border-bottom:none}
-  .how-step{min-height:auto;border-right:none!important;border-bottom:1px solid var(--line);padding:28px 0 28px 58px}
-  .how-step:nth-child(-n+2){border-bottom:1px solid var(--line)}
-  .how-step::before{left:0;top:34px;width:32px}
-  .how-step-top{position:absolute;left:0;top:24px;display:block;margin:0}
-  .how-step-num{display:none}
-  .how-step-mark{width:34px;height:34px;font-size:14px}
-  .how-step-h{font-size:26px}
-  .how-step-p{max-width:none;font-size:14px}
+  .how-map{min-height:auto;margin-top:36px;border-radius:24px;padding:30px 18px 104px}
+  .how-map::after{height:120px;bottom:-62px}
+  .how-route,.how-rocket-mini,.how-orb{display:none}
+  .how-missions{position:relative;display:grid;gap:18px}
+  .how-missions::before{content:'';position:absolute;left:26px;top:34px;bottom:34px;border-left:1px dashed rgba(248,242,255,.25)}
+  .how-node{position:relative;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:100%;display:grid;grid-template-columns:54px 1fr;gap:16px;align-items:start}
+  .how-pin{margin:0;position:relative;z-index:1}
+  .how-node-2 .how-pin,.how-node-4 .how-pin{margin-left:0}
+  .how-copy{border-radius:16px;padding:16px 16px 15px}
+  .how-step-h{font-size:25px}
+  .how-step-p{font-size:14px}
   .proof-grid{grid-template-columns:1fr}
   .cta-form{flex-direction:column}
   .footer-inner{flex-direction:column;gap:20px;text-align:center}
@@ -544,29 +563,49 @@ document.addEventListener('DOMContentLoaded', function() {
   <div class="section-inner">
     <div class="reveal">
       <span class="section-label">How it works</span>
-      <h2 class="section-h2">Four steps. <em>That's it.</em></h2>
+      <h2 class="section-h2">A 21-day orbit. <em>Built softly.</em></h2>
     </div>
-    <div class="how-steps">
-      <div class="how-step reveal delay-1">
-        <div class="how-step-top"><span class="how-step-num">Step 01</span><span class="how-step-mark">01</span></div>
-        <h3 class="how-step-h">Answer 11 Questions</h3>
-        <p class="how-step-p">Slider-based questions about how you connect and protect yourself emotionally. Takes 3 minutes.</p>
-      </div>
-      <div class="how-step reveal delay-2">
-        <div class="how-step-top"><span class="how-step-num">Step 02</span><span class="how-step-mark">02</span></div>
-        <h3 class="how-step-h">Get Matched</h3>
-        <p class="how-step-p">Paired with someone from a different college whose emotional pattern complements yours.</p>
-      </div>
-      <div class="how-step reveal delay-3">
-        <div class="how-step-top"><span class="how-step-num">Step 03</span><span class="how-step-mark">03</span></div>
-        <h3 class="how-step-h">Write Every Night</h3>
-        <p class="how-step-p">One prompt. One honest answer. Your partner reads it the next day and writes back anonymously.</p>
-      </div>
-      <div class="how-step reveal delay-4">
-        <div class="how-step-top"><span class="how-step-num">Step 04</span><span class="how-step-mark">21</span></div>
-        <h3 class="how-step-h">Day 21: Your Call</h3>
-        <p class="how-step-p">Both choose: reveal your name, or don't. Identities only unlock if you both say yes.</p>
-      </div>
+    <div class="how-map reveal delay-1">
+      <div class="how-orb how-orb-a"></div>
+      <div class="how-orb how-orb-b"></div>
+      <svg class="how-route" viewBox="0 0 900 320" aria-hidden="true" focusable="false">
+        <path d="M75 92 C235 8 342 166 460 116 C590 62 676 84 820 132 C704 196 640 292 488 246 C350 204 268 292 118 238" />
+      </svg>
+      <div class="how-rocket-mini"><span class="how-rocket-window"></span></div>
+      <ol class="how-missions">
+        <li class="how-node how-node-1">
+          <div class="how-pin">01</div>
+          <div class="how-copy">
+            <span class="how-kicker">Launch</span>
+            <h3 class="how-step-h">Tune your pattern</h3>
+            <p class="how-step-p">Answer 11 gentle sliders about closeness, trust, distance, and what makes you feel safe.</p>
+          </div>
+        </li>
+        <li class="how-node how-node-2">
+          <div class="how-pin">02</div>
+          <div class="how-copy">
+            <span class="how-kicker">Match</span>
+            <h3 class="how-step-h">Find your counter-orbit</h3>
+            <p class="how-step-p">We pair you with someone from another college whose emotional rhythm can meet yours.</p>
+          </div>
+        </li>
+        <li class="how-node how-node-3">
+          <div class="how-pin">03</div>
+          <div class="how-copy">
+            <span class="how-kicker">Nights</span>
+            <h3 class="how-step-h">Write one honest line</h3>
+            <p class="how-step-p">A nightly prompt opens. You answer privately, read theirs next day, and keep the space anonymous.</p>
+          </div>
+        </li>
+        <li class="how-node how-node-4">
+          <div class="how-pin">21</div>
+          <div class="how-copy">
+            <span class="how-kicker">Reveal</span>
+            <h3 class="how-step-h">Choose what unlocks</h3>
+            <p class="how-step-p">On day 21, names unlock only if both of you say yes. Otherwise, the orbit stays protected.</p>
+          </div>
+        </li>
+      </ol>
     </div>
   </div>
 </section>
