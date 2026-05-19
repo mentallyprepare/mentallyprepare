@@ -7,11 +7,12 @@
   --cyan:#5ec4d4;--cyan-l:#8FE3EF;
   --ink:#F8F2FF;--ink-m:rgba(248,242,255,.62);--ink-s:rgba(248,242,255,.35);
   --line:rgba(248,242,255,.07);--card:#0E0A18;--bg:#08050F;
+  --font-display:'Instrument Serif',Georgia,serif;--font-body:'Manrope',Arial,sans-serif;
 }
 html{background:var(--bg)}
 body{
   background:var(--bg);color:var(--ink);
-  font-family:'DM Sans',sans-serif;font-weight:300;
+  font-family:var(--font-body);font-weight:400;
   overflow-x:hidden;min-height:100vh;
   -webkit-font-smoothing:antialiased;
 }
@@ -1161,3 +1162,11 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .silent-pending-note{font-size:10.5px;color:var(--ink-s);font-style:italic}
 .silent-delete-btn{background:none;border:none;font-size:10.5px;color:var(--ink-s);cursor:pointer;text-align:left;padding:0;letter-spacing:.04em;transition:color .2s;width:fit-content}
 .silent-delete-btn:hover{color:var(--rose)}
+
+/* Landing refresh alignment: keep the product shell in the same emotional system. */
+.screen h1,.screen h2,.slide-h,.splash-h,.q-text,.result-type,.prompt-text,.sealed-h,.p-user-name,.arch-name,.wait-h,.tap-h,.yes-h,.silent-line-text,.silent-textarea,.section-h2,.hero-h1,.cta-h2{font-family:var(--font-display)!important;font-weight:400!important;letter-spacing:0!important}
+.slide-p,.splash-p,.mini-card-text,.jp-text,.result-line,.sealed-p,.entry-txt,.arch-quote,.wait-p,.yes-p,.note-observation,.note-permission,.silent-instruction,.silent-write-instruction,.silent-crisis-msg,.silent-transition-msg,.tq-sub,.tq-whisper-text,.tq-sealed-p,.tq-waiting-text,.silent-mine-text{font-family:var(--font-body)!important;font-style:normal!important;line-height:1.82}
+.btn,.btn-ghost,.btn-back,.btn-yes,.btn-no,.btn-unseal,.tq-seal-btn,.silent-release-btn,.site-nav-cta{font-family:var(--font-body)!important;font-weight:800}
+.card,.q-card,.result-card,.write-box,.sealed-card,.entry,.arch-hero{border-radius:18px}
+.site-nav-logo,.site-footer-brand,.nav-logo{font-family:var(--font-body)!important;font-weight:800!important;font-style:normal!important}
+.site-nav-cta{background:linear-gradient(135deg,var(--rose-d),var(--purple));border-radius:999px;box-shadow:0 10px 34px rgba(155,79,102,.28)}

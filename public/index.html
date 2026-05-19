@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Mentally Prepare — Anonymous Emotional Journal for College Students</title>
-<meta name="description" content="Write anonymously to a stranger from another college for 21 days. Matched by emotional archetype. On Day 21 — reveal your identity or stay unknown forever. Free for Indian college students."/>
-<meta name="keywords" content="anonymous journal college students India, emotional journaling app, college loneliness, mental health journal students, anonymous pen pal"/>
+<title>Mentally Prepare - 21-day anonymous emotional reset</title>
+<meta name="description" content="Write anonymously for 21 days. A student from another college writes back. On Day 21, both choose: reveal or stay unknown."/>
+<meta name="keywords" content="anonymous journal college students India, emotional journaling, silent room, anonymous pen pal, 21 day reset"/>
 <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.svg">
 <link rel="manifest" href="/manifest.json">
@@ -13,881 +13,233 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --rose:#D4859A;--rose-l:#EBB4C2;--rose-d:#9B4F66;
-  --gold:#C9A96E;--gold-l:#E8D0A0;
-  --purple:#7B5EA7;--purple-l:#B09FCC;
-  --blue:#5fb7e8;--cyan:#85f0ff;--lilac:#d9c7ff;
-  --green:#7EC8A0;
-  --ink:#F8F2FF;--ink-m:rgba(248,242,255,.62);--ink-s:rgba(248,242,255,.35);
-  --line:rgba(248,242,255,.07);--card:#0E0A18;--bg:#08050F;
-  --font-display:'Instrument Serif',Georgia,serif;--font-body:'Manrope',Arial,sans-serif;
+  --bg:#08050f;--bg2:#0f0a1d;--ink:#fbf5ff;--muted:rgba(251,245,255,.68);--soft:rgba(251,245,255,.42);
+  --line:rgba(251,245,255,.105);--line2:rgba(251,245,255,.16);--rose:#d4859a;--rose2:#ebb4c2;
+  --purple:#7b5ea7;--violet:#b09fcc;--gold:#e0c58f;--paper:#f6efff;--paper-ink:#302547;
+  --display:'Instrument Serif',Georgia,serif;--body:'Manrope',Arial,sans-serif;
 }
-html{background:var(--bg);scroll-behavior:smooth;overflow-x:hidden}
-body{
-  background:var(--bg);color:var(--ink);
-  font-family:var(--font-body);font-weight:400;
-  overflow-x:hidden;min-height:100vh;
-  -webkit-font-smoothing:antialiased;
+html{scroll-behavior:smooth;background:var(--bg);overflow-x:hidden}
+body{min-height:100vh;background:
+  radial-gradient(circle at 16% 10%,rgba(212,133,154,.15),transparent 26%),
+  radial-gradient(circle at 82% 0%,rgba(123,94,167,.18),transparent 30%),
+  linear-gradient(180deg,#08050f 0%,#0c0716 42%,#07040d 100%);
+  color:var(--ink);font-family:var(--body);font-weight:400;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:inherit;text-decoration:none}::selection{background:rgba(212,133,154,.35)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.stars{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.star{position:absolute;width:1px;height:1px;border-radius:50%;background:rgba(255,255,255,.7)}
+.page{position:relative;z-index:1}
+.nav{position:fixed;top:0;left:0;right:0;z-index:30;height:70px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(8,5,15,.66);backdrop-filter:blur(18px);border-bottom:1px solid rgba(251,245,255,.07)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:14px;letter-spacing:.02em}
+.brand-mark{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 28%,#fff 0 7%,#d9c7ff 10% 28%,#7b5ea7 58%,#25123e 100%);box-shadow:0 0 22px rgba(176,159,204,.3)}
+.nav-links{display:flex;gap:28px;align-items:center}.nav-links a{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.nav-links a:hover{color:var(--ink)}.nav-cta{font-size:12px;font-weight:800;color:var(--ink);padding:10px 18px;border:1px solid rgba(212,133,154,.28);border-radius:999px;background:rgba(212,133,154,.08)}
+.menu-btn{display:none;background:none;border:0;color:var(--ink);font-size:22px}.mobile-menu{display:none}
+.section{position:relative;padding:112px 24px}.inner{width:min(1120px,100%);margin:0 auto}.narrow{width:min(720px,100%);margin:0 auto}
+.label{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+.label::before{content:'';width:26px;height:1px;background:currentColor;opacity:.65}
+.headline{font-family:var(--display);font-size:clamp(36px,6vw,76px);font-weight:400;line-height:.96;letter-spacing:0;color:var(--ink);text-shadow:0 0 34px rgba(251,245,255,.06)}
+.headline em,.serif-em{font-style:italic;color:var(--rose2);font-weight:400}
+.copy{color:var(--muted);font-size:clamp(14px,1.4vw,17px);line-height:1.9}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 24px;border-radius:999px;border:1px solid rgba(235,180,194,.42);background:linear-gradient(135deg,#b7657b,#765996);color:#fff;font-size:13px;font-weight:800;letter-spacing:.02em;box-shadow:0 14px 42px rgba(155,79,102,.34)}
+.btn.secondary{background:transparent;color:var(--muted);border-color:var(--line2);box-shadow:none}.btn:hover{transform:translateY(-1px)}
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .75s ease,transform .75s ease}.reveal.visible{opacity:1;transform:translateY(0)}
+
+.hero{min-height:100vh;padding:118px 24px 78px;display:flex;align-items:center;overflow:hidden}
+.hero::after{content:'';position:absolute;left:-20%;right:-20%;bottom:-180px;height:320px;border-radius:50% 50% 0 0;background:linear-gradient(180deg,rgba(217,199,255,.18),rgba(123,94,167,.08));pointer-events:none}
+.hero-grid{width:min(1180px,100%);margin:0 auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(330px,.82fr);gap:68px;align-items:center}
+.hero-kicker{display:inline-flex;align-items:center;gap:10px;width:max-content;padding:8px 14px;border:1px solid rgba(235,180,194,.34);border-radius:999px;background:rgba(212,133,154,.1);color:#f3c6d1;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:24px}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--rose2);animation:breathe 2.8s ease-in-out infinite}
+.hero h1{max-width:730px;color:#fff;text-shadow:0 0 44px rgba(235,180,194,.12)}.hero-sub{max-width:560px;margin:26px 0 32px;color:rgba(251,245,255,.78)}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.micro{margin-top:14px;color:var(--soft);font-size:11px}
+.artifact-wrap{position:relative;min-height:590px;display:grid;place-items:center}
+.artifact-glow{position:absolute;width:390px;height:390px;border-radius:50%;background:radial-gradient(circle,rgba(212,133,154,.18),rgba(123,94,167,.12) 44%,transparent 70%);filter:blur(10px)}
+.phone{position:relative;width:310px;min-height:560px;border:1px solid rgba(251,245,255,.16);border-radius:38px;background:linear-gradient(180deg,#17102b,#0b0817 58%,#07050f);box-shadow:0 42px 100px rgba(0,0,0,.45),inset 0 0 0 8px rgba(0,0,0,.24);overflow:hidden;animation:drift 7s ease-in-out infinite}
+.phone::before{content:'';position:absolute;top:0;left:50%;width:116px;height:24px;transform:translateX(-50%);background:#05040b;border-radius:0 0 16px 16px;z-index:3}
+.phone-sky{position:absolute;inset:0;background:radial-gradient(circle at 20% 16%,rgba(255,255,255,.65) 0 1px,transparent 2px),radial-gradient(circle at 72% 28%,rgba(255,255,255,.5) 0 1px,transparent 2px),radial-gradient(circle at 42% 62%,rgba(255,255,255,.42) 0 1px,transparent 2px)}
+.phone-content{position:relative;padding:52px 24px 26px;display:flex;flex-direction:column;gap:18px}
+.phone-top{display:flex;justify-content:space-between;align-items:center;color:var(--soft);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.journal{margin-top:12px;border:1px solid rgba(251,245,255,.13);border-radius:22px;background:rgba(251,245,255,.055);padding:22px 18px}
+.journal-day{color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
+.journal-prompt{font-family:var(--display);font-size:29px;line-height:1;color:var(--ink);margin-bottom:18px}
+.journal-line{font-size:13px;line-height:1.8;color:var(--muted);border-left:2px solid rgba(212,133,154,.35);padding-left:13px}
+.status-note{border:1px solid rgba(224,197,143,.18);border-radius:18px;padding:14px 15px;color:rgba(251,245,255,.72);font-size:12px;background:rgba(224,197,143,.06)}
+.reveal-pill{position:absolute;right:-18px;bottom:96px;width:165px;padding:14px 16px;border-radius:18px;background:#f6efff;color:var(--paper-ink);box-shadow:0 18px 50px rgba(0,0,0,.22);transform:rotate(3deg)}
+.reveal-pill strong{display:block;font-family:var(--display);font-size:22px;font-weight:400;line-height:1}.reveal-pill span{font-size:10px;color:rgba(48,37,71,.68)}
+
+.confession{padding-top:40px}.founder-note{max-width:720px;margin:0 auto;text-align:left}
+.founder-note .note-body{font-family:var(--display);font-size:clamp(24px,3.2vw,38px);line-height:1.18;color:rgba(251,245,255,.86)}
+.signature{margin-top:26px;color:var(--soft);font-size:12px;letter-spacing:.05em}
+.quote-strip{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:28px 0;background:rgba(251,245,255,.018)}
+.quote-track{display:flex;gap:56px;width:max-content;animation:marquee 42s linear infinite}.quote-track span{font-family:var(--display);font-style:italic;font-size:clamp(18px,2vw,26px);color:rgba(251,245,255,.36);white-space:nowrap}
+
+.ritual-grid{display:grid;grid-template-columns:.72fr 1fr;gap:70px;align-items:start}.ritual-intro{position:sticky;top:110px}
+.timeline{position:relative;border-left:1px solid rgba(212,133,154,.22);padding-left:34px}
+.moment{position:relative;padding:0 0 42px}.moment:last-child{padding-bottom:0}
+.moment::before{content:'';position:absolute;left:-40px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:1px solid var(--rose2);box-shadow:0 0 0 7px rgba(212,133,154,.08)}
+.moment small{display:block;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px}
+.moment h3{font-family:var(--display);font-size:clamp(26px,3vw,38px);font-weight:400;line-height:1;margin-bottom:10px}.moment p{max-width:560px;color:var(--muted);font-size:14px;line-height:1.85}
+.safety-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:48px}.safety-item{background:rgba(10,7,18,.82);padding:24px 22px;min-height:142px}.safety-item h4{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--rose2);margin-bottom:10px}.safety-item p{font-size:13px;color:var(--muted);line-height:1.75}
+
+.silent{background:linear-gradient(180deg,transparent,rgba(123,94,167,.08),transparent)}
+.silent-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:58px;align-items:center}.wall{border:1px solid rgba(251,245,255,.12);border-radius:28px;background:rgba(251,245,255,.035);padding:26px;position:relative}
+.wall::before{content:'disappears in 7 days - no replies - no reactions';position:absolute;top:-12px;left:24px;background:var(--bg2);padding:4px 10px;color:var(--soft);font-size:10px;letter-spacing:.08em}
+.line{display:flex;gap:12px;align-items:flex-start;padding:16px 0;border-bottom:1px solid rgba(251,245,255,.07)}.line:last-child{border-bottom:0}.dot{width:6px;height:6px;border-radius:50%;background:var(--rose2);margin-top:10px;flex:none}.line p{font-family:var(--display);font-style:italic;color:rgba(251,245,255,.8);font-size:20px;line-height:1.35}.line time{display:block;margin-top:7px;font-family:var(--body);font-size:10px;color:var(--soft);font-style:normal}
+
+.stories{padding-top:72px}.field-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:44px}
+.field{background:rgba(10,7,18,.86);padding:28px 24px;text-align:left}.field blockquote{font-family:var(--display);font-style:italic;font-size:22px;line-height:1.28;color:rgba(251,245,255,.84);margin-bottom:22px}.meta{display:grid;gap:4px;color:var(--soft);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.final{text-align:center;padding-bottom:128px}.final .copy{margin:20px auto 30px;max-width:560px}.footer{border-top:1px solid var(--line);padding:34px 24px;color:var(--soft);font-size:12px}.footer-inner{width:min(1120px,100%);margin:0 auto;display:flex;justify-content:space-between;gap:20px;align-items:center}.footer-links{display:flex;gap:18px}
+
+@media(max-width:900px){
+  .nav{padding:0 18px}.nav-links,.nav-cta{display:none}.menu-btn{display:block}.mobile-menu.open{display:flex}.mobile-menu{position:fixed;top:70px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--line);padding:12px 18px;flex-direction:column}.mobile-menu a{padding:14px 0;color:var(--muted);font-size:13px}
+  .hero{padding-top:98px;padding-bottom:50px;text-align:center;min-height:auto}.hero-grid,.ritual-grid,.silent-grid{grid-template-columns:1fr;gap:30px}.hero-kicker,.hero-actions{margin-left:auto;margin-right:auto;justify-content:center}.hero-sub{margin-left:auto;margin-right:auto}.artifact-wrap{min-height:330px;margin-top:-6px}.phone{width:250px;min-height:440px}.reveal-pill{right:22px;bottom:40px}.ritual-intro{position:static;text-align:center}.timeline{padding-left:28px}.safety-row,.field-grid{grid-template-columns:1fr}.section{padding:82px 20px}.headline{font-size:clamp(38px,10vw,52px)}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}
 }
-a{color:inherit;text-decoration:none}
-::selection{background:var(--rose-d);color:var(--ink)}
-
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes twinkle{0%,100%{opacity:var(--a1,.06)}50%{opacity:var(--a2,.45)}}
-@keyframes breathe{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.15);opacity:1}}
-@keyframes orbFloat{0%{transform:translate(0,0) scale(1)}25%{transform:translate(20px,-30px) scale(1.05)}50%{transform:translate(-10px,-50px) scale(1)}75%{transform:translate(-30px,-20px) scale(.95)}100%{transform:translate(0,0) scale(1)}}
-@keyframes orbFloat2{0%{transform:translate(0,0) scale(1)}25%{transform:translate(-25px,20px) scale(.95)}50%{transform:translate(15px,40px) scale(1.05)}75%{transform:translate(35px,10px) scale(1)}100%{transform:translate(0,0) scale(1)}}
-@keyframes marqueeScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@keyframes floatParticle{0%{opacity:0;transform:translateY(100vh)}20%{opacity:.5}80%{opacity:.3}100%{opacity:0;transform:translateY(-10vh)}}
-@keyframes morphBlob{0%,100%{border-radius:60% 40% 30% 70%/60% 30% 70% 40%}50%{border-radius:30% 60% 70% 40%/50% 60% 30% 60%}}
-@keyframes rotateOrb{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes spinSlow{from{transform:rotateY(0deg)}to{transform:rotateY(360deg)}}
-@keyframes pulse3d{0%,100%{box-shadow:0 0 60px rgba(212,133,154,.3),0 0 120px rgba(123,94,167,.15)}50%{box-shadow:0 0 100px rgba(212,133,154,.5),0 0 200px rgba(123,94,167,.25)}}
-@keyframes countUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-@keyframes ringPulse{0%{transform:rotateX(75deg) scale(.9);opacity:.6}50%{transform:rotateX(75deg) scale(1.1);opacity:.3}100%{transform:rotateX(75deg) scale(.9);opacity:.6}}
-@keyframes cardFloat1{0%,100%{transform:rotateY(-25deg) rotateX(5deg) translateZ(40px) translateY(0)}50%{transform:rotateY(-25deg) rotateX(5deg) translateZ(40px) translateY(-15px)}}
-@keyframes cardFloat2{0%,100%{transform:rotateY(15deg) rotateX(-5deg) translateZ(60px) translateY(0)}50%{transform:rotateY(15deg) rotateX(-5deg) translateZ(60px) translateY(-12px)}}
-@keyframes cardFloat3{0%,100%{transform:rotateY(-10deg) rotateX(8deg) translateZ(30px) translateY(0)}50%{transform:rotateY(-10deg) rotateX(8deg) translateZ(30px) translateY(-18px)}}
-@keyframes successPop{0%{transform:scale(0) rotate(-10deg);opacity:0}50%{transform:scale(1.1) rotate(2deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
-
-.stars{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.star{position:absolute;border-radius:50%;animation:twinkle var(--d,3s) ease-in-out infinite var(--dl,0s)}
-.particles{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.particle{position:absolute;width:2px;height:2px;background:var(--rose);border-radius:50%;opacity:0;animation:floatParticle 8s linear infinite}
-
-.cursor-glow{position:fixed;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(212,133,154,.06),transparent 70%);pointer-events:none;z-index:0;transform:translate(-50%,-50%);transition:opacity .3s}
-
-.nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 40px;height:72px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:rgba(8,5,15,.6);border-bottom:1px solid var(--line);transition:all .4s ease}
-.nav.scrolled{background:rgba(8,5,15,.92);box-shadow:0 4px 30px rgba(0,0,0,.4)}
-.nav-logo{display:flex;align-items:center;gap:10px;font-family:var(--font-body);font-size:18px;font-weight:700}
-.nav-orb{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--purple));animation:breathe 4s ease-in-out infinite;flex-shrink:0}
-.nav-links{display:flex;align-items:center;gap:32px}
-.nav-links a{font-size:13px;color:var(--ink-m);transition:color .3s;letter-spacing:.5px;text-transform:uppercase;font-weight:400}
-.nav-links a:hover{color:var(--ink)}
-.nav-cta{background:linear-gradient(135deg,var(--rose-d),var(--purple));padding:10px 24px;border-radius:50px;font-size:12px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;transition:all .3s;border:none;color:var(--ink);cursor:pointer}
-.nav-cta:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(212,133,154,.35)}
-.nav-menu-btn{display:none;background:none;border:none;color:var(--ink);font-size:24px;cursor:pointer}
-
-.hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:120px 24px 80px;overflow:hidden}
-.hero::after{content:'';position:absolute;left:-8%;right:-8%;bottom:-150px;height:260px;background:
-  radial-gradient(ellipse at 18% 24%,rgba(255,255,255,.18) 0 8%,transparent 9%),
-  radial-gradient(ellipse at 34% 42%,rgba(255,255,255,.12) 0 10%,transparent 11%),
-  radial-gradient(ellipse at 62% 30%,rgba(255,255,255,.13) 0 9%,transparent 10%),
-  radial-gradient(ellipse at 80% 48%,rgba(255,255,255,.1) 0 11%,transparent 12%),
-  linear-gradient(180deg,#cfc5ee 0,#a596cf 58%,#7868a8 100%);border-radius:50% 50% 0 0/62% 62% 0 0;opacity:.16;pointer-events:none}
-.hero-bg{position:absolute;inset:0;overflow:hidden;background:
-  radial-gradient(circle at 68% 28%,rgba(95,183,232,.18),transparent 22%),
-  radial-gradient(circle at 18% 15%,rgba(212,133,154,.15),transparent 20%),
-  linear-gradient(135deg,#100722 0%,#11183c 48%,#08050f 100%)}
-.hero-orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.2;pointer-events:none}
-.hero-orb-1{width:520px;height:520px;background:radial-gradient(circle,var(--blue),transparent 70%);top:4%;right:2%;animation:orbFloat 20s ease-in-out infinite}
-.hero-orb-2{width:430px;height:430px;background:radial-gradient(circle,var(--purple),transparent 70%);bottom:-5%;left:-8%;animation:orbFloat2 25s ease-in-out infinite}
-.hero-orb-3{width:300px;height:300px;background:radial-gradient(circle,var(--rose),transparent 70%);top:36%;left:44%;opacity:.14;animation:orbFloat 18s ease-in-out infinite reverse}
-
-.hero-layout{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:80px;max-width:1200px;width:100%;align-items:center}
-
-.hero-left{display:flex;flex-direction:column}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:50px;border:1px solid rgba(212,133,154,.25);background:rgba(212,133,154,.08);margin-bottom:28px;font-size:11px;color:var(--rose-l);letter-spacing:1.5px;text-transform:uppercase;animation:fadeUp .8s ease both;width:fit-content}
-.hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--rose);animation:breathe 2s ease-in-out infinite}
-.hero-h1{font-family:var(--font-display);font-size:clamp(40px,5.6vw,66px);font-weight:400;line-height:.98;margin-bottom:22px;animation:fadeUp .8s ease .1s both}
-.hero-h1 em{font-style:italic;color:var(--rose-l);font-weight:400}
-.hero-sub{font-family:var(--font-body);font-size:clamp(15px,1.45vw,17px);font-weight:400;color:var(--ink-m);line-height:1.85;max-width:500px;margin-bottom:36px;animation:fadeUp .8s ease .2s both}
-
-.hero-cta-btn{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;gap:10px;background:linear-gradient(135deg,var(--rose-d),var(--purple));color:#fff;padding:18px 40px;border-radius:14px;font-size:15px;font-weight:800;border:none;cursor:pointer;font-family:var(--font-body);transition:all .3s;white-space:nowrap;position:relative;overflow:hidden;text-decoration:none;animation:fadeUp .8s ease .35s both}
-.hero-cta-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);opacity:0;transition:opacity .3s}
-.hero-cta-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(212,133,154,.4)}
-.hero-cta-btn:hover::before{opacity:1}
-.hero-note{font-size:11px;color:var(--ink-s);letter-spacing:.3px;margin-top:12px;animation:fadeUp .8s ease .4s both}
-
-.hero-right{display:flex;align-items:center;justify-content:center;perspective:1200px}
-.stardust-showcase{position:relative;width:min(430px,100%);height:560px;display:grid;place-items:center;filter:drop-shadow(0 34px 60px rgba(0,0,0,.45))}
-.stardust-phone{position:relative;width:278px;height:548px;border-radius:38px;background:linear-gradient(180deg,#211641 0%,#100d28 58%,#08061a 100%);border:1px solid rgba(248,242,255,.16);box-shadow:inset 0 0 0 8px rgba(2,2,12,.42),0 30px 80px rgba(0,0,0,.5);overflow:hidden}
-.stardust-phone::before{content:'';position:absolute;top:0;left:50%;width:116px;height:25px;background:#070611;border-radius:0 0 16px 16px;transform:translateX(-50%);z-index:5}
-.stardust-phone::after{content:'';position:absolute;left:54px;right:54px;bottom:12px;height:4px;border-radius:20px;background:rgba(255,255,255,.72);z-index:5}
-.phone-sky{position:absolute;inset:0;background:
-  radial-gradient(circle at 24% 21%,rgba(255,255,255,.8) 0 1px,transparent 2px),
-  radial-gradient(circle at 78% 18%,rgba(255,255,255,.75) 0 1px,transparent 2px),
-  radial-gradient(circle at 62% 42%,rgba(255,255,255,.55) 0 1px,transparent 2px),
-  radial-gradient(circle at 31% 71%,rgba(255,255,255,.45) 0 1px,transparent 2px),
-  radial-gradient(circle at 86% 70%,rgba(255,255,255,.4) 0 1px,transparent 2px),
-  linear-gradient(155deg,rgba(118,78,160,.35),transparent 42%);opacity:.95}
-.phone-top{position:absolute;top:42px;left:24px;right:24px;display:flex;align-items:center;justify-content:space-between;color:rgba(248,242,255,.72);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
-.phone-logo{font-family:var(--font-body);font-size:15px;font-weight:800;text-transform:none;letter-spacing:.02em;color:#fff}
-.phone-menu{width:16px;height:10px;border-top:1px solid rgba(248,242,255,.72);border-bottom:1px solid rgba(248,242,255,.72);position:relative}
-.phone-menu::after{content:'';position:absolute;left:0;right:0;top:4px;border-top:1px solid rgba(248,242,255,.72)}
-.route-svg{position:absolute;inset:86px 28px 120px;width:calc(100% - 56px);height:342px;overflow:visible;opacity:.62}
-.route-svg path{fill:none;stroke:rgba(248,242,255,.42);stroke-width:1.2;stroke-dasharray:5 7;stroke-linecap:round}
-.cosmic-rocket{position:absolute;left:54px;top:126px;width:78px;height:46px;transform:rotate(-18deg);animation:rocketDrift 5s ease-in-out infinite}
-.rocket-body{position:absolute;left:18px;top:8px;width:48px;height:24px;background:linear-gradient(135deg,#fbfbff,#8bf0ff 62%,#3ca4d4);border-radius:70% 45% 45% 70%;box-shadow:0 0 24px rgba(133,240,255,.34)}
-.rocket-body::before{content:'';position:absolute;right:7px;top:6px;width:10px;height:10px;border-radius:50%;background:#25113e;border:2px solid #f0a2d7}
-.rocket-nose{position:absolute;right:3px;top:11px;width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-left:16px solid #f4f7ff}
-.rocket-fin{position:absolute;left:26px;top:25px;width:18px;height:13px;background:#68d8ff;clip-path:polygon(0 0,100% 0,35% 100%)}
-.rocket-flame{position:absolute;left:0;top:13px;width:27px;height:17px;background:radial-gradient(circle at 80% 50%,#fff 0 18%,#ffd7f5 20% 42%,#d8a7ff 43% 70%,transparent 72%);border-radius:50%;filter:blur(.2px)}
-.planet{position:absolute;border-radius:50%;box-shadow:inset -12px -14px 26px rgba(0,0,0,.28),0 0 28px rgba(217,199,255,.14)}
-.planet-one{width:52px;height:52px;left:62px;top:232px;background:linear-gradient(135deg,#cbc7ee,#766cae)}
-.planet-two{width:82px;height:82px;right:34px;top:282px;background:linear-gradient(135deg,#d8cfeb,#8d7abd)}
-.planet-three{width:104px;height:104px;left:78px;bottom:62px;background:linear-gradient(135deg,#eee6ff,#b4a1df 52%,#76649e)}
-.planet-three::after{content:'';position:absolute;inset:37px -24px;border:1px solid rgba(248,242,255,.48);border-radius:50%;transform:rotate(18deg)}
-.planet-label{position:absolute;color:rgba(248,242,255,.54);font-size:10px}
-.planet-label.one{left:64px;top:293px}.planet-label.two{right:48px;top:370px}.planet-label.three{left:112px;bottom:44px}
-.fuel-line{position:absolute;left:28px;right:28px;bottom:34px;height:3px;background:rgba(248,242,255,.16);border-radius:20px;overflow:hidden}
-.fuel-line::before{content:'';display:block;width:58%;height:100%;background:linear-gradient(90deg,#ffacd4,#75dfff)}
-.phone-moon{position:absolute;left:-52px;right:-52px;bottom:-106px;height:180px;border-radius:50% 50% 0 0;background:linear-gradient(180deg,#f2e9ff,#b3a4d4 60%,#7667a7);opacity:.82}
-.phone-moon::before{content:'';position:absolute;left:60px;top:28px;width:64px;height:14px;border-radius:50%;border:2px solid rgba(88,76,125,.23)}
-.phone-moon::after{content:'';position:absolute;right:76px;top:46px;width:48px;height:10px;border-radius:50%;border:2px solid rgba(88,76,125,.2)}
-.launch-cloud{position:absolute;left:-32px;bottom:54px;width:148px;height:160px;background:
-  radial-gradient(circle at 28% 38%,rgba(255,255,255,.96) 0 12px,transparent 13px),
-  radial-gradient(circle at 42% 26%,rgba(255,255,255,.88) 0 17px,transparent 18px),
-  radial-gradient(circle at 61% 44%,rgba(255,255,255,.9) 0 13px,transparent 14px),
-  radial-gradient(circle at 42% 58%,rgba(255,220,245,.9) 0 28px,transparent 29px),
-  radial-gradient(circle at 72% 68%,rgba(255,255,255,.76) 0 18px,transparent 19px);opacity:.76}
-.ambient-planet{position:absolute;border-radius:50%;background:linear-gradient(135deg,rgba(217,199,255,.5),rgba(95,183,232,.18));filter:blur(.2px)}
-.ambient-planet.a{width:78px;height:78px;right:6px;top:64px}.ambient-planet.b{width:44px;height:44px;left:18px;bottom:78px;opacity:.7}
-@keyframes rocketDrift{0%,100%{transform:translate(0,0) rotate(-18deg)}50%{transform:translate(12px,-15px) rotate(-12deg)}}
-.marquee-wrap{overflow:hidden;padding:50px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;z-index:1}
-.marquee{display:flex;gap:60px;animation:marqueeScroll 36s linear infinite;width:max-content}
-.marquee-item{font-family:var(--font-display);font-size:clamp(20px,2.6vw,31px);font-weight:400;color:var(--ink-s);white-space:nowrap;display:flex;align-items:center;gap:20px}
-.marquee-dot{width:6px;height:6px;border-radius:50%;background:var(--rose);opacity:.4}
-
-section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
-.section-inner{max-width:1100px;margin:0 auto}
-.section-label{display:inline-flex;align-items:center;gap:8px;font-size:11px;color:var(--rose);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
-.section-label::before{content:'';width:20px;height:1px;background:var(--rose)}
-.section-h2{font-family:var(--font-display);font-size:clamp(32px,4.8vw,54px);font-weight:400;line-height:1;margin-bottom:20px}
-.section-h2 em{font-style:italic;color:var(--rose-l);font-weight:400}
-.section-p{font-family:var(--font-body);font-size:clamp(14px,1.45vw,16.5px);font-weight:400;color:var(--ink-m);line-height:1.8;max-width:600px}
-
-.how{text-align:center;background:linear-gradient(180deg,rgba(8,5,15,0),rgba(188,173,229,.09) 48%,rgba(8,5,15,0))}
-.how .section-h2{font-size:clamp(28px,4.2vw,44px);margin-bottom:0}
-.how-map{position:relative;margin-top:46px;padding:46px 44px 42px;border:1px solid rgba(248,242,255,.18);border-radius:28px;overflow:hidden;text-align:left;color:#352a55;background:
-  linear-gradient(rgba(149,119,194,.12) 1px,transparent 1px),
-  linear-gradient(90deg,rgba(149,119,194,.12) 1px,transparent 1px),
-  radial-gradient(circle at 18% 18%,rgba(238,198,230,.8),transparent 26%),
-  radial-gradient(circle at 84% 72%,rgba(181,218,242,.78),transparent 30%),
-  linear-gradient(135deg,#f7f1ff 0%,#ede2ff 48%,#f8effb 100%);background-size:42px 42px,42px 42px,auto,auto,auto;box-shadow:0 28px 90px rgba(0,0,0,.28)}
-.how-map::before{content:'';position:absolute;inset:18px;border:2px solid rgba(255,255,255,.62);border-radius:22px;pointer-events:none}
-.how-map::after{content:'✦';position:absolute;right:44px;top:30px;color:#a58acc;font-size:24px;opacity:.72}
-.how-route,.how-rocket-mini,.how-orb{display:none}
-.how-doodles{position:absolute;inset:0;pointer-events:none;color:#9b82c7;opacity:.72}
-.how-doodle{position:absolute;width:82px;height:82px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.how-doodle.planet{left:50px;top:38px;transform:rotate(-12deg)}
-.how-doodle.squiggle{right:48px;top:118px;width:105px;height:38px}
-.how-doodle.moon{right:82px;bottom:38px;width:64px;height:64px}
-.how-doodle.star{left:48%;bottom:34px;width:54px;height:54px;color:#d3a0d0}
-.how-missions{position:relative;z-index:2;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px dashed rgba(77,58,112,.22);border-left:1px dashed rgba(77,58,112,.22)}
-.how-node{position:relative;width:auto;min-height:246px;padding:30px 26px 28px;border-right:1px dashed rgba(77,58,112,.22);border-bottom:1px dashed rgba(77,58,112,.22)}
-.how-node-1,.how-node-2,.how-node-3,.how-node-4{left:auto;right:auto;top:auto;bottom:auto}
-.how-pin{width:54px;height:54px;margin-bottom:18px;display:grid;place-items:center;color:#8c73bd;background:rgba(255,255,255,.46);border:1px solid rgba(126,104,172,.18);border-radius:18px;box-shadow:0 8px 22px rgba(116,92,155,.12);transform:rotate(-5deg)}
-.how-pin svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
-.how-node-2 .how-pin,.how-node-4 .how-pin{margin-left:0}
-.how-node-2 .how-pin{transform:rotate(4deg)}.how-node-3 .how-pin{transform:rotate(3deg)}.how-node-4 .how-pin{transform:rotate(-4deg)}
-.how-copy{position:static;padding:0;border:0;background:transparent;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;transform:none!important}
-.how-copy::before{display:none}
-.how-kicker{display:block;font-family:var(--font-body);font-size:10px;line-height:1;color:#8e6fb4;letter-spacing:1.6px;text-transform:uppercase;margin-bottom:12px;font-weight:800}
-.how-step-h{font-family:var(--font-display);font-size:clamp(22px,2.1vw,28px);font-weight:400;line-height:1;margin-bottom:12px;color:#3b2b5d}
-.how-step-p{font-size:13px;color:rgba(53,42,85,.72);line-height:1.75}
-
-.proof{background:linear-gradient(180deg,transparent,rgba(14,10,24,.5),transparent);text-align:center}
-.proof-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:50px}
-.proof-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px;text-align:left;position:relative;overflow:hidden;transition:all .4s}
-.proof-card:hover{border-color:rgba(212,133,154,.15);transform:translateY(-3px)}
-.proof-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.15),transparent)}
-.proof-quote{font-family:var(--font-display);font-size:15.5px;color:var(--ink-m);line-height:1.7;margin-bottom:16px}
-.proof-author{display:flex;align-items:center;gap:10px}
-.proof-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--rose-d),var(--purple));display:flex;align-items:center;justify-content:center;font-size:14px}
-.proof-info{font-size:11px;color:var(--ink-s)}
-.proof-info strong{color:var(--ink-m);font-weight:500;display:block;margin-bottom:1px}
-
-.cta-section{text-align:center;padding:120px 24px;position:relative}
-.cta-bg{position:absolute;inset:0;overflow:hidden}
-.cta-orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.12;pointer-events:none}
-.cta-orb-1{width:600px;height:600px;background:var(--rose);top:50%;left:50%;transform:translate(-50%,-50%);animation:breathe 6s ease-in-out infinite}
-.cta-inner{position:relative;z-index:2;max-width:600px;margin:0 auto}
-.cta-h2{font-family:var(--font-display);font-size:clamp(34px,4.8vw,56px);font-weight:400;line-height:1;margin-bottom:16px}
-.cta-h2 em{font-style:italic;color:var(--rose-l);font-weight:400}
-.cta-p{font-family:var(--font-body);font-size:clamp(14px,1.45vw,16.5px);color:var(--ink-m);line-height:1.8;margin-bottom:32px;max-width:460px;margin-left:auto;margin-right:auto}
-
-.cta-form{display:flex;gap:12px;max-width:460px;margin:0 auto 16px;justify-content:center}
-.cta-note{font-size:11px;color:var(--ink-s)}
-
-.footer{border-top:1px solid var(--line);padding:40px 24px;text-align:center}
-.footer-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
-.footer-brand{display:flex;align-items:center;gap:8px;font-family:var(--font-body);font-size:13px;font-weight:700;color:var(--ink-m)}
-.footer-brand .nav-orb{width:18px;height:18px}
-.footer-links{display:flex;gap:24px}
-.footer-links a{font-size:12px;color:var(--ink-s);transition:color .3s}
-.footer-links a:hover{color:var(--ink)}
-.footer-copy{font-size:11px;color:var(--ink-s)}
-
-.reveal{opacity:0;transform:translateY(40px);transition:all .8s cubic-bezier(.25,.46,.45,.94)}
-.reveal.visible{opacity:1;transform:translateY(0)}
-.reveal.delay-1{transition-delay:.12s}
-.reveal.delay-2{transition-delay:.24s}
-.reveal.delay-3{transition-delay:.36s}
-.reveal.delay-4{transition-delay:.48s}
-
-/* ── Silent Room ── */
-@keyframes srFadeIn{0%{opacity:0;transform:translateY(16px)}100%{opacity:1;transform:translateY(0)}}
-@keyframes srFlicker{0%,100%{opacity:.7}40%{opacity:.4}60%{opacity:.8}}
-@keyframes srPulseGlow{0%,100%{box-shadow:0 0 40px rgba(123,94,167,.15),inset 0 0 40px rgba(123,94,167,.04)}50%{box-shadow:0 0 80px rgba(123,94,167,.28),inset 0 0 60px rgba(123,94,167,.08)}}
-@keyframes srLineSlide{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
-@keyframes srDotBreathe{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.5);opacity:.9}}
-.sr-section{text-align:center;background:linear-gradient(180deg,transparent,rgba(8,5,15,.8) 20%,rgba(8,5,15,.8) 80%,transparent);position:relative;overflow:hidden}
-.sr-section::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(123,94,167,.07),transparent 70%);pointer-events:none}
-.sr-label{display:inline-flex;align-items:center;gap:10px;font-size:11px;color:var(--purple-l);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:20px}
-.sr-label-star{font-size:14px;color:var(--purple-l);opacity:.8;animation:srFlicker 3s ease-in-out infinite}
-.sr-h2{font-family:var(--font-display);font-size:clamp(34px,4.8vw,58px);font-weight:400;line-height:1;letter-spacing:0;margin-bottom:14px}
-.sr-h2 em{font-style:italic;color:var(--purple-l);font-weight:400}
-.sr-sub{font-family:var(--font-body);font-size:clamp(14px,1.45vw,16.5px);color:var(--ink-m);line-height:1.85;max-width:540px;margin:0 auto 56px}
-.sr-room{max-width:680px;margin:0 auto 48px;position:relative;border-radius:24px;border:1px solid rgba(123,94,167,.18);background:rgba(14,10,24,.75);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);padding:48px 40px 40px;animation:srPulseGlow 6s ease-in-out infinite;overflow:hidden}
-.sr-room::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,167,.4),rgba(212,133,154,.25),transparent)}
-.sr-room::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,167,.15),transparent)}
-.sr-room-orb{position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none}
-.sr-room-orb-1{width:200px;height:200px;background:radial-gradient(circle,rgba(123,94,167,.15),transparent 70%);top:-60px;right:-60px}
-.sr-room-orb-2{width:150px;height:150px;background:radial-gradient(circle,rgba(212,133,154,.08),transparent 70%);bottom:-40px;left:-40px}
-.sr-room-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;padding-bottom:20px;border-bottom:1px solid rgba(248,242,255,.05)}
-.sr-room-title{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--purple-l);letter-spacing:2px;text-transform:uppercase}
-.sr-room-title-star{font-size:16px;animation:srFlicker 4s ease-in-out infinite}
-.sr-room-meta{font-size:10px;color:var(--ink-s);letter-spacing:.5px}
-.sr-line{display:flex;align-items:flex-start;gap:16px;padding:18px 0;border-bottom:1px solid rgba(248,242,255,.04);opacity:0;animation:srLineSlide .6s ease forwards}
-.sr-line:last-child{border-bottom:none;padding-bottom:0}
-.sr-line:nth-child(1){animation-delay:.2s}
-.sr-line:nth-child(2){animation-delay:.5s}
-.sr-line:nth-child(3){animation-delay:.8s}
-.sr-line:nth-child(4){animation-delay:1.1s}
-.sr-dot{width:5px;height:5px;border-radius:50%;background:var(--purple-l);flex-shrink:0;margin-top:7px;animation:srDotBreathe 3s ease-in-out infinite}
-.sr-line:nth-child(2) .sr-dot{background:var(--rose);animation-delay:.8s}
-.sr-line:nth-child(3) .sr-dot{background:var(--gold);animation-delay:1.4s}
-.sr-line:nth-child(4) .sr-dot{background:var(--green);animation-delay:.4s}
-.sr-text{font-family:var(--font-body);font-size:clamp(13px,1.35vw,15px);color:var(--ink-m);line-height:1.75;text-align:left;flex:1}
-.sr-time{font-size:10px;color:var(--ink-s);letter-spacing:.3px;white-space:nowrap;align-self:flex-end;flex-shrink:0;margin-left:12px}
-.sr-room-footer{margin-top:28px;padding-top:18px;border-top:1px solid rgba(248,242,255,.05);display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:var(--ink-s);letter-spacing:.5px}
-.sr-room-footer-dot{width:3px;height:3px;border-radius:50%;background:var(--purple-l);opacity:.5}
-.sr-cta-row{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
-.sr-cta-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(123,94,167,.25),rgba(123,94,167,.08));color:var(--purple-l);padding:16px 36px;border-radius:14px;font-size:14px;font-weight:800;letter-spacing:.5px;border:1px solid rgba(123,94,167,.3);cursor:pointer;font-family:var(--font-body);transition:all .35s;text-decoration:none;position:relative;overflow:hidden}
-.sr-cta-btn:hover{transform:translateY(-2px);border-color:rgba(123,94,167,.55);box-shadow:0 12px 40px rgba(123,94,167,.25);color:var(--ink)}
-.sr-cta-note{font-size:11px;color:var(--ink-s);letter-spacing:.3px}
-
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 24px;color:var(--ink-m);font-size:13px;z-index:200;opacity:0;transition:all .3s;pointer-events:none;backdrop-filter:blur(16px);max-width:400px;text-align:center}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-@media(max-width:1024px){
-  .hero-layout{grid-template-columns:1fr;gap:60px;text-align:center}
-  .hero-left{align-items:center}
-  .hero-badge{margin-left:auto;margin-right:auto}
-  .hero-sub{margin-left:auto;margin-right:auto}
-  .hero-cta-btn{margin:0 auto}
-  .hero-right{margin-top:20px}
-  .stardust-showcase{height:500px;transform:scale(.92)}
-  .how-map{padding:42px 36px 38px}
-  .how-missions{grid-template-columns:repeat(2,1fr)}
-  .how-node{min-height:220px}
-  .sr-room{padding:40px 28px 32px}
-}
-/* Mobile nav helpers — hidden by default, shown on small screens */
-.nav-logo-orb{display:none;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--purple));animation:breathe 4s ease-in-out infinite;flex-shrink:0}
-.nav-logo-wordmark{display:none;font-family:var(--font-body);font-size:16px;font-weight:800;color:var(--ink)}
-/* Mobile nav dropdown */
-.nav-mobile-menu{display:none;position:absolute;top:72px;left:0;right:0;z-index:99;flex-direction:column;gap:0;background:rgba(8,5,15,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:12px 0}
-.nav-mobile-menu.open{display:flex}
-.nav-mobile-menu a{padding:14px 24px;font-size:14px;color:var(--ink-m);border-bottom:1px solid var(--line);transition:color .2s;letter-spacing:.3px}
-.nav-mobile-menu a:last-child{border-bottom:none}
-.nav-mobile-menu a:active{color:var(--rose)}
-
-@media(max-width:768px){
-  .nav{padding:0 16px;position:relative}
-  .nav-links{display:none!important}
-  .nav-cta{display:none}
-  .nav-menu-btn{display:block;padding:8px;font-size:20px;line-height:1}
-  .nav-logo svg{display:none}
-  .nav-logo-orb,.nav-logo-wordmark{display:block}
-  .hero{padding:100px 20px 60px}
-  section{padding:70px 20px}
-  .hero-right{display:flex;margin-top:10px}
-  .stardust-showcase{height:380px;transform:scale(.68);transform-origin:top center;margin-bottom:-110px}
-  .form-row{flex-direction:column}
-  .how .section-h2{font-size:clamp(28px,8vw,36px)}
-  .how-map{margin-top:34px;border-radius:24px;padding:34px 22px 30px}
-  .how-map::before{inset:12px;border-radius:18px}
-  .how-map::after{right:24px;top:18px;font-size:19px}
-  .how-doodle{opacity:.42}
-  .how-doodle.planet{left:18px;top:18px;width:58px;height:58px}
-  .how-doodle.squiggle{display:none}
-  .how-doodle.moon{right:18px;bottom:18px;width:46px;height:46px}
-  .how-doodle.star{display:none}
-  .how-missions{grid-template-columns:1fr}
-  .how-node{min-height:auto;display:grid;grid-template-columns:50px 1fr;gap:14px;padding:22px 6px;border-right:none}
-  .how-pin{width:50px;height:50px;margin:0;border-radius:17px}
-  .how-pin svg{width:30px;height:30px}
-  .how-step-h{font-size:23px}
-  .how-step-p{font-size:13.5px;line-height:1.65}
-  .proof-grid{grid-template-columns:1fr}
-  .cta-form{flex-direction:column}
-  .footer-inner{flex-direction:column;gap:20px;text-align:center}
-  .footer-links{flex-wrap:wrap;justify-content:center;gap:14px}
-  .sr-room{padding:32px 20px 28px}
-  .stories-grid{grid-template-columns:1fr!important}
-  .sr-room-meta{display:none}
-  .sr-cta-row{flex-direction:column;align-items:center;gap:10px}
-  .sr-time{display:none}
-  .hero-h1{font-size:clamp(30px,8vw,46px)}
-  .section-h2{font-size:clamp(24px,6vw,38px)}
-}
-@media(max-width:400px){
-  .nav-logo-wordmark{font-size:14px}
-  .hero-badge{font-size:10px;padding:6px 14px}
-  .hero-cta-btn{padding:16px 28px;font-size:14px}
+@media(max-width:520px){
+  .hero h1{font-size:42px}.hero-sub{font-size:13.5px;line-height:1.75;margin-top:18px;margin-bottom:22px}.hero-kicker{font-size:9px;margin-bottom:18px}.phone{width:232px;min-height:414px}.journal{padding:17px 15px}.journal-prompt{font-size:22px}.journal-line{font-size:12px}.status-note{font-size:11px}.artifact-wrap{min-height:270px;margin-top:-16px;overflow:hidden}.reveal-pill{display:none}.section{padding:74px 20px}.safety-item,.field{padding:24px 20px}.wall{padding:22px 18px}.line p{font-size:19px}.quote-track{gap:34px}.micro{font-size:10px}
 }
 </style>
 </head>
-
 <body>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.nav-links a[href="#l-stories"], .nav-links a[href="#stories"]').forEach(function(link) {
-    link.addEventListener('click', function(e) {
-      var target = document.getElementById('l-stories') || document.getElementById('stories');
-      if (target) {
-        e.preventDefault();
-        var y = target.getBoundingClientRect().top + window.pageYOffset - 80;
-        window.scrollTo({ top: y, behavior: 'smooth' });
-      }
-    });
-  });
-});
-</script>
-<div class="cursor-glow" id="cursorGlow"></div>
-<div class="stars" id="stars"></div>
-<div class="particles" id="particles"></div>
-<div class="toast" id="toast"></div>
-
+<div class="stars" id="stars" aria-hidden="true"></div>
 <nav class="nav" id="nav">
-  <a href="#" class="nav-logo" style="padding:0;display:flex;align-items:center;gap:10px;height:72px;text-decoration:none;">
-    <!-- Desktop: full planet+text SVG -->
-    <svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" style="height:40px;width:auto;display:block;">
-      <defs>
-        <radialGradient id="orbMain2" cx="36%" cy="30%" r="70%">
-          <stop offset="0%" stop-color="#F0E6FF"/>
-          <stop offset="18%" stop-color="#C084FC"/>
-          <stop offset="50%" stop-color="#7C3AED"/>
-          <stop offset="80%" stop-color="#3B0764"/>
-          <stop offset="100%" stop-color="#1a0535"/>
-        </radialGradient>
-        <radialGradient id="rimGlow2" cx="70%" cy="72%" r="45%">
-          <stop offset="0%" stop-color="#9D4EDD" stop-opacity="0.5"/>
-          <stop offset="100%" stop-color="#1a0535" stop-opacity="0"/>
-        </radialGradient>
-        <radialGradient id="atmos2" cx="50%" cy="50%" r="50%">
-          <stop offset="55%" stop-color="#5b21b6" stop-opacity="0"/>
-          <stop offset="80%" stop-color="#8b5cf6" stop-opacity="0.22"/>
-          <stop offset="100%" stop-color="#c084fc" stop-opacity="0"/>
-        </radialGradient>
-        <radialGradient id="spec2" cx="34%" cy="27%" r="28%">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.7"/>
-          <stop offset="60%" stop-color="#e9d5ff" stop-opacity="0.1"/>
-          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-        </radialGradient>
-        <linearGradient id="ring1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#f0abfc" stop-opacity="0.95"/>
-          <stop offset="35%" stop-color="#a855f7" stop-opacity="0.55"/>
-          <stop offset="65%" stop-color="#6d28d9" stop-opacity="0.1"/>
-          <stop offset="100%" stop-color="#f0abfc" stop-opacity="0.7"/>
-        </linearGradient>
-        <linearGradient id="ring2" x1="100%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#e879f9" stop-opacity="0.4"/>
-          <stop offset="50%" stop-color="#7c3aed" stop-opacity="0.08"/>
-          <stop offset="100%" stop-color="#c084fc" stop-opacity="0.35"/>
-        </linearGradient>
-        <linearGradient id="textGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="#f5eeff"/>
-          <stop offset="100%" stop-color="#ddd6fe"/>
-        </linearGradient>
-        <linearGradient id="accentGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#f0abfc"/>
-          <stop offset="45%" stop-color="#c084fc"/>
-          <stop offset="100%" stop-color="#a78bfa"/>
-        </linearGradient>
-        <linearGradient id="ruleLine" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#c084fc" stop-opacity="0.7"/>
-          <stop offset="100%" stop-color="#c084fc" stop-opacity="0"/>
-        </linearGradient>
-        <clipPath id="orbClip2"><circle cx="140" cy="170" r="76"/></clipPath>
-      </defs>
-      <circle cx="140" cy="170" r="116" fill="url(#atmos2)"/>
-      <ellipse cx="140" cy="170" rx="104" ry="30" fill="none" stroke="url(#ring1)" stroke-width="2" transform="rotate(-20 140 170)" opacity="0.9"/>
-      <ellipse cx="140" cy="170" rx="92" ry="24" fill="none" stroke="url(#ring2)" stroke-width="0.8" transform="rotate(-20 140 170)" opacity="0.5"/>
-      <ellipse cx="140" cy="170" rx="114" ry="33" fill="none" stroke="#9d4edd" stroke-width="0.4" transform="rotate(-20 140 170)" opacity="0.15"/>
-      <circle cx="140" cy="170" r="76" fill="url(#orbMain2)"/>
-      <circle cx="140" cy="170" r="76" fill="url(#rimGlow2)"/>
-      <circle cx="140" cy="170" r="76" fill="url(#spec2)"/>
-      <g clip-path="url(#orbClip2)">
-        <ellipse cx="140" cy="170" rx="76" ry="22" fill="none" stroke="#c084fc" stroke-width="0.7" opacity="0.18"/>
-        <ellipse cx="140" cy="152" rx="64" ry="18" fill="none" stroke="#ddd6fe" stroke-width="0.5" opacity="0.13"/>
-        <ellipse cx="140" cy="188" rx="64" ry="18" fill="none" stroke="#7c3aed" stroke-width="0.5" opacity="0.13"/>
-        <line x1="140" y1="94" x2="140" y2="246" stroke="#c4b5fd" stroke-width="0.5" opacity="0.1"/>
-      </g>
-      <circle cx="140" cy="170" r="76" fill="none" stroke="#a78bfa" stroke-width="1" opacity="0.35"/>
-      <circle cx="112" cy="147" r="2.2" fill="white" opacity="0.95"/>
-      <circle cx="126" cy="135" r="1.3" fill="white" opacity="0.65"/>
-      <circle cx="100" cy="158" r="1.1" fill="white" opacity="0.55"/>
-      <circle cx="119" cy="155" r="0.9" fill="#f0abfc" opacity="0.7"/>
-      <circle cx="60" cy="108" r="1.3" fill="#c084fc" opacity="0.55"/>
-      <circle cx="74" cy="84" r="0.8" fill="#e879f9" opacity="0.4"/>
-      <circle cx="208" cy="92" r="1.0" fill="#a78bfa" opacity="0.45"/>
-      <circle cx="222" cy="252" r="0.9" fill="#c084fc" opacity="0.35"/>
-      <circle cx="46" cy="232" r="1.5" fill="#9d5fe8" opacity="0.4"/>
-      <circle cx="178" cy="264" r="0.7" fill="#e879f9" opacity="0.3"/>
-      <circle cx="34" cy="155" r="1.0" fill="#a78bfa" opacity="0.3"/>
-      <circle cx="186" cy="72" r="1.1" fill="#c084fc" opacity="0.4"/>
-      <text x="244" y="158" font-family="Manrope, Arial, sans-serif" font-size="48" font-weight="800" fill="url(#textGrad2)" letter-spacing=".5">mentally</text>
-      <text x="244" y="214" font-family="Instrument Serif, Georgia, serif" font-size="58" font-weight="400" font-style="italic" fill="url(#accentGrad2)" letter-spacing="0">prepare</text>
-    </svg>
-    <!-- Mobile: simple orb + wordmark (shown via CSS) -->
-    <div class="nav-logo-orb"></div>
-    <span class="nav-logo-wordmark">mentally prepare</span>
-  </a>
+  <a class="brand" href="#hero" aria-label="Mentally Prepare home"><span class="brand-mark"></span><span>mentally prepare</span></a>
   <div class="nav-links">
-    <a href="#how">How It Works</a>
-    <a href="#silent-room">Silent Room</a>
-    <a href="#l-stories">Stories</a>
-    <a href="/app">Log In</a>
+    <a href="#ritual">How it works</a><a href="#silent-room">Silent Room</a><a href="#stories">Stories</a><a href="#safety">Safety</a>
   </div>
-  <a class="nav-cta" href="/app">Start tonight</a>
-  <button class="nav-menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
+  <a class="nav-cta" href="/app">Begin tonight</a>
+  <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false">☰</button>
 </nav>
-<!-- Mobile dropdown menu -->
-<div class="nav-mobile-menu" id="mobileMenu">
-  <a href="#how" onclick="closeMenu()">How It Works</a>
-  <a href="#silent-room" onclick="closeMenu()">Silent Room</a>
-  <a href="#l-stories" onclick="closeMenu()">Stories</a>
-  <a href="/app" onclick="closeMenu()" style="color:var(--rose-l);font-weight:500;">Start tonight →</a>
-</div>
-
-<section class="hero" id="hero">
-  <div class="hero-bg">
-    <div class="hero-orb hero-orb-1"></div>
-    <div class="hero-orb hero-orb-2"></div>
-    <div class="hero-orb hero-orb-3"></div>
-  </div>
-
-  <div class="hero-layout">
-    <div class="hero-left">
-      <div class="hero-badge">
-        <span class="hero-badge-dot"></span>
-        21-day anonymous emotional reset
+<div class="mobile-menu" id="mobileMenu"><a href="#ritual">How it works</a><a href="#silent-room">Silent Room</a><a href="#stories">Stories</a><a href="/app">Begin tonight</a></div>
+<main class="page">
+  <section class="hero" id="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-kicker reveal"><span class="pulse"></span>21-day anonymous emotional reset</div>
+        <h1 class="headline reveal">What if a stranger <em>understood you</em> better than your friends?</h1>
+        <p class="copy hero-sub reveal">Write anonymously for 21 days. A student from another college writes back. On Day 21, you both decide: reveal, or stay beautifully unknown.</p>
+        <div class="hero-actions reveal">
+          <a class="btn" href="/app">Begin tonight</a>
+          <a class="btn secondary" href="#ritual">See the ritual</a>
+        </div>
+        <p class="micro reveal">Free. Anonymous. Takes 3 minutes. No public profile.</p>
       </div>
-      <h1 class="hero-h1">What if a stranger <em>understood you</em> better than your friends?</h1>
-      <p class="hero-sub">Write anonymously for 21 days. A student from another college writes back. On Day 21, you both decide — reveal, or stay beautifully unknown.</p>
-
-      <a class="hero-cta-btn" href="/app">Begin writing tonight</a>
-      <div class="hero-note">Free. Anonymous. Takes 3 minutes.</div>
-    </div>
-
-    <div class="hero-right">
-      <div class="stardust-showcase" aria-hidden="true">
-        <div class="ambient-planet a"></div>
-        <div class="ambient-planet b"></div>
-        <div class="stardust-phone">
+      <div class="artifact-wrap reveal" aria-label="Private journal preview">
+        <div class="artifact-glow"></div>
+        <div class="phone">
           <div class="phone-sky"></div>
-          <div class="phone-top"><span class="phone-logo">mentally prepare</span><span class="phone-menu"></span></div>
-          <svg class="route-svg" viewBox="0 0 220 342" preserveAspectRatio="none">
-            <path d="M22 42 C78 12 114 58 72 96 S72 172 134 158 219 174 174 232 98 258 108 316" />
-          </svg>
-          <div class="cosmic-rocket">
-            <span class="rocket-flame"></span>
-            <span class="rocket-body"></span>
-            <span class="rocket-nose"></span>
-            <span class="rocket-fin"></span>
+          <div class="phone-content">
+            <div class="phone-top"><span>Day 08 / 21</span><span>anonymous</span></div>
+            <div class="journal">
+              <div class="journal-day">Tonight's prompt</div>
+              <div class="journal-prompt">What are you pretending does not hurt?</div>
+              <div class="journal-line">I said I was busy. I think I was just afraid of being known too clearly.</div>
+            </div>
+            <div class="status-note">Your partner has written back. It unlocks tomorrow morning.</div>
           </div>
-          <div class="planet planet-one"></div>
-          <div class="planet-label one">Prompt</div>
-          <div class="planet planet-two"></div>
-          <div class="planet-label two">Match</div>
-          <div class="planet planet-three"></div>
-          <div class="planet-label three">Day 21</div>
-          <div class="launch-cloud"></div>
-          <div class="phone-moon"></div>
-          <div class="fuel-line"></div>
+        </div>
+        <div class="reveal-pill"><strong>Day 21</strong><span>Reveal opens only if both of you say yes.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section confession" id="recognition">
+    <div class="founder-note reveal">
+      <div class="label">Why this exists</div>
+      <p class="note-body">The most intense parts of us are often private. Not because we are broken. Because being fully seen asks for a kind of courage most days do not give us.</p>
+      <p class="copy" style="margin-top:24px">Mentally Prepare is a small experiment for that courage: one honest note, one unknown person, one quiet day at a time.</p>
+      <div class="signature">Built by Anushka Kumar - for students who are tired of performing fine.</div>
+    </div>
+  </section>
+
+  <div class="quote-strip" aria-hidden="true"><div class="quote-track">
+    <span>"What kind of tired are you that sleep does not fix?"</span><span>"When did you last feel fully seen?"</span><span>"What would you say if no one knew it was you?"</span><span>"What are you carrying alone?"</span>
+    <span>"What kind of tired are you that sleep does not fix?"</span><span>"When did you last feel fully seen?"</span><span>"What would you say if no one knew it was you?"</span><span>"What are you carrying alone?"</span>
+  </div></div>
+
+  <section class="section" id="ritual">
+    <div class="inner ritual-grid">
+      <div class="ritual-intro reveal">
+        <div class="label">The experiment</div>
+        <h2 class="headline">Four quiet parts. <em>Twenty-one days.</em></h2>
+        <p class="copy" style="margin-top:22px">No feed. No likes. No performance. The product is deliberately small so the writing can stay real.</p>
+      </div>
+      <div>
+        <div class="timeline">
+          <div class="moment reveal"><small>01 / 3 minutes</small><h3>Answer a small emotional quiz.</h3><p>Eleven sliders about closeness, distance, trust, and how you protect yourself when things feel too real.</p></div>
+          <div class="moment reveal"><small>02 / quietly matched</small><h3>Get paired with another student.</h3><p>Someone from another college. Anonymous by default. You meet their thoughts before you meet their name.</p></div>
+          <div class="moment reveal"><small>03 / every night</small><h3>Write one note. Read one note.</h3><p>A prompt opens. You write what you can. Their reply reaches you later, without pressure to perform a perfect self.</p></div>
+          <div class="moment reveal"><small>04 / day 21</small><h3>Choose what becomes real.</h3><p>Names unlock only if both people say yes. One no keeps both identities private. No rejection spectacle.</p></div>
         </div>
       </div>
     </div>
-  </div>
-</section>
+    <div class="inner safety-row reveal" id="safety">
+      <div class="safety-item"><h4>Anonymous first</h4><p>No public profile, no photos, no visible college until a mutual reveal.</p></div>
+      <div class="safety-item"><h4>Mutual reveal</h4><p>Day 21 only opens identities when both people independently choose yes.</p></div>
+      <div class="safety-item"><h4>Not therapy</h4><p>This is a writing ritual and peer connection experiment, not clinical care or crisis support.</p></div>
+      <div class="safety-item"><h4>Private by design</h4><p>No social feed. No follower count. No likes. Your words are not content.</p></div>
+    </div>
+  </section>
 
-<section class="testimonials" id="l-stories" data-section="stories" style="padding:80px 24px 60px;">
-  <div class="section-inner" style="max-width:620px;">
-    <div class="reveal" style="text-align:center;">
-      <h2 style="font-family:var(--font-display);font-size:clamp(28px,3.4vw,38px);font-weight:400;font-style:italic;color:var(--ink);line-height:1.05;margin-bottom:32px;letter-spacing:0;">Why this exists</h2>
-    </div>
-    <div class="reveal delay-1" style="max-width:520px;margin:0 auto;">
-      <div style="font-family:var(--font-body);font-size:clamp(14px,1.45vw,16.5px);color:var(--ink-m);line-height:1.9;">
-        <p style="margin-bottom:1.2em;">I think I am tired in a way that people do not really notice. Not the kind of tired that comes from sleep, but the kind that comes from carrying your own thoughts all the time.</p>
-        <p style="margin-bottom:1.2em;">The most intense parts of me are private. The fear, the ambition, the jealousy, the hope, the insecurity. Most people only see fragments.</p>
-        <p style="margin-bottom:1.5em;padding-left:1.2em;border-left:2px solid rgba(212,133,154,.25);color:var(--ink-s);">I am lonelier in my mind than I admit in real life. Not because I have no one — but because depth makes me vulnerable, and love would mean being fully seen.</p>
-        <p style="margin-bottom:1.2em;">I do not think I am broken. I think I am unfinished.</p>
-        <p>I built this for everyone else who is too.</p>
+  <section class="section silent" id="silent-room">
+    <div class="inner silent-grid">
+      <div class="reveal">
+        <div class="label">Silent Room</div>
+        <h2 class="headline">No replies. <em>Just witnessed.</em></h2>
+        <p class="copy" style="margin-top:22px">A quiet wall for one anonymous line. It disappears in 7 days. Nobody can fix it, rate it, or turn it into advice.</p>
+        <div style="margin-top:28px"><a class="btn secondary" href="/app">Enter the Silent Room</a></div>
       </div>
-      <div style="margin-top:28px;padding-top:18px;border-top:1px solid rgba(248,242,255,.06);text-align:center;">
-        <div style="font-size:13px;font-weight:500;color:var(--ink);">Anushka Kumar</div>
-        <div style="font-size:11px;color:var(--ink-s);margin-top:3px;">Founder</div>
+      <div class="wall reveal">
+        <div class="line"><span class="dot"></span><div><p>I keep being the easy person because I am scared of becoming heavy.</p><time>2h ago</time></div></div>
+        <div class="line"><span class="dot"></span><div><p>I called home and still did not say the thing.</p><time>5h ago</time></div></div>
+        <div class="line"><span class="dot"></span><div><p>Some days my room is quiet in a way that feels loud.</p><time>yesterday</time></div></div>
+        <div class="line"><span class="dot"></span><div><p>I am trying. I wish that counted for more.</p><time>2 days ago</time></div></div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-<div style="overflow:hidden;padding:44px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;z-index:1;background:linear-gradient(90deg,var(--bg) 0%,transparent 8%,transparent 92%,var(--bg) 100%);">
-  <div style="display:flex;gap:56px;animation:marqueeScroll 32s linear infinite;width:max-content;">
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"When did you last feel fully seen?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What are you carrying that nobody knows about?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"When do you become distant, even when you want closeness?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What kind of tired are you that sleep doesn't fix?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What would you say if no one knew it was you?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"When did you last feel fully seen?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What are you carrying that nobody knows about?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"When do you become distant, even when you want closeness?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What kind of tired are you that sleep doesn't fix?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What would you say if no one knew it was you?"</span>
-    <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-  </div>
-</div>
+  <section class="section stories" id="stories">
+    <div class="inner">
+      <div class="narrow reveal" style="text-align:center">
+        <div class="label" style="justify-content:center">Field notes</div>
+        <h2 class="headline">What stayed after <em>twenty-one days.</em></h2>
+        <p class="copy" style="margin-top:18px">Short excerpts from people who finished the experiment. Names removed. Details softened where needed.</p>
+      </div>
+      <div class="field-grid reveal">
+        <article class="field"><blockquote>"By Day 14 I was writing things I had not even admitted in my notes app."</blockquote><div class="meta"><span>Pune</span><span>Engineering, year 2</span><span>Reached Day 21 - stayed anonymous</span></div></article>
+        <article class="field"><blockquote>"We both said yes. It was less romantic than I expected. More human. Better."</blockquote><div class="meta"><span>Delhi</span><span>Commerce, year 3</span><span>Reveal: mutual yes</span></div></article>
+        <article class="field"><blockquote>"He said yes. I said no. The gentle part was that nothing bad happened."</blockquote><div class="meta"><span>Bangalore</span><span>Psychology, final year</span><span>Reveal: stayed private</span></div></article>
+      </div>
+    </div>
+  </section>
 
-<section class="how" id="how">
-  <div class="section-inner">
-    <div class="reveal">
-      <span class="section-label">How it works</span>
-      <h2 class="section-h2">A softer way to <em>meet someone.</em></h2>
+  <section class="section final" id="cta">
+    <div class="narrow reveal">
+      <div class="label" style="justify-content:center">Tonight</div>
+      <h2 class="headline">Write one honest thing tonight.</h2>
+      <p class="copy">Worst case, you spend 3 minutes being real with yourself. Best case, someone understands.</p>
+      <a class="btn" href="/app">Begin tonight</a>
+      <p class="micro">Free. Anonymous. No public profile.</p>
     </div>
-    <div class="how-map reveal delay-1">
-      <div class="how-doodles" aria-hidden="true">
-        <svg class="how-doodle planet" viewBox="0 0 80 80"><circle cx="40" cy="40" r="16"/><path d="M12 47c18 12 48 10 58-4M10 43c18-12 48-10 60 2"/></svg>
-        <svg class="how-doodle squiggle" viewBox="0 0 120 44"><path d="M6 24c10-18 22 18 34 0s24 18 36 0 24 18 38 0"/></svg>
-        <svg class="how-doodle moon" viewBox="0 0 70 70"><path d="M45 11c-15 6-24 20-20 36 3 12 13 20 25 22-5 3-11 5-18 4C16 70 4 56 5 39 7 19 24 6 45 11z"/></svg>
-        <svg class="how-doodle star" viewBox="0 0 60 60"><path d="M30 7l5 17 17 6-17 6-5 17-6-17-17-6 17-6z"/></svg>
-      </div>
-      <ol class="how-missions">
-        <li class="how-node how-node-1">
-          <div class="how-pin" aria-hidden="true">
-            <svg viewBox="0 0 48 48"><path d="M24 5c8 7 10 17 5 28l-5 10-5-10C14 22 16 12 24 5z"/><path d="M17 29l-8 5 6-13M31 29l8 5-6-13"/><circle cx="24" cy="18" r="4"/></svg>
-          </div>
-          <div class="how-copy">
-            <span class="how-kicker">01 / start small</span>
-            <h3 class="how-step-h">Answer the tiny quiz</h3>
-            <p class="how-step-p">A few sliders about closeness, comfort, and how you usually protect your heart.</p>
-          </div>
-        </li>
-        <li class="how-node how-node-2">
-          <div class="how-pin" aria-hidden="true">
-            <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="10"/><path d="M5 28c9 6 28 7 38-2M4 23c10-7 30-7 40 1"/></svg>
-          </div>
-          <div class="how-copy">
-            <span class="how-kicker">02 / someone appears</span>
-            <h3 class="how-step-h">Get paired quietly</h3>
-            <p class="how-step-p">Another student enters the space. You only know how they write, not who they are.</p>
-          </div>
-        </li>
-        <li class="how-node how-node-3">
-          <div class="how-pin" aria-hidden="true">
-            <svg viewBox="0 0 48 48"><path d="M31 7c-9 4-15 12-15 22 0 7 4 12 10 15C14 43 6 35 6 24 6 12 16 4 31 7z"/><path d="M36 15l2 4 4 1-4 2-2 4-2-4-4-2 4-1z"/></svg>
-          </div>
-          <div class="how-copy">
-            <span class="how-kicker">03 / nightly</span>
-            <h3 class="how-step-h">Leave one honest note</h3>
-            <p class="how-step-p">One prompt, one reply. It can be long, messy, sweet, awkward, or just true.</p>
-          </div>
-        </li>
-        <li class="how-node how-node-4">
-          <div class="how-pin" aria-hidden="true">
-            <svg viewBox="0 0 48 48"><path d="M24 6l4 13 13 5-13 5-4 13-5-13-13-5 13-5z"/><path d="M37 7v8M33 11h8"/></svg>
-          </div>
-          <div class="how-copy">
-            <span class="how-kicker">04 / day 21</span>
-            <h3 class="how-step-h">Decide together</h3>
-            <p class="how-step-p">If both of you want to reveal names, you can. If not, the story stays protected.</p>
-          </div>
-        </li>
-      </ol>
-    </div>
-  </div>
-</section>
-
-<section class="sr-section" id="silent-room">
-  <div class="section-inner">
-    <div class="reveal">
-      <div class="sr-label"><span class="sr-label-star">✦</span>Silent Room</div>
-      <h2 class="sr-h2">One line. <em>No replies.</em><br>Just witnessed.</h2>
-      <p class="sr-sub">A quiet corner of the app where you write one line of what you're carrying today. No reactions. No replies. It disappears in 7 days. But right now, it exists — and someone reads it.</p>
-    </div>
-
-    <div class="sr-room reveal delay-1">
-      <div class="sr-room-orb sr-room-orb-1"></div>
-      <div class="sr-room-orb sr-room-orb-2"></div>
-      <div class="sr-room-header">
-        <div class="sr-room-title"><span class="sr-room-title-star">✦</span>Silent Room</div>
-        <div class="sr-room-meta">disappears in 7 days · no replies</div>
-      </div>
-      <div class="sr-line">
-        <span class="sr-dot"></span>
-        <span class="sr-text">I've been performing fine for so long that I don't know what not-fine feels like anymore.</span>
-        <span class="sr-time">2h ago</span>
-      </div>
-      <div class="sr-line">
-        <span class="sr-dot"></span>
-        <span class="sr-text">I called home yesterday but didn't tell them what's actually going on. I never do.</span>
-        <span class="sr-time">5h ago</span>
-      </div>
-      <div class="sr-line">
-        <span class="sr-dot"></span>
-        <span class="sr-text">Some days the silence in my room is the loudest thing I've ever heard.</span>
-        <span class="sr-time">yesterday</span>
-      </div>
-      <div class="sr-line">
-        <span class="sr-dot"></span>
-        <span class="sr-text">I keep waiting to feel ready. I don't think that version of me is coming.</span>
-        <span class="sr-time">2 days ago</span>
-      </div>
-      <div class="sr-room-footer">
-        <span class="sr-room-footer-dot"></span>
-        Someone, somewhere, just read this.
-        <span class="sr-room-footer-dot"></span>
-      </div>
-    </div>
-
-    <div class="sr-cta-row reveal delay-2">
-      <a class="sr-cta-btn" href="/app">✦ Enter the Silent Room</a>
-      <span class="sr-cta-note">Anonymous · Free · No account needed to read</span>
-    </div>
-  </div>
-</section>
-
-<div id="stories" aria-hidden="true"></div>
-<section id="l-stories" style="padding:120px 24px;text-align:center;position:relative;z-index:1;">
-  <div class="section-inner">
-    <div class="reveal">
-      <span class="section-label">Stories</span>
-      <h2 class="section-h2">What happens when you <em>stay honest</em> for 21 days</h2>
-      <p class="section-p" style="margin:0 auto 56px;max-width:500px;">These are real accounts from people who completed 21 days. Names are anonymized. Cities and years are real.</p>
-    </div>
-    <div class="stories-grid reveal delay-1" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto;">
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.2),transparent);"></div>
-        <div style="font-family:var(--font-display);font-style:italic;font-size:14.5px;color:var(--ink-m);line-height:1.7;margin-bottom:20px;">"I started Day 1 thinking this was a cute experiment. By Day 14 I was writing things I'd never said out loud. My partner didn't fix anything — they just kept showing up. That mattered more than I expected."</div>
-        <div style="font-size:11px;color:var(--ink-s);">2024 · Pune · Engineering, 2nd year</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,167,.2),transparent);"></div>
-        <div style="font-family:var(--font-display);font-style:italic;font-size:14.5px;color:var(--ink-m);line-height:1.7;margin-bottom:20px;">"We both said yes on Day 21. It was terrifying. She went to a college I'd never heard of in Kerala. We still message. Not every day. But when it matters. I think that's how it should be."</div>
-        <div style="font-size:11px;color:var(--ink-s);">2025 · Delhi · Commerce, 3rd year</div>
-      </div>
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
-        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.2),transparent);"></div>
-        <div style="font-family:var(--font-display);font-style:italic;font-size:14.5px;color:var(--ink-m);line-height:1.7;margin-bottom:20px;">"I said no on Day 21. He said yes. I still don't know his name. But I know he cried on Day 11 over something his father said, and somehow that made me feel less alone with my own family stuff."</div>
-        <div style="font-size:11px;color:var(--ink-s);">2025 · Bangalore · Psychology, final year</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="cta-section" id="cta">
-  <div class="cta-bg"><div class="cta-orb cta-orb-1"></div></div>
-  <div class="cta-inner reveal">
-    <h2 class="cta-h2">Ready to be honest?</h2>
-    <p class="cta-p">An anonymous 21-day journal experiment. Worst case, you spend 5 minutes a night being honest with yourself.</p>
-    <div class="cta-form">
-      <a class="hero-cta-btn" href="/app">Start tonight →</a>
-    </div>
-    <div class="cta-note">Free · Anonymous · Cohort opens monthly · limited spots</div>
-  </div>
-</section>
-
-<footer class="footer">
-  <div class="footer-inner">
-    <div class="footer-brand" style="display:flex;align-items:center;justify-content:center;">
-      <svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" style="height:32px;width:auto;display:block;">
-        <defs>
-          <radialGradient id="orbMain2" cx="36%" cy="30%" r="70%">
-            <stop offset="0%" stop-color="#F0E6FF"/>
-            <stop offset="18%" stop-color="#C084FC"/>
-            <stop offset="50%" stop-color="#7C3AED"/>
-            <stop offset="80%" stop-color="#3B0764"/>
-            <stop offset="100%" stop-color="#1a0535"/>
-          </radialGradient>
-          <radialGradient id="rimGlow2" cx="70%" cy="72%" r="45%">
-            <stop offset="0%" stop-color="#9D4EDD" stop-opacity="0.5"/>
-            <stop offset="100%" stop-color="#1a0535" stop-opacity="0"/>
-          </radialGradient>
-          <radialGradient id="atmos2" cx="50%" cy="50%" r="50%">
-            <stop offset="55%" stop-color="#5b21b6" stop-opacity="0"/>
-            <stop offset="80%" stop-color="#8b5cf6" stop-opacity="0.22"/>
-            <stop offset="100%" stop-color="#c084fc" stop-opacity="0"/>
-          </radialGradient>
-          <radialGradient id="spec2" cx="34%" cy="27%" r="28%">
-            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.7"/>
-            <stop offset="60%" stop-color="#e9d5ff" stop-opacity="0.1"/>
-            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-          </radialGradient>
-          <linearGradient id="ring1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#f0abfc" stop-opacity="0.95"/>
-            <stop offset="35%" stop-color="#a855f7" stop-opacity="0.55"/>
-            <stop offset="65%" stop-color="#6d28d9" stop-opacity="0.1"/>
-            <stop offset="100%" stop-color="#f0abfc" stop-opacity="0.7"/>
-          </linearGradient>
-          <linearGradient id="ring2" x1="100%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#e879f9" stop-opacity="0.4"/>
-            <stop offset="50%" stop-color="#7c3aed" stop-opacity="0.08"/>
-            <stop offset="100%" stop-color="#c084fc" stop-opacity="0.35"/>
-          </linearGradient>
-          <linearGradient id="textGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stop-color="#f5eeff"/>
-            <stop offset="100%" stop-color="#ddd6fe"/>
-          </linearGradient>
-          <linearGradient id="accentGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#f0abfc"/>
-            <stop offset="45%" stop-color="#c084fc"/>
-            <stop offset="100%" stop-color="#a78bfa"/>
-          </linearGradient>
-          <linearGradient id="ruleLine" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#c084fc" stop-opacity="0.7"/>
-            <stop offset="100%" stop-color="#c084fc" stop-opacity="0"/>
-          </linearGradient>
-          <clipPath id="orbClip2"><circle cx="140" cy="170" r="76"/></clipPath>
-        </defs>
-        <circle cx="140" cy="170" r="116" fill="url(#atmos2)"/>
-        <ellipse cx="140" cy="170" rx="104" ry="30" fill="none" stroke="url(#ring1)" stroke-width="2" transform="rotate(-20 140 170)" opacity="0.9"/>
-        <ellipse cx="140" cy="170" rx="92" ry="24" fill="none" stroke="url(#ring2)" stroke-width="0.8" transform="rotate(-20 140 170)" opacity="0.5"/>
-        <ellipse cx="140" cy="170" rx="114" ry="33" fill="none" stroke="#9d4edd" stroke-width="0.4" transform="rotate(-20 140 170)" opacity="0.15"/>
-        <circle cx="140" cy="170" r="76" fill="url(#orbMain2)"/>
-        <circle cx="140" cy="170" r="76" fill="url(#rimGlow2)"/>
-        <circle cx="140" cy="170" r="76" fill="url(#spec2)"/>
-        <g clip-path="url(#orbClip2)">
-          <ellipse cx="140" cy="170" rx="76" ry="22" fill="none" stroke="#c084fc" stroke-width="0.7" opacity="0.18"/>
-          <ellipse cx="140" cy="152" rx="64" ry="18" fill="none" stroke="#ddd6fe" stroke-width="0.5" opacity="0.13"/>
-          <ellipse cx="140" cy="188" rx="64" ry="18" fill="none" stroke="#7c3aed" stroke-width="0.5" opacity="0.13"/>
-          <line x1="140" y1="94" x2="140" y2="246" stroke="#c4b5fd" stroke-width="0.5" opacity="0.1"/>
-        </g>
-        <circle cx="140" cy="170" r="76" fill="none" stroke="#a78bfa" stroke-width="1" opacity="0.35"/>
-        <circle cx="112" cy="147" r="2.2" fill="white" opacity="0.95"/>
-        <circle cx="126" cy="135" r="1.3" fill="white" opacity="0.65"/>
-        <circle cx="100" cy="158" r="1.1" fill="white" opacity="0.55"/>
-        <circle cx="119" cy="155" r="0.9" fill="#f0abfc" opacity="0.7"/>
-        <circle cx="60" cy="108" r="1.3" fill="#c084fc" opacity="0.55"/>
-        <circle cx="74" cy="84" r="0.8" fill="#e879f9" opacity="0.4"/>
-        <circle cx="208" cy="92" r="1.0" fill="#a78bfa" opacity="0.45"/>
-        <circle cx="222" cy="252" r="0.9" fill="#c084fc" opacity="0.35"/>
-        <circle cx="46" cy="232" r="1.5" fill="#9d5fe8" opacity="0.4"/>
-        <circle cx="178" cy="264" r="0.7" fill="#e879f9" opacity="0.3"/>
-        <circle cx="34" cy="155" r="1.0" fill="#a78bfa" opacity="0.3"/>
-        <circle cx="186" cy="72" r="1.1" fill="#c084fc" opacity="0.4"/>
-        <text x="244" y="144" font-family="Manrope, Arial, sans-serif" font-size="48" font-weight="800" fill="url(#textGrad2)" letter-spacing=".5">mentally</text>
-        <text x="244" y="202" font-family="Instrument Serif, Georgia, serif" font-size="58" font-weight="400" font-style="italic" fill="url(#accentGrad2)" letter-spacing="0">prepare</text>
-        <line x1="244" y1="213" x2="590" y2="213" stroke="url(#ruleLine)" stroke-width="0.8"/>
-        <text x="245" y="236" font-family="Manrope, Arial, sans-serif" font-size="10" font-weight="800" fill="#7c5aa8" letter-spacing="4.5">21-DAY ANONYMOUS EMOTIONAL RESET</text>
-      </svg>
-    </div>
-    <div class="footer-links"> 
-      <a href="/privacy">Privacy</a>
-      <a href="/terms">Terms</a>
-      <a href="#how">How It Works</a>
-      <a href="#l-stories">Stories</a>
-      <a href="https://www.instagram.com/mymentallyprepare" target="_blank" rel="noopener noreferrer">Instagram</a>
-    </div>
-    <div class="footer-copy">&copy; 2026 Mentally Prepare</div>
-  </div>
-</footer>
-
+  </section>
+</main>
+<footer class="footer"><div class="footer-inner"><div>Mentally Prepare - 2026</div><div class="footer-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#ritual">How it works</a><a href="https://www.instagram.com/mymentallyprepare" target="_blank" rel="noopener noreferrer">Instagram</a></div></div></footer>
 <script>
 (function(){
-  var c=document.getElementById('stars');
-  var n=Math.min(Math.floor(window.innerWidth/6),180);
-  for(var i=0;i<n;i++){
-    var s=document.createElement('div');s.className='star';
-    var sz=Math.random()*2+.5;
-    s.style.cssText='width:'+sz+'px;height:'+sz+'px;top:'+Math.random()*100+'%;left:'+Math.random()*100+'%;background:rgba(248,242,255,'+(Math.random()*.3+.1)+');--d:'+(Math.random()*4+2)+'s;--dl:'+(Math.random()*5)+'s;--a1:'+(Math.random()*.1)+';--a2:'+(Math.random()*.5+.2);
-    c.appendChild(s);
-  }
-})();
-
-(function(){
-  var c=document.getElementById('particles');
-  var cols=['var(--rose)','var(--purple-l)','var(--gold)'];
-  for(var i=0;i<15;i++){
-    var p=document.createElement('div');p.className='particle';
-    p.style.cssText='left:'+Math.random()*100+'%;animation-delay:'+Math.random()*8+'s;animation-duration:'+(Math.random()*6+6)+'s;width:'+(Math.random()*2+1)+'px;height:'+(Math.random()*2+1)+'px;background:'+cols[Math.floor(Math.random()*3)];
-    c.appendChild(p);
-  }
-})();
-
-(function(){
-  var g=document.getElementById('cursorGlow');
-  if(window.matchMedia('(pointer:fine)').matches){
-    document.addEventListener('mousemove',function(e){g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';g.style.opacity='1';});
-    document.addEventListener('mouseleave',function(){g.style.opacity='0';});
-  } else g.style.display='none';
-})();
-
-(function(){
-  var nav=document.getElementById('nav');var t=false;
-  window.addEventListener('scroll',function(){
-    if(!t){requestAnimationFrame(function(){nav.classList.toggle('scrolled',window.scrollY>60);t=false;});t=true;}
-  });
-})();
-
-(function(){
-  var obs=new IntersectionObserver(function(entries){
-    entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});
-  },{threshold:.15,rootMargin:'0px 0px -60px 0px'});
+  var stars=document.getElementById('stars');var count=Math.min(120,Math.floor(innerWidth/7));
+  for(var i=0;i<count;i++){var s=document.createElement('i');s.className='star';s.style.left=Math.random()*100+'%';s.style.top=Math.random()*100+'%';s.style.opacity=(Math.random()*.45+.12).toFixed(2);s.style.transform='scale('+(Math.random()*1.6+.45).toFixed(2)+')';stars.appendChild(s);}
+  var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:.12,rootMargin:'0px 0px -70px 0px'});
   document.querySelectorAll('.reveal').forEach(function(el){obs.observe(el);});
-})();
-
-function toast(msg){
-  var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
-  clearTimeout(t._tid);t._tid=setTimeout(function(){t.classList.remove('show');},3000);
-}
-
-function toggleMenu(){
-  var menu=document.getElementById('mobileMenu');
-  var btn=document.getElementById('menuBtn');
-  var open=menu.classList.contains('open');
-  if(open){menu.classList.remove('open');btn.innerHTML='&#9776;';btn.setAttribute('aria-expanded','false');}
-  else{menu.classList.add('open');btn.innerHTML='&#10005;';btn.setAttribute('aria-expanded','true');}
-}
-function closeMenu(){
-  var menu=document.getElementById('mobileMenu');
-  var btn=document.getElementById('menuBtn');
-  menu.classList.remove('open');
-  btn.innerHTML='&#9776;';btn.setAttribute('aria-expanded','false');
-}
-// Close menu if user clicks outside nav
-document.addEventListener('click',function(e){
-  var nav=document.getElementById('nav');
-  var menu=document.getElementById('mobileMenu');
-  if(menu&&menu.classList.contains('open')&&!nav.contains(e.target)&&!menu.contains(e.target)){closeMenu();}
-});
-
-(function(){
-  if(!window.matchMedia('(pointer:fine)').matches) return;
-  var orbs=document.querySelectorAll('.hero-orb');
-  window.addEventListener('mousemove',function(e){
-    var mx=(e.clientX/window.innerWidth-.5)*2;
-    var my=(e.clientY/window.innerHeight-.5)*2;
-    orbs.forEach(function(orb,i){
-      var speed=(i+1)*10;
-      orb.style.transform='translate('+(mx*speed)+'px,'+(my*speed)+'px)';
-    });
-  });
+  var btn=document.getElementById('menuBtn'),menu=document.getElementById('mobileMenu');
+  btn.addEventListener('click',function(){var open=menu.classList.toggle('open');btn.setAttribute('aria-expanded',open?'true':'false');btn.textContent=open?'x':'☰';});
+  menu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){menu.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.textContent='☰';});});
 })();
 </script>
 </body>
