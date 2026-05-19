@@ -44,6 +44,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .nav-links a:hover{color:var(--ink)}.nav-cta{font-size:12px;font-weight:800;color:var(--ink);padding:10px 18px;border:1px solid rgba(212,133,154,.28);border-radius:999px;background:rgba(212,133,154,.08)}
 .menu-btn{display:none;background:none;border:0;color:var(--ink);font-size:22px}.mobile-menu{display:none}
 .section{position:relative;padding:112px 24px}.inner{width:min(1120px,100%);margin:0 auto}.narrow{width:min(720px,100%);margin:0 auto}
+#ritual{padding-bottom:70px}
 .label{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
 .label::before{content:'';width:26px;height:1px;background:currentColor;opacity:.65}
 .headline{font-family:var(--display);font-size:clamp(36px,6vw,76px);font-weight:400;line-height:.96;letter-spacing:0;color:var(--ink);text-shadow:0 0 34px rgba(251,245,255,.06)}
@@ -88,8 +89,15 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .moment small{display:block;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px}
 .moment h3{font-family:var(--display);font-size:clamp(26px,3vw,38px);font-weight:400;line-height:1;margin-bottom:10px}.moment p{max-width:560px;color:var(--muted);font-size:14px;line-height:1.85}
 .safety-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.safety-item{background:rgba(10,7,18,.58);border:1px solid rgba(251,245,255,.08);border-radius:18px;padding:17px 16px;min-height:auto}.safety-item h4{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--rose2);margin-bottom:7px}.safety-item p{font-size:12px;color:var(--muted);line-height:1.65}
+.room-threshold{margin-top:34px;min-height:218px;display:grid;grid-template-columns:.78fr 1.22fr;gap:28px;align-items:center;position:relative;overflow:hidden;border-top:1px solid rgba(251,245,255,.075);border-bottom:1px solid rgba(251,245,255,.075);background:linear-gradient(90deg,rgba(235,180,194,.04),rgba(176,159,204,.035),transparent)}
+.room-threshold::before{content:'';position:absolute;inset:0;opacity:.16;background-image:linear-gradient(rgba(251,245,255,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(251,245,255,.22) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(90deg,#000,transparent 72%)}
+.threshold-copy{position:relative;padding:28px 0 28px 40px}.threshold-copy small{display:block;margin-bottom:12px;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.threshold-copy p{max-width:360px;font-family:var(--display);font-style:italic;font-size:clamp(23px,3vw,36px);line-height:1.05;color:rgba(251,245,255,.78)}
+.threshold-doodle{position:relative;height:178px}.threshold-orbit{position:absolute;right:24%;top:28px;width:210px;height:96px;border:1px solid rgba(235,180,194,.36);border-radius:50%;transform:rotate(-8deg);opacity:.72}.threshold-orbit::after{content:'';position:absolute;right:18px;top:20px;width:10px;height:10px;border-radius:50%;background:var(--rose2);box-shadow:0 0 22px rgba(235,180,194,.44)}
+.threshold-moon{position:absolute;right:11%;bottom:12px;width:86px;height:86px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 8%,#eadcf4 9% 28%,#b09fcc 55%,#665087 100%);box-shadow:0 0 44px rgba(176,159,204,.36)}
+.threshold-note{position:absolute;width:176px;padding:12px 14px;border:1px solid rgba(251,245,255,.13);border-radius:14px;background:rgba(246,239,255,.08);color:rgba(251,245,255,.72);font-size:11px;line-height:1.55;box-shadow:0 18px 40px rgba(0,0,0,.14)}
+.threshold-note.one{right:42%;top:20px;transform:rotate(-2deg)}.threshold-note.two{right:3%;top:22px;transform:rotate(2deg);color:rgba(235,180,194,.82)}
 
-.silent{background:linear-gradient(180deg,transparent,rgba(123,94,167,.08),transparent)}
+.silent{padding-top:74px;background:linear-gradient(180deg,transparent,rgba(123,94,167,.08),transparent)}
 .silent-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:58px;align-items:center}.wall{border:1px solid rgba(251,245,255,.12);border-radius:28px;background:rgba(251,245,255,.035);padding:26px;position:relative}
 .wall::before{content:'disappears in 7 days - no replies - no reactions';position:absolute;top:-12px;left:24px;background:var(--bg2);padding:4px 10px;color:var(--soft);font-size:10px;letter-spacing:.08em}
 .line{display:flex;gap:12px;align-items:flex-start;padding:16px 0;border-bottom:1px solid rgba(251,245,255,.07)}.line:last-child{border-bottom:0}.dot{width:6px;height:6px;border-radius:50%;background:var(--rose2);margin-top:10px;flex:none}.line p{font-family:var(--display);font-style:italic;color:rgba(251,245,255,.8);font-size:20px;line-height:1.35}.line time{display:block;margin-top:7px;font-family:var(--body);font-size:10px;color:var(--soft);font-style:normal}
@@ -100,10 +108,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
 @media(max-width:900px){
   .nav{padding:0 18px}.brand-logo{width:38px;height:38px}.nav-links,.nav-cta{display:none}.menu-btn{display:block}.mobile-menu.open{display:flex}.mobile-menu{position:fixed;top:70px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--line);padding:12px 18px;flex-direction:column}.mobile-menu a{padding:14px 0;color:var(--muted);font-size:13px}
-  .hero{padding-top:98px;padding-bottom:50px;text-align:center;min-height:auto}.hero-grid,.ritual-grid,.silent-grid{grid-template-columns:1fr;gap:30px}.hero-kicker,.hero-actions{margin-left:auto;margin-right:auto;justify-content:center}.hero-sub{margin-left:auto;margin-right:auto}.artifact-wrap{min-height:330px;margin-top:-6px}.phone{width:250px;min-height:440px}.reveal-pill{right:22px;bottom:40px}.ritual-grid{padding:26px 22px;border-radius:22px}.ritual-intro{position:static;text-align:left}.timeline{padding-left:26px}.safety-row{grid-template-columns:1fr 1fr;gap:10px}.field-grid{grid-template-columns:1fr}.section{padding:82px 20px}.headline{font-size:clamp(38px,10vw,52px)}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}
+  .hero{padding-top:98px;padding-bottom:50px;text-align:center;min-height:auto}.hero-grid,.ritual-grid,.silent-grid{grid-template-columns:1fr;gap:30px}.hero-kicker,.hero-actions{margin-left:auto;margin-right:auto;justify-content:center}.hero-sub{margin-left:auto;margin-right:auto}.artifact-wrap{min-height:330px;margin-top:-6px}.phone{width:250px;min-height:440px}.reveal-pill{right:22px;bottom:40px}.ritual-grid{padding:26px 22px;border-radius:22px}.ritual-intro{position:static;text-align:left}.timeline{padding-left:26px}.safety-row{grid-template-columns:1fr 1fr;gap:10px}.room-threshold{grid-template-columns:1fr;gap:0;min-height:260px;margin-top:24px}.threshold-copy{padding:26px 22px 0}.threshold-doodle{height:158px}.threshold-note.one{left:22px;right:auto;top:18px}.threshold-note.two{right:18px;top:42px}.threshold-orbit{right:18%;top:44px}.threshold-moon{right:10px;bottom:8px;width:70px;height:70px}.field-grid{grid-template-columns:1fr}.section{padding:82px 20px}.headline{font-size:clamp(38px,10vw,52px)}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}
 }
 @media(max-width:520px){
-  .hero h1{font-size:42px}.hero-sub{font-size:13.5px;line-height:1.75;margin-top:18px;margin-bottom:22px}.hero-kicker{font-size:9px;margin-bottom:18px}.phone{width:232px;min-height:414px}.journal{padding:17px 15px}.journal-prompt{font-size:22px}.journal-line{font-size:12px}.status-note{font-size:11px}.artifact-wrap{min-height:270px;margin-top:-16px;overflow:hidden}.reveal-pill{display:none}.section{padding:74px 20px}.moment{padding-bottom:24px}.moment h3{font-size:25px}.moment p{font-size:13px;line-height:1.75}.safety-row{grid-template-columns:1fr}.safety-item{padding:16px 16px}.field{padding:24px 20px}.wall{padding:22px 18px}.line p{font-size:19px}.quote-track{gap:34px}.micro{font-size:10px}
+  .hero h1{font-size:42px}.hero-sub{font-size:13.5px;line-height:1.75;margin-top:18px;margin-bottom:22px}.hero-kicker{font-size:9px;margin-bottom:18px}.phone{width:232px;min-height:414px}.journal{padding:17px 15px}.journal-prompt{font-size:22px}.journal-line{font-size:12px}.status-note{font-size:11px}.artifact-wrap{min-height:270px;margin-top:-16px;overflow:hidden}.reveal-pill{display:none}.section{padding:74px 20px}#ritual{padding-bottom:44px}.silent{padding-top:54px}.moment{padding-bottom:24px}.moment h3{font-size:25px}.moment p{font-size:13px;line-height:1.75}.safety-row{grid-template-columns:1fr}.safety-item{padding:16px 16px}.room-threshold{min-height:238px;border-radius:18px}.threshold-copy p{font-size:25px}.threshold-note{width:154px;font-size:10px}.threshold-note.two{display:none}.threshold-orbit{width:170px;height:78px;right:8%;top:54px}.field{padding:24px 20px}.wall{padding:22px 18px}.line p{font-size:19px}.quote-track{gap:34px}.micro{font-size:10px}
 }
 </style>
 </head>
@@ -185,6 +193,18 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
       <div class="safety-item"><h4>Mutual reveal</h4><p>Day 21 only opens identities when both people independently choose yes.</p></div>
       <div class="safety-item"><h4>Not therapy</h4><p>This is a writing ritual and peer connection experiment, not clinical care or crisis support.</p></div>
       <div class="safety-item"><h4>Private by design</h4><p>No social feed. No follower count. No likes. Your words are not content.</p></div>
+    </div>
+    <div class="inner room-threshold reveal">
+      <div class="threshold-copy">
+        <small>Before the room</small>
+        <p>Leave one sentence where nobody can perform back at you.</p>
+      </div>
+      <div class="threshold-doodle" aria-hidden="true">
+        <span class="threshold-orbit"></span>
+        <span class="threshold-moon"></span>
+        <span class="threshold-note one">tonight I almost said it</span>
+        <span class="threshold-note two">seen, not judged</span>
+      </div>
     </div>
   </section>
 
