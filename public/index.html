@@ -11,7 +11,7 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -22,11 +22,12 @@
   --green:#7EC8A0;
   --ink:#F8F2FF;--ink-m:rgba(248,242,255,.62);--ink-s:rgba(248,242,255,.35);
   --line:rgba(248,242,255,.07);--card:#0E0A18;--bg:#08050F;
+  --font-display:'Fraunces',Georgia,serif;--font-body:'Nunito Sans',Arial,sans-serif;
 }
 html{background:var(--bg);scroll-behavior:smooth;overflow-x:hidden}
 body{
   background:var(--bg);color:var(--ink);
-  font-family:'Manrope',sans-serif;font-weight:400;
+  font-family:var(--font-body);font-weight:400;
   overflow-x:hidden;min-height:100vh;
   -webkit-font-smoothing:antialiased;
 }
@@ -63,7 +64,7 @@ a{color:inherit;text-decoration:none}
 
 .nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 40px;height:72px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:rgba(8,5,15,.6);border-bottom:1px solid var(--line);transition:all .4s ease}
 .nav.scrolled{background:rgba(8,5,15,.92);box-shadow:0 4px 30px rgba(0,0,0,.4)}
-.nav-logo{display:flex;align-items:center;gap:10px;font-family:'Newsreader',serif;font-size:18px;font-weight:600}
+.nav-logo{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-size:19px;font-weight:650}
 .nav-orb{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--purple));animation:breathe 4s ease-in-out infinite;flex-shrink:0}
 .nav-links{display:flex;align-items:center;gap:32px}
 .nav-links a{font-size:13px;color:var(--ink-m);transition:color .3s;letter-spacing:.5px;text-transform:uppercase;font-weight:400}
@@ -93,11 +94,11 @@ a{color:inherit;text-decoration:none}
 .hero-left{display:flex;flex-direction:column}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:50px;border:1px solid rgba(212,133,154,.25);background:rgba(212,133,154,.08);margin-bottom:28px;font-size:11px;color:var(--rose-l);letter-spacing:1.5px;text-transform:uppercase;animation:fadeUp .8s ease both;width:fit-content}
 .hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--rose);animation:breathe 2s ease-in-out infinite}
-.hero-h1{font-family:'Newsreader',serif;font-size:clamp(36px,5.5vw,64px);font-weight:650;line-height:1.08;margin-bottom:20px;animation:fadeUp .8s ease .1s both}
+.hero-h1{font-family:var(--font-display);font-size:clamp(38px,5.8vw,68px);font-weight:560;line-height:1.03;margin-bottom:22px;animation:fadeUp .8s ease .1s both}
 .hero-h1 em{font-style:italic;color:var(--rose-l);font-weight:400}
-.hero-sub{font-family:'Newsreader',serif;font-size:clamp(16px,1.8vw,20px);color:var(--ink-m);line-height:1.72;max-width:480px;margin-bottom:36px;animation:fadeUp .8s ease .2s both}
+.hero-sub{font-family:var(--font-display);font-size:clamp(17px,1.9vw,21px);font-weight:400;color:var(--ink-m);line-height:1.62;max-width:500px;margin-bottom:36px;animation:fadeUp .8s ease .2s both}
 
-.hero-cta-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--rose-d),var(--purple));color:#fff;padding:18px 40px;border-radius:14px;font-size:15px;font-weight:600;border:none;cursor:pointer;font-family:'Manrope',sans-serif;transition:all .3s;white-space:nowrap;position:relative;overflow:hidden;text-decoration:none;animation:fadeUp .8s ease .35s both}
+.hero-cta-btn{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;gap:10px;background:linear-gradient(135deg,var(--rose-d),var(--purple));color:#fff;padding:18px 40px;border-radius:14px;font-size:15px;font-weight:800;border:none;cursor:pointer;font-family:var(--font-body);transition:all .3s;white-space:nowrap;position:relative;overflow:hidden;text-decoration:none;animation:fadeUp .8s ease .35s both}
 .hero-cta-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);opacity:0;transition:opacity .3s}
 .hero-cta-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(212,133,154,.4)}
 .hero-cta-btn:hover::before{opacity:1}
@@ -116,7 +117,7 @@ a{color:inherit;text-decoration:none}
   radial-gradient(circle at 86% 70%,rgba(255,255,255,.4) 0 1px,transparent 2px),
   linear-gradient(155deg,rgba(118,78,160,.35),transparent 42%);opacity:.95}
 .phone-top{position:absolute;top:42px;left:24px;right:24px;display:flex;align-items:center;justify-content:space-between;color:rgba(248,242,255,.72);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
-.phone-logo{font-family:'Newsreader',serif;font-size:16px;text-transform:none;letter-spacing:0;color:#fff}
+.phone-logo{font-family:var(--font-display);font-size:17px;font-weight:650;text-transform:none;letter-spacing:0;color:#fff}
 .phone-menu{width:16px;height:10px;border-top:1px solid rgba(248,242,255,.72);border-bottom:1px solid rgba(248,242,255,.72);position:relative}
 .phone-menu::after{content:'';position:absolute;left:0;right:0;top:4px;border-top:1px solid rgba(248,242,255,.72)}
 .route-svg{position:absolute;inset:86px 28px 120px;width:calc(100% - 56px);height:342px;overflow:visible;opacity:.62}
@@ -150,16 +151,16 @@ a{color:inherit;text-decoration:none}
 @keyframes rocketDrift{0%,100%{transform:translate(0,0) rotate(-18deg)}50%{transform:translate(12px,-15px) rotate(-12deg)}}
 .marquee-wrap{overflow:hidden;padding:50px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;z-index:1}
 .marquee{display:flex;gap:60px;animation:marqueeScroll 36s linear infinite;width:max-content}
-.marquee-item{font-family:'Newsreader',serif;font-size:clamp(18px,2.5vw,28px);color:var(--ink-s);white-space:nowrap;display:flex;align-items:center;gap:20px}
+.marquee-item{font-family:var(--font-display);font-size:clamp(19px,2.6vw,30px);font-weight:450;color:var(--ink-s);white-space:nowrap;display:flex;align-items:center;gap:20px}
 .marquee-dot{width:6px;height:6px;border-radius:50%;background:var(--rose);opacity:.4}
 
 section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .section-inner{max-width:1100px;margin:0 auto}
 .section-label{display:inline-flex;align-items:center;gap:8px;font-size:11px;color:var(--rose);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
 .section-label::before{content:'';width:20px;height:1px;background:var(--rose)}
-.section-h2{font-family:'Newsreader',serif;font-size:clamp(28px,4.5vw,48px);font-weight:620;line-height:1.12;margin-bottom:20px}
+.section-h2{font-family:var(--font-display);font-size:clamp(30px,4.8vw,52px);font-weight:560;line-height:1.04;margin-bottom:20px}
 .section-h2 em{font-style:italic;color:var(--rose-l);font-weight:400}
-.section-p{font-family:'Newsreader',serif;font-size:clamp(15px,1.6vw,18px);color:var(--ink-m);line-height:1.75;max-width:600px}
+.section-p{font-family:var(--font-display);font-size:clamp(16px,1.7vw,19px);font-weight:400;color:var(--ink-m);line-height:1.68;max-width:600px}
 
 .how{text-align:center;background:radial-gradient(circle at 20% 24%,rgba(95,183,232,.08),transparent 28%),radial-gradient(circle at 80% 66%,rgba(217,199,255,.08),transparent 30%)}
 .how .section-h2{margin-bottom:0}
@@ -178,11 +179,11 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .how-missions{position:absolute;inset:0;z-index:3;list-style:none;margin:0;padding:0}
 .how-node{position:absolute;width:min(255px,26vw);padding:0}
 .how-node-1{left:62px;top:54px}.how-node-2{right:82px;top:56px}.how-node-3{left:410px;bottom:58px}.how-node-4{right:62px;bottom:58px}
-.how-pin{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin-bottom:16px;color:#fff;font-family:'Newsreader',serif;font-size:18px;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.9),rgba(133,240,255,.7) 24%,rgba(95,183,232,.34) 55%,rgba(217,199,255,.14) 100%);box-shadow:0 0 0 1px rgba(255,255,255,.16),0 0 26px rgba(133,240,255,.2)}
+.how-pin{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin-bottom:16px;color:#fff;font-family:var(--font-display);font-size:18px;font-weight:650;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.9),rgba(133,240,255,.7) 24%,rgba(95,183,232,.34) 55%,rgba(217,199,255,.14) 100%);box-shadow:0 0 0 1px rgba(255,255,255,.16),0 0 26px rgba(133,240,255,.2)}
 .how-node-2 .how-pin,.how-node-4 .how-pin{margin-left:auto}
 .how-copy{padding:18px 18px 16px;border-radius:18px;border:1px solid rgba(248,242,255,.12);background:rgba(8,5,20,.56);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-.how-kicker{display:block;font-family:'Manrope',sans-serif;font-size:10px;line-height:1;color:var(--rose-l);letter-spacing:2.2px;text-transform:uppercase;margin-bottom:10px}
-.how-step-h{font-family:'Newsreader',serif;font-size:clamp(21px,2.2vw,28px);font-weight:620;line-height:1.05;margin-bottom:10px}
+.how-kicker{display:block;font-family:var(--font-body);font-size:10px;line-height:1;color:var(--rose-l);letter-spacing:2.2px;text-transform:uppercase;margin-bottom:10px;font-weight:800}
+.how-step-h{font-family:var(--font-display);font-size:clamp(23px,2.4vw,31px);font-weight:560;line-height:1;margin-bottom:10px}
 .how-step-p{font-size:13.5px;color:var(--ink-m);line-height:1.65}
 .how-orb{position:absolute;border-radius:50%;z-index:1;pointer-events:none}
 .how-orb-a{width:94px;height:94px;right:30%;top:38px;background:linear-gradient(135deg,rgba(217,199,255,.55),rgba(95,183,232,.2));box-shadow:inset -12px -10px 0 rgba(18,12,44,.18)}
@@ -193,7 +194,7 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .proof-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px;text-align:left;position:relative;overflow:hidden;transition:all .4s}
 .proof-card:hover{border-color:rgba(212,133,154,.15);transform:translateY(-3px)}
 .proof-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.15),transparent)}
-.proof-quote{font-family:'Newsreader',serif;font-size:15px;color:var(--ink-m);line-height:1.75;margin-bottom:16px}
+.proof-quote{font-family:var(--font-display);font-size:15.5px;color:var(--ink-m);line-height:1.7;margin-bottom:16px}
 .proof-author{display:flex;align-items:center;gap:10px}
 .proof-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--rose-d),var(--purple));display:flex;align-items:center;justify-content:center;font-size:14px}
 .proof-info{font-size:11px;color:var(--ink-s)}
@@ -204,16 +205,16 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .cta-orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.12;pointer-events:none}
 .cta-orb-1{width:600px;height:600px;background:var(--rose);top:50%;left:50%;transform:translate(-50%,-50%);animation:breathe 6s ease-in-out infinite}
 .cta-inner{position:relative;z-index:2;max-width:600px;margin:0 auto}
-.cta-h2{font-family:'Newsreader',serif;font-size:clamp(30px,4.5vw,50px);font-weight:650;line-height:1.12;margin-bottom:16px}
+.cta-h2{font-family:var(--font-display);font-size:clamp(32px,4.8vw,54px);font-weight:560;line-height:1.04;margin-bottom:16px}
 .cta-h2 em{font-style:italic;color:var(--rose-l);font-weight:400}
-.cta-p{font-family:'Newsreader',serif;font-size:clamp(15px,1.6vw,18px);color:var(--ink-m);line-height:1.75;margin-bottom:32px;max-width:460px;margin-left:auto;margin-right:auto}
+.cta-p{font-family:var(--font-display);font-size:clamp(16px,1.7vw,19px);color:var(--ink-m);line-height:1.65;margin-bottom:32px;max-width:460px;margin-left:auto;margin-right:auto}
 
 .cta-form{display:flex;gap:12px;max-width:460px;margin:0 auto 16px;justify-content:center}
 .cta-note{font-size:11px;color:var(--ink-s)}
 
 .footer{border-top:1px solid var(--line);padding:40px 24px;text-align:center}
 .footer-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
-.footer-brand{display:flex;align-items:center;gap:8px;font-family:'Newsreader',serif;font-size:14px;color:var(--ink-m)}
+.footer-brand{display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:15px;color:var(--ink-m)}
 .footer-brand .nav-orb{width:18px;height:18px}
 .footer-links{display:flex;gap:24px}
 .footer-links a{font-size:12px;color:var(--ink-s);transition:color .3s}
@@ -237,9 +238,9 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .sr-section::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 50%,rgba(123,94,167,.07),transparent 70%);pointer-events:none}
 .sr-label{display:inline-flex;align-items:center;gap:10px;font-size:11px;color:var(--purple-l);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:20px}
 .sr-label-star{font-size:14px;color:var(--purple-l);opacity:.8;animation:srFlicker 3s ease-in-out infinite}
-.sr-h2{font-family:'Newsreader',serif;font-size:clamp(30px,4.5vw,52px);font-weight:600;line-height:1.12;letter-spacing:-1.5px;margin-bottom:14px}
+.sr-h2{font-family:var(--font-display);font-size:clamp(32px,4.8vw,56px);font-weight:560;line-height:1.04;letter-spacing:0;margin-bottom:14px}
 .sr-h2 em{font-style:italic;color:var(--purple-l);font-weight:400}
-.sr-sub{font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.6vw,17px);color:var(--ink-m);line-height:1.85;max-width:520px;margin:0 auto 56px}
+.sr-sub{font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.7vw,18px);color:var(--ink-m);line-height:1.72;max-width:540px;margin:0 auto 56px}
 .sr-room{max-width:680px;margin:0 auto 48px;position:relative;border-radius:24px;border:1px solid rgba(123,94,167,.18);background:rgba(14,10,24,.75);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);padding:48px 40px 40px;animation:srPulseGlow 6s ease-in-out infinite;overflow:hidden}
 .sr-room::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,167,.4),rgba(212,133,154,.25),transparent)}
 .sr-room::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,167,.15),transparent)}
@@ -260,12 +261,12 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .sr-line:nth-child(2) .sr-dot{background:var(--rose);animation-delay:.8s}
 .sr-line:nth-child(3) .sr-dot{background:var(--gold);animation-delay:1.4s}
 .sr-line:nth-child(4) .sr-dot{background:var(--green);animation-delay:.4s}
-.sr-text{font-family:'Newsreader',serif;font-style:italic;font-size:clamp(13px,1.5vw,15.5px);color:var(--ink-m);line-height:1.75;text-align:left;flex:1}
+.sr-text{font-family:var(--font-display);font-style:italic;font-size:clamp(13.5px,1.5vw,16px);color:var(--ink-m);line-height:1.7;text-align:left;flex:1}
 .sr-time{font-size:10px;color:var(--ink-s);letter-spacing:.3px;white-space:nowrap;align-self:flex-end;flex-shrink:0;margin-left:12px}
 .sr-room-footer{margin-top:28px;padding-top:18px;border-top:1px solid rgba(248,242,255,.05);display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:var(--ink-s);letter-spacing:.5px}
 .sr-room-footer-dot{width:3px;height:3px;border-radius:50%;background:var(--purple-l);opacity:.5}
 .sr-cta-row{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap}
-.sr-cta-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(123,94,167,.25),rgba(123,94,167,.08));color:var(--purple-l);padding:16px 36px;border-radius:14px;font-size:14px;font-weight:500;letter-spacing:.5px;border:1px solid rgba(123,94,167,.3);cursor:pointer;font-family:'Manrope',sans-serif;transition:all .35s;text-decoration:none;position:relative;overflow:hidden}
+.sr-cta-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(123,94,167,.25),rgba(123,94,167,.08));color:var(--purple-l);padding:16px 36px;border-radius:14px;font-size:14px;font-weight:800;letter-spacing:.5px;border:1px solid rgba(123,94,167,.3);cursor:pointer;font-family:var(--font-body);transition:all .35s;text-decoration:none;position:relative;overflow:hidden}
 .sr-cta-btn:hover{transform:translateY(-2px);border-color:rgba(123,94,167,.55);box-shadow:0 12px 40px rgba(123,94,167,.25);color:var(--ink)}
 .sr-cta-note{font-size:11px;color:var(--ink-s);letter-spacing:.3px}
 
@@ -289,7 +290,7 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 }
 /* Mobile nav helpers — hidden by default, shown on small screens */
 .nav-logo-orb{display:none;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--purple));animation:breathe 4s ease-in-out infinite;flex-shrink:0}
-.nav-logo-wordmark{display:none;font-family:'Newsreader',serif;font-size:16px;font-weight:600;color:var(--ink)}
+.nav-logo-wordmark{display:none;font-family:var(--font-display);font-size:17px;font-weight:650;color:var(--ink)}
 /* Mobile nav dropdown */
 .nav-mobile-menu{display:none;position:absolute;top:72px;left:0;right:0;z-index:99;flex-direction:column;gap:0;background:rgba(8,5,15,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:12px 0}
 .nav-mobile-menu.open{display:flex}
@@ -438,8 +439,8 @@ document.addEventListener('DOMContentLoaded', function() {
       <circle cx="178" cy="264" r="0.7" fill="#e879f9" opacity="0.3"/>
       <circle cx="34" cy="155" r="1.0" fill="#a78bfa" opacity="0.3"/>
       <circle cx="186" cy="72" r="1.1" fill="#c084fc" opacity="0.4"/>
-      <text x="244" y="158" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="url(#textGrad2)" letter-spacing="2">mentally</text>
-      <text x="244" y="216" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="400" font-style="italic" fill="url(#accentGrad2)" letter-spacing="1">prepare</text>
+      <text x="244" y="158" font-family="Fraunces, Georgia, serif" font-size="52" font-weight="650" fill="url(#textGrad2)" letter-spacing="1">mentally</text>
+      <text x="244" y="216" font-family="Fraunces, Georgia, serif" font-size="52" font-weight="450" font-style="italic" fill="url(#accentGrad2)" letter-spacing="0">prepare</text>
     </svg>
     <!-- Mobile: simple orb + wordmark (shown via CSS) -->
     <div class="nav-logo-orb"></div>
@@ -516,10 +517,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <section class="testimonials" id="l-stories" data-section="stories" style="padding:80px 24px 60px;">
   <div class="section-inner" style="max-width:620px;">
     <div class="reveal" style="text-align:center;">
-      <h2 style="font-family:'Newsreader',serif;font-size:clamp(22px,3vw,32px);font-weight:400;font-style:italic;color:var(--ink);line-height:1.4;margin-bottom:32px;letter-spacing:-.5px;">Why this exists</h2>
+      <h2 style="font-family:var(--font-display);font-size:clamp(24px,3.2vw,34px);font-weight:450;font-style:italic;color:var(--ink);line-height:1.25;margin-bottom:32px;letter-spacing:0;">Why this exists</h2>
     </div>
     <div class="reveal delay-1" style="max-width:520px;margin:0 auto;">
-      <div style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.6vw,16.5px);color:var(--ink-m);line-height:1.9;">
+      <div style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.7vw,17.5px);color:var(--ink-m);line-height:1.75;">
         <p style="margin-bottom:1.2em;">I think I am tired in a way that people do not really notice. Not the kind of tired that comes from sleep, but the kind that comes from carrying your own thoughts all the time.</p>
         <p style="margin-bottom:1.2em;">The most intense parts of me are private. The fear, the ambition, the jealousy, the hope, the insecurity. Most people only see fragments.</p>
         <p style="margin-bottom:1.5em;padding-left:1.2em;border-left:2px solid rgba(212,133,154,.25);color:var(--ink-s);">I am lonelier in my mind than I admit in real life. Not because I have no one — but because depth makes me vulnerable, and love would mean being fully seen.</p>
@@ -536,25 +537,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <div style="overflow:hidden;padding:44px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative;z-index:1;background:linear-gradient(90deg,var(--bg) 0%,transparent 8%,transparent 92%,var(--bg) 100%);">
   <div style="display:flex;gap:56px;animation:marqueeScroll 32s linear infinite;width:max-content;">
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"When did you last feel fully seen?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"When did you last feel fully seen?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What are you carrying that nobody knows about?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What are you carrying that nobody knows about?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"When do you become distant, even when you want closeness?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"When do you become distant, even when you want closeness?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What kind of tired are you that sleep doesn't fix?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What kind of tired are you that sleep doesn't fix?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What would you say if no one knew it was you?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What would you say if no one knew it was you?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"When did you last feel fully seen?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"When did you last feel fully seen?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What are you carrying that nobody knows about?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What are you carrying that nobody knows about?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"When do you become distant, even when you want closeness?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"When do you become distant, even when you want closeness?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What kind of tired are you that sleep doesn't fix?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What kind of tired are you that sleep doesn't fix?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
-    <span style="font-family:'Newsreader',serif;font-style:italic;font-size:clamp(14px,1.8vw,18px);color:var(--ink-s);white-space:nowrap;">"What would you say if no one knew it was you?"</span>
+    <span style="font-family:var(--font-display);font-style:italic;font-size:clamp(15px,1.9vw,19px);color:var(--ink-s);white-space:nowrap;">"What would you say if no one knew it was you?"</span>
     <span style="color:var(--rose);opacity:.3;font-size:10px;align-self:center;">✦</span>
   </div>
 </div>
@@ -670,17 +671,17 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="stories-grid reveal delay-1" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto;">
       <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.2),transparent);"></div>
-        <div style="font-family:'Newsreader',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;margin-bottom:20px;">"I started Day 1 thinking this was a cute experiment. By Day 14 I was writing things I'd never said out loud. My partner didn't fix anything — they just kept showing up. That mattered more than I expected."</div>
+        <div style="font-family:var(--font-display);font-style:italic;font-size:14.5px;color:var(--ink-m);line-height:1.7;margin-bottom:20px;">"I started Day 1 thinking this was a cute experiment. By Day 14 I was writing things I'd never said out loud. My partner didn't fix anything — they just kept showing up. That mattered more than I expected."</div>
         <div style="font-size:11px;color:var(--ink-s);">2024 · Pune · Engineering, 2nd year</div>
       </div>
       <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(123,94,167,.2),transparent);"></div>
-        <div style="font-family:'Newsreader',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;margin-bottom:20px;">"We both said yes on Day 21. It was terrifying. She went to a college I'd never heard of in Kerala. We still message. Not every day. But when it matters. I think that's how it should be."</div>
+        <div style="font-family:var(--font-display);font-style:italic;font-size:14.5px;color:var(--ink-m);line-height:1.7;margin-bottom:20px;">"We both said yes on Day 21. It was terrifying. She went to a college I'd never heard of in Kerala. We still message. Not every day. But when it matters. I think that's how it should be."</div>
         <div style="font-size:11px;color:var(--ink-s);">2025 · Delhi · Commerce, 3rd year</div>
       </div>
       <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.2),transparent);"></div>
-        <div style="font-family:'Newsreader',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;margin-bottom:20px;">"I said no on Day 21. He said yes. I still don't know his name. But I know he cried on Day 11 over something his father said, and somehow that made me feel less alone with my own family stuff."</div>
+        <div style="font-family:var(--font-display);font-style:italic;font-size:14.5px;color:var(--ink-m);line-height:1.7;margin-bottom:20px;">"I said no on Day 21. He said yes. I still don't know his name. But I know he cried on Day 11 over something his father said, and somehow that made me feel less alone with my own family stuff."</div>
         <div style="font-size:11px;color:var(--ink-s);">2025 · Bangalore · Psychology, final year</div>
       </div>
     </div>
@@ -777,10 +778,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <circle cx="178" cy="264" r="0.7" fill="#e879f9" opacity="0.3"/>
         <circle cx="34" cy="155" r="1.0" fill="#a78bfa" opacity="0.3"/>
         <circle cx="186" cy="72" r="1.1" fill="#c084fc" opacity="0.4"/>
-        <text x="244" y="144" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="url(#textGrad2)" letter-spacing="2">mentally</text>
-        <text x="244" y="202" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="400" font-style="italic" fill="url(#accentGrad2)" letter-spacing="1">prepare</text>
+        <text x="244" y="144" font-family="Fraunces, Georgia, serif" font-size="52" font-weight="650" fill="url(#textGrad2)" letter-spacing="1">mentally</text>
+        <text x="244" y="202" font-family="Fraunces, Georgia, serif" font-size="52" font-weight="450" font-style="italic" fill="url(#accentGrad2)" letter-spacing="0">prepare</text>
         <line x1="244" y1="213" x2="590" y2="213" stroke="url(#ruleLine)" stroke-width="0.8"/>
-        <text x="245" y="236" font-family="'Helvetica Neue', Arial, sans-serif" font-size="10" font-weight="400" fill="#7c5aa8" letter-spacing="4.5">21-DAY ANONYMOUS EMOTIONAL RESET</text>
+        <text x="245" y="236" font-family="Nunito Sans, Arial, sans-serif" font-size="10" font-weight="800" fill="#7c5aa8" letter-spacing="4.5">21-DAY ANONYMOUS EMOTIONAL RESET</text>
       </svg>
     </div>
     <div class="footer-links"> 
