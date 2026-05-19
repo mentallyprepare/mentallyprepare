@@ -81,13 +81,13 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .quote-strip{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:28px 0;background:rgba(251,245,255,.018)}
 .quote-track{display:flex;gap:56px;width:max-content;animation:marquee 42s linear infinite}.quote-track span{font-family:var(--display);font-style:italic;font-size:clamp(18px,2vw,26px);color:rgba(251,245,255,.36);white-space:nowrap}
 
-.ritual-grid{display:grid;grid-template-columns:.72fr 1fr;gap:70px;align-items:start}.ritual-intro{position:sticky;top:110px}
-.timeline{position:relative;border-left:1px solid rgba(212,133,154,.22);padding-left:34px}
-.moment{position:relative;padding:0 0 42px}.moment:last-child{padding-bottom:0}
-.moment::before{content:'';position:absolute;left:-40px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:1px solid var(--rose2);box-shadow:0 0 0 7px rgba(212,133,154,.08)}
+.ritual-grid{display:grid;grid-template-columns:.78fr 1fr;gap:48px;align-items:start;padding:34px;border:1px solid rgba(251,245,255,.12);background:linear-gradient(135deg,rgba(251,245,255,.035),rgba(212,133,154,.025));border-radius:28px}.ritual-intro{position:sticky;top:110px}
+.timeline{position:relative;border-left:1px solid rgba(212,133,154,.22);padding-left:30px}
+.moment{position:relative;padding:0 0 30px}.moment:last-child{padding-bottom:0}
+.moment::before{content:'';position:absolute;left:-36px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:1px solid var(--rose2);box-shadow:0 0 0 7px rgba(212,133,154,.08)}
 .moment small{display:block;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px}
 .moment h3{font-family:var(--display);font-size:clamp(26px,3vw,38px);font-weight:400;line-height:1;margin-bottom:10px}.moment p{max-width:560px;color:var(--muted);font-size:14px;line-height:1.85}
-.safety-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:48px}.safety-item{background:rgba(10,7,18,.82);padding:24px 22px;min-height:142px}.safety-item h4{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--rose2);margin-bottom:10px}.safety-item p{font-size:13px;color:var(--muted);line-height:1.75}
+.safety-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.safety-item{background:rgba(10,7,18,.58);border:1px solid rgba(251,245,255,.08);border-radius:18px;padding:17px 16px;min-height:auto}.safety-item h4{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--rose2);margin-bottom:7px}.safety-item p{font-size:12px;color:var(--muted);line-height:1.65}
 
 .silent{background:linear-gradient(180deg,transparent,rgba(123,94,167,.08),transparent)}
 .silent-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:58px;align-items:center}.wall{border:1px solid rgba(251,245,255,.12);border-radius:28px;background:rgba(251,245,255,.035);padding:26px;position:relative}
@@ -100,10 +100,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
 @media(max-width:900px){
   .nav{padding:0 18px}.nav-links,.nav-cta{display:none}.menu-btn{display:block}.mobile-menu.open{display:flex}.mobile-menu{position:fixed;top:70px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--line);padding:12px 18px;flex-direction:column}.mobile-menu a{padding:14px 0;color:var(--muted);font-size:13px}
-  .hero{padding-top:98px;padding-bottom:50px;text-align:center;min-height:auto}.hero-grid,.ritual-grid,.silent-grid{grid-template-columns:1fr;gap:30px}.hero-kicker,.hero-actions{margin-left:auto;margin-right:auto;justify-content:center}.hero-sub{margin-left:auto;margin-right:auto}.artifact-wrap{min-height:330px;margin-top:-6px}.phone{width:250px;min-height:440px}.reveal-pill{right:22px;bottom:40px}.ritual-intro{position:static;text-align:center}.timeline{padding-left:28px}.safety-row,.field-grid{grid-template-columns:1fr}.section{padding:82px 20px}.headline{font-size:clamp(38px,10vw,52px)}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}
+  .hero{padding-top:98px;padding-bottom:50px;text-align:center;min-height:auto}.hero-grid,.ritual-grid,.silent-grid{grid-template-columns:1fr;gap:30px}.hero-kicker,.hero-actions{margin-left:auto;margin-right:auto;justify-content:center}.hero-sub{margin-left:auto;margin-right:auto}.artifact-wrap{min-height:330px;margin-top:-6px}.phone{width:250px;min-height:440px}.reveal-pill{right:22px;bottom:40px}.ritual-grid{padding:26px 22px;border-radius:22px}.ritual-intro{position:static;text-align:left}.timeline{padding-left:26px}.safety-row{grid-template-columns:1fr 1fr;gap:10px}.field-grid{grid-template-columns:1fr}.section{padding:82px 20px}.headline{font-size:clamp(38px,10vw,52px)}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}
 }
 @media(max-width:520px){
-  .hero h1{font-size:42px}.hero-sub{font-size:13.5px;line-height:1.75;margin-top:18px;margin-bottom:22px}.hero-kicker{font-size:9px;margin-bottom:18px}.phone{width:232px;min-height:414px}.journal{padding:17px 15px}.journal-prompt{font-size:22px}.journal-line{font-size:12px}.status-note{font-size:11px}.artifact-wrap{min-height:270px;margin-top:-16px;overflow:hidden}.reveal-pill{display:none}.section{padding:74px 20px}.safety-item,.field{padding:24px 20px}.wall{padding:22px 18px}.line p{font-size:19px}.quote-track{gap:34px}.micro{font-size:10px}
+  .hero h1{font-size:42px}.hero-sub{font-size:13.5px;line-height:1.75;margin-top:18px;margin-bottom:22px}.hero-kicker{font-size:9px;margin-bottom:18px}.phone{width:232px;min-height:414px}.journal{padding:17px 15px}.journal-prompt{font-size:22px}.journal-line{font-size:12px}.status-note{font-size:11px}.artifact-wrap{min-height:270px;margin-top:-16px;overflow:hidden}.reveal-pill{display:none}.section{padding:74px 20px}.moment{padding-bottom:24px}.moment h3{font-size:25px}.moment p{font-size:13px;line-height:1.75}.safety-row{grid-template-columns:1fr}.safety-item{padding:16px 16px}.field{padding:24px 20px}.wall{padding:22px 18px}.line p{font-size:19px}.quote-track{gap:34px}.micro{font-size:10px}
 }
 </style>
 </head>
