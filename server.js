@@ -418,8 +418,29 @@ db.prepare(`
   )
 `).run();
 
+const SERVER_START_MS = Date.now();
+const APP_VERSION = '1.2.0';
+
 function handleLiveness(req, res) {
-  res.json({ status: 'ok' });
+  try {
+    const users = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+    res.json({
+      status: 'ok',
+      uptime: Math.floor((Date.now() - SERVER_START_MS) / 1000),
+      users,
+      db: 'sqlite',
+      env: process.env.NODE_ENV || 'development',
+      version: APP_VERSION
+    });
+  } catch (e) {
+    res.json({
+      status: 'ok',
+      uptime: Math.floor((Date.now() - SERVER_START_MS) / 1000),
+      db: 'error',
+      env: process.env.NODE_ENV || 'development',
+      version: APP_VERSION
+    });
+  }
 }
 
 function handleLivenessText(req, res) {
@@ -745,6 +766,14 @@ app.get('/health', handleLivenessText);
 app.get('/api/ready', handleReadiness);
 app.get('/ready', handleReadinessText);
 
+function setStaticCacheHeaders(res, filePath) {
+  if (/\.(html?)$/i.test(filePath) || /[\\/]sw\.js$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'no-store');
+    return;
+  }
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+}
+
 // Serve app.html at root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -755,7 +784,11 @@ app.get('/terms', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'terms.html'));
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: true,
+  lastModified: true,
+  setHeaders: setStaticCacheHeaders
+}));
 
 // Persist session secret
 const SESSION_SECRET_PATH = path.join(DATA_DIR, '.session-secret');
@@ -1093,7 +1126,32 @@ function attemptMatch(userId) {
     if (yearFiltered.length > 0) candidates = yearFiltered;
   }
 
-  const partner = candidates[0] || null;
+  let partner = candidates[0] || null;
+
+  // Fallback: if no complementary match found, accept any unmatched user
+  // from a different college (regardless of archetype). This prevents users
+  // from waiting indefinitely when the pool is small.
+  if (!partner) {
+    let fallback = db.prepare(`
+      SELECT * FROM users
+      WHERE LOWER(college) != LOWER(?)
+        AND id != ?
+        AND archetype IS NOT NULL
+        AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
+    `).all(user.college, userId).map(parseUser);
+
+    // Respect gender preferences on fallback too
+    if (user.match_gender_pref && user.match_gender_pref !== 'any') {
+      const gf = fallback.filter(c => c.gender === user.match_gender_pref);
+      if (gf.length > 0) fallback = gf;
+    }
+    fallback = fallback.filter(c => {
+      if (!c.match_gender_pref || c.match_gender_pref === 'any') return true;
+      return c.match_gender_pref === user.gender;
+    });
+    partner = fallback[0] || null;
+  }
+
   if (partner) {
     const result = stmts.insertMatch.run(userId, partner.id);
     attachWaitingEntriesToMatch(result.lastInsertRowid, [userId, partner.id]);
@@ -1686,7 +1744,8 @@ registerAdminRoutes(app, {
   complementary,
   deleteUserDataTx,
   deleteMatchData,
-  sendWaitlistAccepted
+  sendWaitlistAccepted,
+  attemptMatch
 });
 
 registerWaitlistRoutes(app, {

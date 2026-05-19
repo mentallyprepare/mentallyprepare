@@ -6,9 +6,11 @@
 <title>Mentally Prepare — Anonymous Emotional Journal for College Students</title>
 <meta name="description" content="Write anonymously to a stranger from another college for 21 days. Matched by emotional archetype. On Day 21 — reveal your identity or stay unknown forever. Free for Indian college students."/>
 <meta name="keywords" content="anonymous journal college students India, emotional journaling app, college loneliness, mental health journal students, anonymous pen pal"/>
+<!-- Favicon: emoji data-URI works cross-browser (Chrome/Firefox/Edge); SVG for modern; apple-touch for iOS -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>🪐</text></svg>">
 <link rel="icon" href="/icon-192.svg" type="image/svg+xml">
-<link rel="icon" sizes="192x192" href="/icon-192.svg" type="image/svg+xml">
-<link rel="icon" sizes="512x512" href="/icon-512.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-192.svg">
+<link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,500&family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
@@ -247,10 +249,23 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
   .how-steps{grid-template-columns:repeat(2,1fr)}
   .sr-room{padding:40px 28px 32px}
 }
+/* Mobile nav helpers — hidden by default, shown on small screens */
+.nav-logo-orb{display:none;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--purple));animation:breathe 4s ease-in-out infinite;flex-shrink:0}
+.nav-logo-wordmark{display:none;font-family:'Playfair Display',serif;font-size:16px;font-weight:600;letter-spacing:-.3px;color:var(--ink)}
+/* Mobile nav dropdown */
+.nav-mobile-menu{display:none;position:absolute;top:72px;left:0;right:0;z-index:99;flex-direction:column;gap:0;background:rgba(8,5,15,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--line);padding:12px 0}
+.nav-mobile-menu.open{display:flex}
+.nav-mobile-menu a{padding:14px 24px;font-size:14px;color:var(--ink-m);border-bottom:1px solid var(--line);transition:color .2s;letter-spacing:.3px}
+.nav-mobile-menu a:last-child{border-bottom:none}
+.nav-mobile-menu a:active{color:var(--rose)}
+
 @media(max-width:768px){
-  .nav{padding:0 20px}
-  .nav-links{display:none}
-  .nav-menu-btn{display:block}
+  .nav{padding:0 16px;position:relative}
+  .nav-links{display:none!important}
+  .nav-cta{display:none}
+  .nav-menu-btn{display:block;padding:8px;font-size:20px;line-height:1}
+  .nav-logo svg{display:none}
+  .nav-logo-orb,.nav-logo-wordmark{display:block}
   .hero{padding:100px 20px 60px}
   section{padding:70px 20px}
   .hero-right{display:none}
@@ -258,12 +273,20 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
   .how-steps{grid-template-columns:1fr}
   .proof-grid{grid-template-columns:1fr}
   .cta-form{flex-direction:column}
-  .footer-inner{flex-direction:column;gap:16px}
+  .footer-inner{flex-direction:column;gap:20px;text-align:center}
+  .footer-links{flex-wrap:wrap;justify-content:center;gap:14px}
   .sr-room{padding:32px 20px 28px}
-  #l-stories [style*="grid-template-columns:repeat(3"]{grid-template-columns:1fr!important}
+  .stories-grid{grid-template-columns:1fr!important}
   .sr-room-meta{display:none}
   .sr-cta-row{flex-direction:column;align-items:center;gap:10px}
   .sr-time{display:none}
+  .hero-h1{font-size:clamp(30px,8vw,46px)}
+  .section-h2{font-size:clamp(24px,6vw,38px)}
+}
+@media(max-width:400px){
+  .nav-logo-wordmark{font-size:14px}
+  .hero-badge{font-size:10px;padding:6px 14px}
+  .hero-cta-btn{padding:16px 28px;font-size:14px}
 }
 </style>
 </head>
@@ -289,7 +312,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="toast" id="toast"></div>
 
 <nav class="nav" id="nav">
-  <a href="#" class="nav-logo" style="padding:0;display:flex;align-items:center;justify-content:center;height:72px;">
+  <a href="#" class="nav-logo" style="padding:0;display:flex;align-items:center;gap:10px;height:72px;text-decoration:none;">
+    <!-- Desktop: full planet+text SVG -->
     <svg viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg" style="height:40px;width:auto;display:block;">
       <defs>
         <radialGradient id="orbMain2" cx="36%" cy="30%" r="70%">
@@ -368,6 +392,9 @@ document.addEventListener('DOMContentLoaded', function() {
       <text x="244" y="158" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700" fill="url(#textGrad2)" letter-spacing="2">mentally</text>
       <text x="244" y="216" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="400" font-style="italic" fill="url(#accentGrad2)" letter-spacing="1">prepare</text>
     </svg>
+    <!-- Mobile: simple orb + wordmark (shown via CSS) -->
+    <div class="nav-logo-orb"></div>
+    <span class="nav-logo-wordmark">mentally prepare</span>
   </a>
   <div class="nav-links">
     <a href="#how">How It Works</a>
@@ -376,8 +403,15 @@ document.addEventListener('DOMContentLoaded', function() {
     <a href="/app">Log In</a>
   </div>
   <a class="nav-cta" href="/app">Start tonight</a>
-  <button class="nav-menu-btn" id="menuBtn" onclick="toggleMenu()">&#9776;</button>
+  <button class="nav-menu-btn" id="menuBtn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
 </nav>
+<!-- Mobile dropdown menu -->
+<div class="nav-mobile-menu" id="mobileMenu">
+  <a href="#how" onclick="closeMenu()">How It Works</a>
+  <a href="#silent-room" onclick="closeMenu()">Silent Room</a>
+  <a href="#l-stories" onclick="closeMenu()">Stories</a>
+  <a href="/app" onclick="closeMenu()" style="color:var(--rose-l);font-weight:500;">Start tonight →</a>
+</div>
 
 <section class="hero" id="hero">
   <div class="hero-bg">
@@ -575,7 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <h2 class="section-h2">What happens when you <em>stay honest</em> for 21 days</h2>
       <p class="section-p" style="margin:0 auto 56px;max-width:500px;">These are real accounts from people who completed 21 days. Names are anonymized. Cities and years are real.</p>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto;" class="reveal delay-1">
+    <div class="stories-grid reveal delay-1" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto;">
       <div style="background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 22px;text-align:left;position:relative;overflow:hidden;">
         <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,133,154,.2),transparent);"></div>
         <div style="font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;margin-bottom:20px;">"I started Day 1 thinking this was a cute experiment. By Day 14 I was writing things I'd never said out loud. My partner didn't fix anything — they just kept showing up. That mattered more than I expected."</div>
@@ -770,18 +804,23 @@ function toast(msg){
 }
 
 function toggleMenu(){
-  var links=document.querySelector('.nav-links');
-  var vis=links.style.display==='flex';
-  links.style.display=vis?'none':'flex';
-  if(!vis){
-    links.style.position='absolute';links.style.top='72px';links.style.left='0';links.style.right='0';
-    links.style.flexDirection='column';links.style.padding='20px';
-    links.style.background='rgba(8,5,15,.95)';links.style.backdropFilter='blur(20px)';
-    links.style.borderBottom='1px solid var(--line)';links.style.gap='16px';
-  }
+  var menu=document.getElementById('mobileMenu');
+  var btn=document.getElementById('menuBtn');
+  var open=menu.classList.contains('open');
+  if(open){menu.classList.remove('open');btn.innerHTML='&#9776;';btn.setAttribute('aria-expanded','false');}
+  else{menu.classList.add('open');btn.innerHTML='&#10005;';btn.setAttribute('aria-expanded','true');}
 }
-document.querySelectorAll('.nav-links a').forEach(function(a){
-  a.addEventListener('click',function(){if(window.innerWidth<=768)document.querySelector('.nav-links').style.display='none';});
+function closeMenu(){
+  var menu=document.getElementById('mobileMenu');
+  var btn=document.getElementById('menuBtn');
+  menu.classList.remove('open');
+  btn.innerHTML='&#9776;';btn.setAttribute('aria-expanded','false');
+}
+// Close menu if user clicks outside nav
+document.addEventListener('click',function(e){
+  var nav=document.getElementById('nav');
+  var menu=document.getElementById('mobileMenu');
+  if(menu&&menu.classList.contains('open')&&!nav.contains(e.target)&&!menu.contains(e.target)){closeMenu();}
 });
 
 (function(){
@@ -799,5 +838,3 @@ document.querySelectorAll('.nav-links a').forEach(function(a){
 </script>
 </body>
 </html>
-.  
- 

@@ -14,7 +14,8 @@ function registerAdminRoutes(app, deps) {
     complementary,
     deleteUserDataTx,
     deleteMatchData,
-    sendWaitlistAccepted
+    sendWaitlistAccepted,
+    attemptMatch
   } = deps;
 
   app.get('/admin', (req, res) => {
@@ -212,6 +213,50 @@ function registerAdminRoutes(app, deps) {
       res.json({ ok: true, match_id: result.matchId, ended_match_ids: result.endedMatchIds });
     } catch (e) {
       res.status(e.statusCode || 500).json({ error: e.message || 'Failed to create manual match' });
+    }
+  });
+
+  // POST /admin/run-matching — attempt to match every unmatched user who has completed the scan
+  app.post('/admin/run-matching', requireAdmin, (req, res) => {
+    try {
+      // Get all unmatched users who have an archetype
+      const waiting = db.prepare(`
+        SELECT u.id FROM users u
+        LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
+        WHERE m.id IS NULL AND u.archetype IS NOT NULL
+        ORDER BY u.created_at ASC
+      `).all();
+
+      let matched = 0;
+      const skipped = [];
+
+      for (const row of waiting) {
+        // Re-check they're still unmatched (earlier iteration might have matched them)
+        const alreadyMatched = stmts.getMatch.get(row.id, row.id);
+        if (alreadyMatched) continue;
+
+        const matchId = attemptMatch(row.id);
+        if (matchId) {
+          matched++;
+        } else {
+          skipped.push(row.id);
+        }
+      }
+
+      res.json({
+        ok: true,
+        matched,
+        still_waiting: skipped.length,
+        still_waiting_ids: skipped,
+        message: matched > 0
+          ? `Matched ${matched} pair${matched > 1 ? 's' : ''}. ${skipped.length} user${skipped.length !== 1 ? 's' : ''} still waiting (no compatible partner available).`
+          : skipped.length > 0
+            ? `${skipped.length} user${skipped.length !== 1 ? 's' : ''} waiting but no compatible partners available yet.`
+            : 'Everyone is already matched.'
+      });
+    } catch (e) {
+      console.error('Run-matching error:', e);
+      res.status(500).json({ error: 'Matching run failed: ' + (e.message || 'unknown error') });
     }
   });
 

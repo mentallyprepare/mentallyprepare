@@ -1,13 +1,11 @@
 {
-  "name": "Mentally Prepare — The Well App",
-  "short_name": "Mentally Prepare",
-  "description": "Anonymous 21-day emotional reset with a stranger who gets it",
+  "name": "Mentally Prepare",
+  "short_name": "MP",
+  "description": "Anonymous 21-day emotional journal for college students",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#08050F",
-  "theme_color": "#08050F",
-  "orientation": "portrait",
-  "categories": ["health", "lifestyle", "social"],
+  "theme_color": "#7B5EA7",
   "icons": [
     {
       "src": "/icon-192.svg",

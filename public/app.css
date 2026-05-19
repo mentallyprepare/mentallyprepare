@@ -120,11 +120,12 @@ a:focus-visible{
 
 /* ── Tabs ── */
 .tabs{position:sticky;bottom:0;z-index:50;display:flex;background:rgba(8,5,15,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--line);padding:12px 0 max(24px,env(safe-area-inset-bottom))}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;opacity:.3;transition:opacity .2s;background:none;border:none;color:var(--ink)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;opacity:.4;transition:opacity .2s;background:none;border:none;color:var(--ink);min-height:44px;padding:8px 0}
 .tab.on{opacity:1}
-.tab-ico{font-size:19px}
-.tab-lbl{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-s)}
+.tab-ico{font-size:24px}
+.tab-lbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-s)}
 .tab.on .tab-lbl{color:var(--rose-l)}
+@media(min-width:768px){.tabs{padding:16px 0 max(24px,env(safe-area-inset-bottom))}.tab{min-height:52px;gap:8px}.tab-ico{font-size:28px}.tab-lbl{font-size:11px}}
 
 /* ── Cards ── */
 .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;position:relative;overflow:hidden}
