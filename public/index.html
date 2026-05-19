@@ -177,14 +177,17 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
 .how-rocket-mini::after{content:'';position:absolute;left:9px;top:43px;width:24px;height:20px;border-radius:50%;background:radial-gradient(circle,rgba(255,244,197,.95),rgba(255,150,112,.58) 55%,transparent 70%);filter:blur(.2px)}
 .how-rocket-window{position:absolute;left:37px;top:24px;width:11px;height:11px;border-radius:50%;background:#6c4ca0;border:3px solid rgba(255,255,255,.7);z-index:1}
 .how-missions{position:absolute;inset:0;z-index:3;list-style:none;margin:0;padding:0}
-.how-node{position:absolute;width:min(255px,26vw);padding:0}
-.how-node-1{left:62px;top:54px}.how-node-2{right:82px;top:56px}.how-node-3{left:410px;bottom:58px}.how-node-4{right:62px;bottom:58px}
-.how-pin{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;margin-bottom:16px;color:#fff;font-family:var(--font-body);font-size:14px;font-weight:800;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.9),rgba(133,240,255,.7) 24%,rgba(95,183,232,.34) 55%,rgba(217,199,255,.14) 100%);box-shadow:0 0 0 1px rgba(255,255,255,.16),0 0 26px rgba(133,240,255,.2)}
+.how-node{position:absolute;width:min(265px,26vw);padding:0}
+.how-node-1{left:64px;top:54px}.how-node-2{right:92px;top:62px}.how-node-3{left:390px;bottom:58px}.how-node-4{right:60px;bottom:22px}
+.how-pin{width:58px;height:58px;border-radius:21px;display:grid;place-items:center;margin-bottom:14px;color:#fff;font-size:26px;background:linear-gradient(145deg,rgba(248,242,255,.18),rgba(133,240,255,.08));box-shadow:0 0 0 1px rgba(255,255,255,.16),0 12px 34px rgba(0,0,0,.24),0 0 26px rgba(133,240,255,.16);transform:rotate(-8deg)}
 .how-node-2 .how-pin,.how-node-4 .how-pin{margin-left:auto}
-.how-copy{padding:18px 18px 16px;border-radius:18px;border:1px solid rgba(248,242,255,.12);background:rgba(8,5,20,.56);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
-.how-kicker{display:block;font-family:var(--font-body);font-size:10px;line-height:1;color:var(--rose-l);letter-spacing:2.2px;text-transform:uppercase;margin-bottom:10px;font-weight:800}
-.how-step-h{font-family:var(--font-display);font-size:clamp(25px,2.5vw,32px);font-weight:400;line-height:.98;margin-bottom:10px}
-.how-step-p{font-size:13.5px;color:var(--ink-m);line-height:1.65}
+.how-node-2 .how-pin{transform:rotate(7deg)}.how-node-3 .how-pin{transform:rotate(5deg)}.how-node-4 .how-pin{transform:rotate(-6deg)}
+.how-copy{position:relative;padding:20px 20px 18px;border-radius:22px;border:1px solid rgba(248,242,255,.13);background:linear-gradient(145deg,rgba(248,242,255,.105),rgba(8,5,20,.54));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 18px 50px rgba(0,0,0,.2)}
+.how-copy::before{content:'';position:absolute;top:12px;right:14px;width:32px;height:8px;border-radius:999px;background:rgba(248,242,255,.12);transform:rotate(8deg)}
+.how-node-1 .how-copy{transform:rotate(-1.4deg)}.how-node-2 .how-copy{transform:rotate(1.2deg)}.how-node-3 .how-copy{transform:rotate(.9deg)}.how-node-4 .how-copy{transform:rotate(-1deg)}
+.how-kicker{display:block;font-family:var(--font-body);font-size:12px;line-height:1;color:var(--rose-l);letter-spacing:.2px;text-transform:none;margin-bottom:10px;font-weight:700}
+.how-step-h{font-family:var(--font-display);font-size:clamp(27px,2.7vw,35px);font-weight:400;line-height:.94;margin-bottom:11px}
+.how-step-p{font-size:13.5px;color:var(--ink-m);line-height:1.72}
 .how-orb{position:absolute;border-radius:50%;z-index:1;pointer-events:none}
 .how-orb-a{width:94px;height:94px;right:30%;top:38px;background:linear-gradient(135deg,rgba(217,199,255,.55),rgba(95,183,232,.2));box-shadow:inset -12px -10px 0 rgba(18,12,44,.18)}
 .how-orb-b{width:42px;height:42px;left:38%;top:188px;background:linear-gradient(135deg,rgba(255,225,177,.7),rgba(212,133,154,.28))}
@@ -315,11 +318,12 @@ section{position:relative;z-index:1;padding:120px 24px;overflow:hidden}
   .how-route,.how-rocket-mini,.how-orb{display:none}
   .how-missions{position:relative;display:grid;gap:18px}
   .how-missions::before{content:'';position:absolute;left:26px;top:34px;bottom:34px;border-left:1px dashed rgba(248,242,255,.25)}
-  .how-node{position:relative;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:100%;display:grid;grid-template-columns:54px 1fr;gap:16px;align-items:start}
-  .how-pin{margin:0;position:relative;z-index:1}
+  .how-node{position:relative;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:100%;display:grid;grid-template-columns:58px 1fr;gap:16px;align-items:start}
+  .how-pin{margin:0;position:relative;z-index:1;border-radius:20px}
   .how-node-2 .how-pin,.how-node-4 .how-pin{margin-left:0}
-  .how-copy{border-radius:16px;padding:16px 16px 15px}
-  .how-step-h{font-size:25px}
+  .how-copy{border-radius:18px;padding:17px 16px 16px;transform:none!important}
+  .how-copy::before{width:26px;right:12px}
+  .how-step-h{font-size:28px}
   .how-step-p{font-size:14px}
   .proof-grid{grid-template-columns:1fr}
   .cta-form{flex-direction:column}
@@ -564,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
   <div class="section-inner">
     <div class="reveal">
       <span class="section-label">How it works</span>
-      <h2 class="section-h2">A 21-day orbit. <em>Built softly.</em></h2>
+      <h2 class="section-h2">How it unfolds. <em>No pressure.</em></h2>
     </div>
     <div class="how-map reveal delay-1">
       <div class="how-orb how-orb-a"></div>
@@ -575,35 +579,35 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="how-rocket-mini"><span class="how-rocket-window"></span></div>
       <ol class="how-missions">
         <li class="how-node how-node-1">
-          <div class="how-pin">01</div>
+          <div class="how-pin" aria-hidden="true">🚀</div>
           <div class="how-copy">
-            <span class="how-kicker">Launch</span>
-            <h3 class="how-step-h">Tune your pattern</h3>
-            <p class="how-step-p">Answer 11 gentle sliders about closeness, trust, distance, and what makes you feel safe.</p>
+            <span class="how-kicker">first 3 minutes</span>
+            <h3 class="how-step-h">Tell the app your vibe</h3>
+            <p class="how-step-p">Move 11 tiny sliders about closeness, distance, trust, and what feels safe for you.</p>
           </div>
         </li>
         <li class="how-node how-node-2">
-          <div class="how-pin">02</div>
+          <div class="how-pin" aria-hidden="true">🪐</div>
           <div class="how-copy">
-            <span class="how-kicker">Match</span>
-            <h3 class="how-step-h">Find your counter-orbit</h3>
-            <p class="how-step-p">We pair you with someone from another college whose emotional rhythm can meet yours.</p>
+            <span class="how-kicker">then the match appears</span>
+            <h3 class="how-step-h">Meet a mystery student</h3>
+            <p class="how-step-p">Someone from another college lands in your orbit. No names, no stalking, just the writing.</p>
           </div>
         </li>
         <li class="how-node how-node-3">
-          <div class="how-pin">03</div>
+          <div class="how-pin" aria-hidden="true">🌙</div>
           <div class="how-copy">
-            <span class="how-kicker">Nights</span>
-            <h3 class="how-step-h">Write one honest line</h3>
-            <p class="how-step-p">A nightly prompt opens. You answer privately, read theirs next day, and keep the space anonymous.</p>
+            <span class="how-kicker">every night</span>
+            <h3 class="how-step-h">Answer one real prompt</h3>
+            <p class="how-step-p">Write what you can. Read their note the next day. The whole thing stays soft and anonymous.</p>
           </div>
         </li>
         <li class="how-node how-node-4">
-          <div class="how-pin">21</div>
+          <div class="how-pin" aria-hidden="true">💫</div>
           <div class="how-copy">
-            <span class="how-kicker">Reveal</span>
-            <h3 class="how-step-h">Choose what unlocks</h3>
-            <p class="how-step-p">On day 21, names unlock only if both of you say yes. Otherwise, the orbit stays protected.</p>
+            <span class="how-kicker">day 21</span>
+            <h3 class="how-step-h">Reveal only if it feels right</h3>
+            <p class="how-step-p">If both of you say yes, names unlock. If not, it simply stays a beautiful little secret.</p>
           </div>
         </li>
       </ol>
