@@ -38,8 +38,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .star{position:absolute;width:1px;height:1px;border-radius:50%;background:rgba(255,255,255,.7)}
 .page{position:relative;z-index:1}
 .nav{position:fixed;top:0;left:0;right:0;z-index:30;height:70px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(8,5,15,.66);backdrop-filter:blur(18px);border-bottom:1px solid rgba(251,245,255,.07)}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:14px;letter-spacing:.02em}
-.brand-mark{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 28%,#fff 0 7%,#d9c7ff 10% 28%,#7b5ea7 58%,#25123e 100%);box-shadow:0 0 22px rgba(176,159,204,.3)}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:14px;letter-spacing:.02em}
+.brand-logo{width:36px;height:36px;border-radius:12px;display:block;box-shadow:0 0 26px rgba(176,159,204,.32),0 10px 24px rgba(0,0,0,.25)}
 .nav-links{display:flex;gap:28px;align-items:center}.nav-links a{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
 .nav-links a:hover{color:var(--ink)}.nav-cta{font-size:12px;font-weight:800;color:var(--ink);padding:10px 18px;border:1px solid rgba(212,133,154,.28);border-radius:999px;background:rgba(212,133,154,.08)}
 .menu-btn{display:none;background:none;border:0;color:var(--ink);font-size:22px}.mobile-menu{display:none}
@@ -99,7 +99,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .final{text-align:center;padding-bottom:128px}.final .copy{margin:20px auto 30px;max-width:560px}.footer{border-top:1px solid var(--line);padding:34px 24px;color:var(--soft);font-size:12px}.footer-inner{width:min(1120px,100%);margin:0 auto;display:flex;justify-content:space-between;gap:20px;align-items:center}.footer-links{display:flex;gap:18px}
 
 @media(max-width:900px){
-  .nav{padding:0 18px}.nav-links,.nav-cta{display:none}.menu-btn{display:block}.mobile-menu.open{display:flex}.mobile-menu{position:fixed;top:70px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--line);padding:12px 18px;flex-direction:column}.mobile-menu a{padding:14px 0;color:var(--muted);font-size:13px}
+  .nav{padding:0 18px}.brand-logo{width:38px;height:38px}.nav-links,.nav-cta{display:none}.menu-btn{display:block}.mobile-menu.open{display:flex}.mobile-menu{position:fixed;top:70px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--line);padding:12px 18px;flex-direction:column}.mobile-menu a{padding:14px 0;color:var(--muted);font-size:13px}
   .hero{padding-top:98px;padding-bottom:50px;text-align:center;min-height:auto}.hero-grid,.ritual-grid,.silent-grid{grid-template-columns:1fr;gap:30px}.hero-kicker,.hero-actions{margin-left:auto;margin-right:auto;justify-content:center}.hero-sub{margin-left:auto;margin-right:auto}.artifact-wrap{min-height:330px;margin-top:-6px}.phone{width:250px;min-height:440px}.reveal-pill{right:22px;bottom:40px}.ritual-grid{padding:26px 22px;border-radius:22px}.ritual-intro{position:static;text-align:left}.timeline{padding-left:26px}.safety-row{grid-template-columns:1fr 1fr;gap:10px}.field-grid{grid-template-columns:1fr}.section{padding:82px 20px}.headline{font-size:clamp(38px,10vw,52px)}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}
 }
 @media(max-width:520px){
@@ -110,7 +110,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 <body>
 <div class="stars" id="stars" aria-hidden="true"></div>
 <nav class="nav" id="nav">
-  <a class="brand" href="#hero" aria-label="Mentally Prepare home"><span class="brand-mark"></span><span>mentally prepare</span></a>
+  <a class="brand" href="#hero" aria-label="Mentally Prepare home"><img class="brand-logo" src="/icon-192.svg" alt="" width="36" height="36"/><span>mentally prepare</span></a>
   <div class="nav-links">
     <a href="#ritual">How it works</a><a href="#silent-room">Silent Room</a><a href="#stories">Stories</a><a href="#safety">Safety</a>
   </div>
