@@ -140,23 +140,26 @@ function registerAppRoutes(app, deps) {
   }
 
   function clearMatchForSwitch(matchId) {
-    const tablesWithMatchId = [
-      'comments',
-      'reveals',
-      'reactions',
-      'nudges',
-      'sealed_room_picks',
-      'archetype_snapshots',
-      'daily_notes',
-      'entries'
-    ];
-    for (const table of tablesWithMatchId) {
-      try {
-        db.prepare(`DELETE FROM ${table} WHERE match_id = ?`).run(matchId);
-      } catch (e) {
-        // Older databases may not have every optional table yet.
+    if (typeof deleteMatchData === 'function') {
+      deleteMatchData(matchId);
+      return;
+    }
+
+    const tables = db.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type = 'table'
+        AND name NOT LIKE 'sqlite_%'
+    `).all();
+
+    for (const { name } of tables) {
+      const refsMatch = db.prepare(`PRAGMA foreign_key_list(${JSON.stringify(name)})`).all()
+        .filter(fk => fk.table === 'matches' && fk.to === 'id');
+
+      for (const fk of refsMatch) {
+        db.prepare(`DELETE FROM "${name.replace(/"/g, '""')}" WHERE "${fk.from.replace(/"/g, '""')}" = ?`).run(matchId);
       }
     }
+
     stmts.deleteMatchById.run(matchId);
   }
 

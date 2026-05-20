@@ -389,6 +389,11 @@ ensureColumn('waitlist', 'year', 'TEXT');
 ensureColumn('waitlist', 'archetype', 'TEXT');
 ensureColumn('waitlist', 'invited_at', 'TEXT');
 ensureColumn('matches', 'constellation_name', 'TEXT');
+ensureColumn('users', 'gender', 'TEXT');
+ensureColumn('users', 'match_gender_pref', "TEXT DEFAULT 'any'");
+ensureColumn('users', 'match_year_pref', "TEXT DEFAULT 'any'");
+ensureColumn('users', 'last_active_date', 'TEXT');
+ensureColumn('users', 'switch_count', 'INTEGER DEFAULT 0');
 ensureColumn('users', 'login_email_sent_at', 'TEXT');
 
 // Silent Room — presence/witness columns
@@ -1220,16 +1225,21 @@ function attachWaitingEntriesToMatch(matchId, userIds) {
 }
 
 function deleteMatchData(matchId) {
-  stmts.deleteMatchEntries.run(matchId);
-  stmts.deleteMatchComments.run(matchId);
-  stmts.deleteMatchReveals.run(matchId);
-  stmts.deleteMatchReactions.run(matchId);
-  stmts.deleteMatchNudges.run(matchId);
-  stmts.deleteMatchSnapshots.run(matchId);
-  stmts.deleteMatchDailyNotes.run(matchId);
-  try { stmts.deleteMatchSealedPicks.run(matchId); } catch {}
-  try { db.prepare('DELETE FROM archetype_snapshots WHERE match_id = ?').run(matchId); } catch {}
-  try { db.prepare('DELETE FROM daily_notes WHERE match_id = ?').run(matchId); } catch {}
+  const tables = db.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table'
+      AND name NOT LIKE 'sqlite_%'
+  `).all();
+
+  for (const { name } of tables) {
+    const refsMatch = db.prepare(`PRAGMA foreign_key_list(${JSON.stringify(name)})`).all()
+      .filter(fk => fk.table === 'matches' && fk.to === 'id');
+
+    for (const fk of refsMatch) {
+      db.prepare(`DELETE FROM "${name.replace(/"/g, '""')}" WHERE "${fk.from.replace(/"/g, '""')}" = ?`).run(matchId);
+    }
+  }
+
   stmts.deleteMatchById.run(matchId);
 }
 

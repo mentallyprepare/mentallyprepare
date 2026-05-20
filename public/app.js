@@ -2142,7 +2142,7 @@ function toggleSiteMenu() {
 if ('serviceWorker' in navigator) {
   // Clear ALL old caches first
   caches.keys().then(names => {
-    names.forEach(n => { if (n !== 'mp-v7') caches.delete(n); });
+    names.forEach(n => { if (n !== 'mp-v9') caches.delete(n); });
   });
   navigator.serviceWorker.getRegistrations().then(regs => {
     // Unregister any old SWs, then register fresh
