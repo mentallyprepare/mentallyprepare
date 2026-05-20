@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-v8';
+const CACHE_NAME = 'mp-v9';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icon-192.svg'
@@ -22,6 +22,10 @@ self.addEventListener('activate', event => {
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then(clients => {
+        clients.forEach(client => client.postMessage({ type: 'MP_SW_UPDATED', cache: CACHE_NAME }));
+      })
   );
 });
 
@@ -35,6 +39,19 @@ self.addEventListener('fetch', event => {
 
   // API calls — network only
   if (url.pathname.startsWith('/api/')) return;
+
+  // App shell and code must always come from the network. Old cached JS kept
+  // showing the removed partner-switch failure copy for returning users.
+  if (
+    request.mode === 'navigate' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname === '/app'
+  ) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
 
   // Network first, cache fallback
   event.respondWith(
