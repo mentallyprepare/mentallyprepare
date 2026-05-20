@@ -1240,6 +1240,111 @@ function renderPast() {
   initScrollReveal('#s-past');
 }
 
+function formatEntryDate(dateStr) {
+  if (!dateStr) return 'Written quietly';
+  const parsed = new Date(dateStr.endsWith('Z') ? dateStr : dateStr + 'Z');
+  if (isNaN(parsed.getTime())) return 'Written quietly';
+  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function renderEntryTimeline(writtenDays, currentDay) {
+  const dots = Array.from({ length: 21 }, function(_, idx) {
+    const d = idx + 1;
+    const classes = ['archive-day-dot'];
+    if (writtenDays.has(d)) classes.push('written');
+    if (d === currentDay) classes.push('current');
+    if (d > currentDay) classes.push('future');
+    return `<span class="${classes.join(' ')}" title="Day ${d}"><span>${d}</span></span>`;
+  }).join('');
+
+  return `
+    <div class="archive-timeline">
+      <div class="archive-timeline-top"><span>21-day constellation</span><span>${writtenDays.size}/21 written</span></div>
+      <div class="archive-day-line">${dots}</div>
+    </div>`;
+}
+
+function renderArchiveEntryCard(entry, idx, meta) {
+  const prompt = entry.prompt ? escapeHtml(entry.prompt.replace(/^"|"$/g, '')) : 'Free-written note';
+  const mood = entry.mood || '·';
+  const date = formatEntryDate(entry.created_at);
+  const words = (entry.text || '').trim().split(/\s+/).filter(Boolean).length;
+  return `
+    <button class="archive-entry-card reveal-on-scroll" type="button" onclick="showEntryDetail(${idx})">
+      <span class="archive-entry-glow"></span>
+      <div class="archive-entry-top">
+        <div>
+          <div class="archive-entry-kicker">Sealed note</div>
+          <div class="archive-entry-day">Day ${entry.day}</div>
+        </div>
+        <div class="archive-entry-meta">
+          <span>${escapeHtml(mood)}</span>
+          <span>${escapeHtml(date)}</span>
+        </div>
+      </div>
+      <div class="archive-entry-prompt">${prompt}</div>
+      <div class="archive-entry-text">${escapeHtml(entry.text)}</div>
+      <div class="archive-entry-foot">
+        <span>${words} word${words === 1 ? '' : 's'}</span>
+        ${meta.bothWrote ? '<span>Both wrote</span>' : '<span>Private archive</span>'}
+        <strong>Read quietly</strong>
+      </div>
+      ${meta.latest ? '<div class="archive-entry-tag">Most recent entry</div>' : ''}
+    </button>`;
+}
+
+function renderPast() {
+  if (!state || !state.match) return;
+  const day = state.match.day;
+  const partnerMap = {};
+  (state.partnerEntries || []).forEach(e => { partnerMap[e.day] = true; });
+  const entries = state.entries || [];
+  const writtenDays = new Set(entries.map(e => e.day));
+  const writtenCount = entries.length;
+  const latestDay = entries.length ? entries[0].day : null;
+
+  document.getElementById('s-past').innerHTML = `
+    <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
+    <div class="archive-shell">
+      <div class="archive-orbit archive-orbit-one"></div>
+      <div class="archive-orbit archive-orbit-two"></div>
+      <div class="archive-star archive-star-a">✦</div>
+      <div class="archive-star archive-star-b">✧</div>
+      <div class="archive-header">
+        <div class="archive-status">
+          <span>Your private archive</span>
+          <span>${writtenCount} note${writtenCount === 1 ? '' : 's'} sealed so far</span>
+          <span>Day ${day} of 21</span>
+        </div>
+        <div class="archive-eyebrow">Your entries</div>
+        <h1 class="archive-title"><span>${writtenCount || 'No'} night${writtenCount === 1 ? '' : 's'}.</span><em>${writtenCount || 'No'} honest thing${writtenCount === 1 ? '' : 's'}.</em></h1>
+        <p class="archive-sub">Every note you seal becomes part of your 21-day constellation.</p>
+      </div>
+      ${renderEntryTimeline(writtenDays, day)}
+      ${entries.length ? `
+        <div class="archive-list">
+          ${entries.map((e,i) => renderArchiveEntryCard(e, i, { latest: e.day === latestDay, bothWrote: !!partnerMap[e.day] })).join('')}
+        </div>
+        <div class="archive-export-wrap">
+          <button class="archive-export" onclick="exportEntries()">
+            <span class="archive-export-icon">▣</span>
+            <span><strong>Export my archive</strong><small>Download your entries as text.</small></span>
+          </button>
+        </div>
+      ` : `
+        <div class="archive-empty">
+          <div class="archive-empty-moon"></div>
+          <h2>Nothing sealed yet.</h2>
+          <p>Tonight can be your first honest line.</p>
+          <button class="archive-empty-btn" onclick="goToJournal()">Write tonight's note</button>
+        </div>
+      `}
+    </div>
+    <div style="height:18px;"></div>
+    ${renderTabs('entries')}`;
+  initScrollReveal('#s-past');
+}
+
 // ═══════════════════════════════════════
 // PROFILE
 // ═══════════════════════════════════════
@@ -2142,7 +2247,7 @@ function toggleSiteMenu() {
 if ('serviceWorker' in navigator) {
   // Clear ALL old caches first
   caches.keys().then(names => {
-    names.forEach(n => { if (n !== 'mp-v9') caches.delete(n); });
+    names.forEach(n => { if (n !== 'mp-v10') caches.delete(n); });
   });
   navigator.serviceWorker.getRegistrations().then(regs => {
     // Unregister any old SWs, then register fresh
