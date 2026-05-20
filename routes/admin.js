@@ -19,6 +19,84 @@ function registerAdminRoutes(app, deps) {
     attemptMatch
   } = deps;
 
+  const appLink = process.env.APP_BASE_URL || 'https://mymentallyprepare.com/app';
+
+  function parseDate(value) {
+    if (!value) return null;
+    const date = new Date(String(value).includes('T') ? value : String(value) + 'Z');
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function startOfToday() {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function daysSince(value, fallback = null) {
+    const date = parseDate(value) || parseDate(fallback);
+    if (!date) return null;
+    return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+  }
+
+  function wasToday(value) {
+    const date = parseDate(value);
+    return !!date && date >= startOfToday();
+  }
+
+  function withinLast24Hours(value) {
+    const date = parseDate(value);
+    return !!date && (Date.now() - date.getTime()) <= 86400000;
+  }
+
+  function buildReengagementEmail({ user, day, status, partnerWaiting }) {
+    const name = user.name || 'there';
+    const templates = {
+      partner_waiting: {
+        action: 'Send partner waiting reminder',
+        subject: 'Someone is waiting for your note tonight',
+        body: `Hi ${name},\n\nYour anonymous partner has been showing up.\n\nYou do not have to write something perfect tonight. One honest line is enough.\n\nCome back and seal today's note:\n${appLink}\n\nQuietly,\nMentally Prepare`
+      },
+      missed_today: {
+        action: 'Send missed note reminder',
+        subject: `Your Day ${day || 1} note is still open`,
+        body: `Hi ${name},\n\nTonight's note is still waiting.\n\nYou can write one sentence, one feeling, or one thing you could not say anywhere else.\n\nOpen your private room:\n${appLink}\n\nMentally Prepare`
+      },
+      inactive_2_days: {
+        action: 'Send soft return email',
+        subject: 'You are not behind',
+        body: `Hi ${name},\n\nYou have been away for a little while.\n\nThat is okay. You are not behind. You can return with just one honest line.\n\nYour private room is still here:\n${appLink}\n\nMentally Prepare`
+      },
+      inactive_5_days: {
+        action: 'Send 21-day reset email',
+        subject: 'Want to continue your 21-day reset?',
+        body: `Hi ${name},\n\nYou started something honest here.\n\nIf you still want to continue, come back tonight. If your partner has been quiet too, we can help you find a new match when available.\n\nReturn here:\n${appLink}\n\nMentally Prepare`
+      },
+      waiting_for_match: {
+        action: 'Send waiting for match update',
+        subject: 'We are still finding the right anonymous match',
+        body: `Hi ${name},\n\nYou are on the list for a match.\n\nWhile we look for someone emotionally compatible, you can still write your first private note.\n\nOpen your room:\n${appLink}\n\nMentally Prepare`
+      },
+      no_scan_yet: {
+        action: 'Send scan completion email',
+        subject: 'Your anonymous match starts with one small scan',
+        body: `Hi ${name},\n\nYou created your Mentally Prepare account, but your emotional scan is still incomplete.\n\nIt takes only a few minutes and helps us match you with the right anonymous partner.\n\nComplete it here:\n${appLink}\n\nMentally Prepare`
+      },
+      never_started: {
+        action: 'Send first note invitation',
+        subject: 'Tonight can be your first honest line',
+        body: `Hi ${name},\n\nYour private room is ready when you are.\n\nYou do not have to explain everything. Start with one honest line and let that be enough.\n\nOpen your room:\n${appLink}\n\nMentally Prepare`
+      },
+      active_today: {
+        action: 'No email needed today',
+        subject: '',
+        body: ''
+      }
+    };
+
+    return templates[status] || (partnerWaiting ? templates.partner_waiting : templates.missed_today);
+  }
+
   app.get('/admin', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'admin.html'));
   });
@@ -84,6 +162,121 @@ function registerAdminRoutes(app, deps) {
       res.json(rows.map(row => ({ ...row, has_match: !!row.match_id })));
     } catch (e) {
       res.status(500).json({ error: 'Failed to load users' });
+    }
+  });
+
+  app.get('/api/admin/reengagement-users', requireAdmin, (req, res) => {
+    try {
+      const users = db.prepare(`
+        SELECT id, name, email, college, year, archetype, last_active_date, created_at
+        FROM users
+        ORDER BY created_at DESC
+      `).all();
+
+      const matches = db.prepare('SELECT * FROM matches ORDER BY started_at DESC').all();
+      const entries = db.prepare(`
+        SELECT id, user_id, match_id, day, created_at
+        FROM entries
+        ORDER BY created_at DESC
+      `).all();
+
+      const matchByUser = new Map();
+      for (const match of matches) {
+        if (!matchByUser.has(match.user1_id)) matchByUser.set(match.user1_id, match);
+        if (!matchByUser.has(match.user2_id)) matchByUser.set(match.user2_id, match);
+      }
+
+      const entriesByUser = new Map();
+      const entriesByUserDay = new Map();
+      for (const entry of entries) {
+        if (!entriesByUser.has(entry.user_id)) entriesByUser.set(entry.user_id, []);
+        entriesByUser.get(entry.user_id).push(entry);
+        entriesByUserDay.set(`${entry.user_id}:${entry.match_id}:${entry.day}`, entry);
+      }
+
+      const rows = users.map(user => {
+        const match = matchByUser.get(user.id);
+        const userEntries = entriesByUser.get(user.id) || [];
+        const lastEntry = userEntries[0] || null;
+        const totalEntries = userEntries.length;
+        const daysInactive = daysSince(user.last_active_date, user.created_at);
+        const daysSinceLastEntry = lastEntry ? daysSince(lastEntry.created_at) : null;
+        const activeToday = wasToday(user.last_active_date) || (lastEntry && wasToday(lastEntry.created_at));
+
+        let partnerId = null;
+        let partner = null;
+        let partnerEntries = [];
+        let partnerLastEntry = null;
+        let partnerLastActiveDate = null;
+        let partnerDaysInactive = null;
+        let currentDay = null;
+        let wroteToday = false;
+        let partnerWroteToday = false;
+        let partnerWaiting = false;
+        let matchStatus = 'not_matched';
+
+        if (match) {
+          partnerId = match.user1_id === user.id ? match.user2_id : match.user1_id;
+          partner = users.find(u => u.id === partnerId) || null;
+          partnerEntries = entriesByUser.get(partnerId) || [];
+          partnerLastEntry = partnerEntries[0] || null;
+          partnerLastActiveDate = partner ? partner.last_active_date : null;
+          partnerDaysInactive = partner ? daysSince(partner.last_active_date, partner.created_at) : null;
+          currentDay = getMatchDay(match.started_at);
+          wroteToday = !!entriesByUserDay.get(`${user.id}:${match.id}:${currentDay}`) || (lastEntry && wasToday(lastEntry.created_at));
+          partnerWroteToday = !!entriesByUserDay.get(`${partnerId}:${match.id}:${currentDay}`) || (partnerLastEntry && wasToday(partnerLastEntry.created_at));
+          partnerWaiting = !wroteToday && !!partnerLastEntry && (partnerWroteToday || withinLast24Hours(partnerLastEntry.created_at));
+          matchStatus = 'matched';
+        }
+
+        let status = 'missed_today';
+        if (!user.archetype) status = 'no_scan_yet';
+        else if (!match) status = totalEntries ? 'waiting_for_match' : 'never_started';
+        else if (activeToday || wroteToday) status = 'active_today';
+        else if (partnerWaiting) status = 'partner_waiting';
+        else if (totalEntries === 0) status = 'never_started';
+        else if ((daysInactive || 0) >= 5 || (daysSinceLastEntry || 0) >= 5) status = 'inactive_5_days';
+        else if ((daysInactive || 0) >= 2 || (daysSinceLastEntry || 0) >= 2) status = 'inactive_2_days';
+
+        const atRiskDropoff = totalEntries > 0 && !wroteToday && (daysSinceLastEntry || 0) >= 2;
+        const email = buildReengagementEmail({ user, day: currentDay, status, partnerWaiting });
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          college: user.college,
+          year: user.year,
+          archetype: user.archetype,
+          matchStatus,
+          matchId: match ? match.id : null,
+          currentDay,
+          lastActiveDate: user.last_active_date || user.created_at,
+          daysInactive,
+          lastEntryDate: lastEntry ? lastEntry.created_at : null,
+          daysSinceLastEntry,
+          totalEntries,
+          wroteToday: !!wroteToday,
+          partnerWroteToday: !!partnerWroteToday,
+          partnerLastActiveDate,
+          partnerDaysInactive,
+          partnerWaiting: !!partnerWaiting,
+          status,
+          statuses: Array.from(new Set([status, atRiskDropoff ? 'at_risk_dropoff' : null].filter(Boolean))),
+          suggestedEmailType: status,
+          suggestedAction: email.action,
+          suggestedSubject: email.subject,
+          suggestedEmailBody: email.body
+        };
+      }).sort((a, b) => {
+        if (a.partnerWaiting !== b.partnerWaiting) return a.partnerWaiting ? -1 : 1;
+        return (b.daysInactive || 0) - (a.daysInactive || 0);
+      });
+
+      res.json({ ok: true, generatedAt: new Date().toISOString(), users: rows });
+    } catch (e) {
+      console.error('Re-engagement admin error:', e);
+      res.status(500).json({ error: 'Failed to load re-engagement users' });
     }
   });
 
