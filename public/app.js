@@ -5,16 +5,57 @@ async function api(method, path, body) {
   const opts = { method, headers: {}, credentials: 'same-origin' };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   const res = await fetch('/api' + path, opts);
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Something did not save. Try once more.');
   return data;
 }
 
 let state = null;
+function normalizeState(data) {
+  if (!data || typeof data !== 'object') return data;
+  data.user = data.user || {};
+  data.entries = Array.isArray(data.entries) ? data.entries : [];
+  data.partnerEntries = Array.isArray(data.partnerEntries) ? data.partnerEntries : [];
+  data.comments = Array.isArray(data.comments) ? data.comments : [];
+  data.reactions = Array.isArray(data.reactions) ? data.reactions : [];
+  data.nudges = Array.isArray(data.nudges) ? data.nudges : [];
+  data.waitingInfo = data.waitingInfo || {};
+  data.partnerStatus = data.partnerStatus || {
+    hasPartner: !!data.match,
+    status: data.match ? 'unknown' : 'waiting',
+    friendlyTitle: data.match ? 'Your anonymous partner' : 'We are still looking for the right anonymous match.',
+    friendlyMessage: data.match ? 'You can keep writing while the room settles.' : 'You can write tonight while we search.',
+    unsealMessage: 'Notes open after midnight IST.',
+    switchesRemaining: 0
+  };
+  if (data.match) {
+    data.match.partner = data.match.partner || {};
+    data.match.partner.archetype = data.match.partner.archetype || 'connector';
+    data.match.partner.scores = data.match.partner.scores || { openness: 50, awareness: 50, guard: 50, reciprocity: 50 };
+    data.match.promptChoices = Array.isArray(data.match.promptChoices) ? data.match.promptChoices : [];
+  }
+  return data;
+}
 async function loadState() {
-  try { state = await api('GET', '/me'); return true; }
+  try { state = normalizeState(await api('GET', '/me')); return true; }
   catch { state = null; return false; }
 }
+
+function showAppError() {
+  const active = document.querySelector('.screen.active') || document.getElementById('s-splash');
+  if (active) {
+    active.innerHTML = `
+      <div class="app-error-state">
+        <div class="app-error-title">Something did not open properly.</div>
+        <p>Refresh once, or come back in a moment.</p>
+        <button class="btn" type="button" onclick="location.reload()">Refresh</button>
+      </div>`;
+    active.classList.add('active');
+  }
+}
+
+window.addEventListener('error', function() { showAppError(); });
+window.addEventListener('unhandledrejection', function() { showAppError(); });
 
 // ═══════════════════════════════════════
 // DATA
@@ -337,6 +378,13 @@ if (!isLowMotionDevice) {
   }, { passive: true });
 }
 
+// Stable fix: keep the app calm and 2D. The cinematic depth/stardust layer was
+// the most recent visual-risk surface and is disabled until the core app is stable.
+initCosmicMotion = function() {};
+afterRenderMotion = function() {};
+enhanceDepthCards = function() {};
+bindFocusMode = function() {};
+bindDepthHover = function() {};
 initCosmicMotion();
 
 // ═══════════════════════════════════════
@@ -345,6 +393,10 @@ initCosmicMotion();
 function go(id) {
   const prev = document.querySelector('.screen.active');
   const el = document.getElementById(id);
+  if (!el) {
+    showAppError();
+    return;
+  }
   if (prev === el) return;
   if (prev) prev.classList.remove('active','entering');
   el.classList.add('active','entering');
@@ -355,6 +407,7 @@ function go(id) {
 
 function toast(msg, duration) {
   const t = document.getElementById('toast');
+  if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(t._tid);
@@ -374,13 +427,16 @@ function typingDots() { return '<div class="typing-dots"><span></span><span></sp
 // VIEW SWITCHING
 // ═══════════════════════════════════════
 function startApp() {
-  document.getElementById('landing').style.display = 'none';
-  document.getElementById('app-area').style.display = 'block';
+  const landing = document.getElementById('landing');
+  const appArea = document.getElementById('app-area');
+  if (landing) landing.style.display = 'none';
+  if (appArea) appArea.style.display = 'block';
   document.body.classList.add('app-active');
   document.getElementById('navCta').textContent = '← Back to Home';
   document.getElementById('navCta').onclick = function() { showLanding(); };
   // Close mobile menu if open
-  document.querySelector('.site-nav-links').classList.remove('open');
+  const navLinks = document.querySelector('.site-nav-links');
+  if (navLinks) navLinks.classList.remove('open');
   // If already logged in, route to correct screen
   if (state) { routeToScreen(); }
   else { go('s-splash'); }
@@ -388,8 +444,10 @@ function startApp() {
 }
 
 function showLanding() {
-  document.getElementById('landing').style.display = '';
-  document.getElementById('app-area').style.display = 'none';
+  const landing = document.getElementById('landing');
+  const appArea = document.getElementById('app-area');
+  if (landing) landing.style.display = '';
+  if (appArea) appArea.style.display = 'none';
   document.body.classList.remove('app-active','focus-writing');
   setMotionMode('idle');
   document.getElementById('navCta').textContent = 'Begin tonight';
@@ -2375,6 +2433,7 @@ document.addEventListener('click', function(e) {
 // Cursor glow (throttled with RAF)
 (function(){
   var glow = document.getElementById('cursorGlow');
+  if (!glow) return;
   if(window.matchMedia('(pointer:fine)').matches){
     var mx=0,my=0,raf=false;
     document.addEventListener('mousemove', function(e){
@@ -2390,6 +2449,7 @@ document.addEventListener('click', function(e) {
 // Floating particles (reduced count)
 (function(){
   var c = document.getElementById('floatParticles');
+  if (!c) return;
   var colors = ['var(--rose)','var(--purple-l)','var(--gold)'];
   for(var i = 0; i < 8; i++){
     var p = document.createElement('div');
@@ -2402,9 +2462,11 @@ document.addEventListener('click', function(e) {
 // Mobile menu toggle
 function toggleSiteMenu() {
   const links = document.querySelector('.site-nav-links');
+  if (!links) return;
   const nextState = !links.classList.contains('open');
   links.classList.toggle('open', nextState);
-  document.getElementById('siteMenuBtn').setAttribute('aria-expanded', String(nextState));
+  const btn = document.getElementById('siteMenuBtn');
+  if (btn) btn.setAttribute('aria-expanded', String(nextState));
 }
 
 // Service Worker: force-update old versions

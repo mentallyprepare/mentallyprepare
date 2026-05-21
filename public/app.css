@@ -1500,3 +1500,122 @@ textarea,#journal-draft,#tq-draft,.silent-textarea{font-family:var(--font-displa
 #app-area .edc-text{font-family:var(--font-display);font-style:italic;font-size:24px;line-height:1.45;color:rgba(248,242,255,.9);white-space:pre-wrap;margin:18px 0 22px}
 #app-area .edc-partner{border-top:1px solid rgba(248,242,255,.08);padding-top:18px}
 #app-area .edc-partner-lbl,.edc-comments-lbl{letter-spacing:.16em;color:rgba(235,180,194,.58)}
+
+/* Stable app repair: remove the recent cinematic/depth layer from the product UI. */
+.cosmic-depth,
+.float-particles,
+.celestial-anchor,
+.cursor-glow,
+.depth-plane,
+.stardust,
+.shooting-star,
+.archive-orbit,
+.archive-star,
+.archive-entry-glow {
+  display:none!important;
+}
+
+body {
+  background:#08050f!important;
+  overflow-x:hidden;
+}
+
+body::before {
+  display:none!important;
+}
+
+.particles,
+.stars {
+  opacity:.12!important;
+  pointer-events:none!important;
+}
+
+#app-area .screen::after {
+  display:none!important;
+}
+
+#app-area .app-wrap {
+  width:min(100%,560px);
+  max-width:560px;
+  margin:0 auto;
+}
+
+#app-area .mini-card,
+#app-area .arch-mini,
+#app-area .perm-item,
+#app-area .q-card,
+#app-area .result-card,
+#app-area .match-box,
+#app-area .streak,
+#app-area .prompt-block,
+#app-area .mood-block,
+#app-area .write-box,
+#app-area .sealed-card,
+#app-area .partner-card,
+#app-area .entry,
+#app-area .profile-planet-card,
+#app-area .traits,
+#app-area .partner-card-p,
+#app-area .dp-card,
+#app-area .settings-list,
+#app-area .si,
+#app-area .wall,
+#app-area .tq-prompt-card,
+#app-area .tq-write-box,
+#app-area .tq-whisper-card,
+#app-area .tq-sealed-entry-card,
+#app-area .silent-crisis-card,
+#app-area .note-card,
+#app-area .daily-note-card,
+#app-area .archive-entry-card,
+#app-area .archive-empty,
+#app-area .archive-timeline,
+#app-area .archive-export {
+  box-shadow:none!important;
+  transform:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+
+#app-area .tabs {
+  left:0;
+  right:0;
+  margin:0 auto;
+  max-width:560px;
+}
+
+.app-error-state {
+  min-height:calc(100vh - 120px);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:14px;
+  padding:32px 24px;
+  text-align:center;
+}
+
+.app-error-title {
+  font-family:var(--font-display);
+  font-size:30px;
+  color:var(--ink);
+}
+
+.app-error-state p {
+  color:var(--ink-m);
+  font-size:14px;
+  line-height:1.6;
+  max-width:280px;
+}
+
+@media(max-width:420px) {
+  #app-area .tabs {
+    border-radius:18px 18px 0 0;
+  }
+  #app-area .tab {
+    min-width:0;
+  }
+  #app-area .tab-lbl {
+    font-size:8px;
+  }
+}
