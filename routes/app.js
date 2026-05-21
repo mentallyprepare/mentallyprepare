@@ -8,6 +8,9 @@ function registerAppRoutes(app, deps) {
     parseUser,
     getPartnerId,
     getMatchDay,
+    getCurrentJourneyDayIST,
+    getNextUnsealAtIST,
+    isEntryUnlocked,
     prompts,
     getAdaptivePrompt,
     getMoodInsights,
@@ -139,6 +142,112 @@ function registerAppRoutes(app, deps) {
     };
   }
 
+  function daysSinceEntry(entry) {
+    if (!entry || !entry.created_at) return null;
+    const raw = String(entry.created_at).trim();
+    const date = new Date((/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw) ? raw : raw.replace(' ', 'T') + 'Z'));
+    if (Number.isNaN(date.getTime())) return null;
+    return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+  }
+
+  function buildPartnerWritingStatus({ userId, partnerId, match, currentDay, visiblePartnerEntries = [], switchCount = 0 }) {
+    const switchesRemaining = Math.max(0, 2 - (switchCount || 0));
+    if (!match || !partnerId) {
+      return {
+        hasPartner: false,
+        partnerHasWrittenToday: false,
+        partnerLastEntryDay: null,
+        partnerLastEntryAt: null,
+        partnerEntriesVisible: 0,
+        partnerTotalEntries: 0,
+        waitingForPartner: false,
+        nextUnsealAt: null,
+        unsealMessage: 'We are still looking for the right anonymous match. You can write tonight while we search.',
+        daysSincePartnerEntry: null,
+        canSwitch: false,
+        switchesRemaining,
+        status: 'waiting',
+        friendlyTitle: 'We are still looking for the right anonymous match.',
+        friendlyMessage: 'You can write tonight while we search. Your first note will stay ready.'
+      };
+    }
+
+    const partnerEntriesAll = db.prepare(`
+      SELECT day, created_at
+      FROM entries
+      WHERE user_id = ? AND match_id = ?
+      ORDER BY day DESC
+    `).all(partnerId, match.id);
+    const partnerTotalEntries = partnerEntriesAll.length;
+    const partnerLastEntry = partnerEntriesAll[0] || null;
+    const todayPartnerEntry = partnerEntriesAll.find(e => Number(e.day) === Number(currentDay)) || null;
+    const myTodayEntry = stmts.getEntry.get(userId, match.id, currentDay);
+    const partnerEntriesVisible = visiblePartnerEntries.length;
+    const daysQuiet = daysSinceEntry(partnerLastEntry);
+    const canSwitchByQuiet = daysQuiet !== null && daysQuiet >= 5;
+    const canSwitch = canSwitchByQuiet && switchesRemaining > 0;
+    const waitingForPartner = !!myTodayEntry && !todayPartnerEntry;
+    const nextUnsealAt = todayPartnerEntry && !isEntryUnlocked(todayPartnerEntry, match)
+      ? getNextUnsealAtIST()
+      : null;
+
+    let status = 'active';
+    let friendlyTitle = 'Your anonymous partner';
+    let friendlyMessage = 'Notes open after midnight IST.';
+    let unsealMessage = 'Notes open after midnight IST.';
+
+    if (todayPartnerEntry && nextUnsealAt) {
+      status = 'wrote_today_sealed';
+      friendlyTitle = 'They wrote tonight.';
+      friendlyMessage = 'Their note opens after midnight IST.';
+      unsealMessage = 'Your partner has written. It will open after midnight IST.';
+    } else if (todayPartnerEntry) {
+      status = 'opened';
+      friendlyTitle = 'A note from your partner opened.';
+      friendlyMessage = 'You can read the latest opened note now.';
+      unsealMessage = 'A note from your partner opened.';
+    } else if (!waitingForPartner && visiblePartnerEntries.some(e => Number(e.day) === Number(currentDay) - 1)) {
+      status = 'opened';
+      friendlyTitle = 'A note from your partner opened.';
+      friendlyMessage = 'You can read the latest opened note now.';
+      unsealMessage = 'A note from your partner opened.';
+    } else if (!partnerTotalEntries) {
+      status = 'never_wrote';
+      friendlyTitle = 'They have not left a note yet.';
+      friendlyMessage = 'Some people return late. You can still seal your note.';
+      unsealMessage = 'Your partner has not left a note yet.';
+    } else if (!todayPartnerEntry) {
+      status = daysQuiet !== null && daysQuiet >= 2 ? 'partner_quiet' : 'not_written_today';
+      friendlyTitle = daysQuiet !== null && daysQuiet >= 2 ? 'Your partner has been quiet for a while.' : 'They have not written tonight yet.';
+      friendlyMessage = daysQuiet !== null && daysQuiet >= 2
+        ? 'You can keep waiting. If they stay quiet long enough, you can quietly look for someone new.'
+        : 'Some people return late. You can still seal your note.';
+      unsealMessage = waitingForPartner ? 'Your note is sealed. Their side is still quiet.' : 'Your partner has not written yet tonight.';
+    }
+
+    if (canSwitch) {
+      friendlyMessage = 'You can keep waiting, or quietly look for someone new.';
+    }
+
+    return {
+      hasPartner: true,
+      partnerHasWrittenToday: !!todayPartnerEntry,
+      partnerLastEntryDay: partnerLastEntry ? partnerLastEntry.day : null,
+      partnerLastEntryAt: partnerLastEntry ? partnerLastEntry.created_at : null,
+      partnerEntriesVisible,
+      partnerTotalEntries,
+      waitingForPartner,
+      nextUnsealAt,
+      unsealMessage,
+      daysSincePartnerEntry: daysQuiet,
+      canSwitch,
+      switchesRemaining,
+      status,
+      friendlyTitle,
+      friendlyMessage
+    };
+  }
+
   function clearMatchForSwitch(matchId) {
     if (typeof deleteMatchData === 'function') {
       deleteMatchData(matchId);
@@ -211,11 +320,20 @@ function registerAppRoutes(app, deps) {
       let connectionScore = 0;
       let specialDay = null;
       let unsentLetter = null;
+      let partnerStatus = buildPartnerWritingStatus({
+        userId,
+        partnerId: null,
+        match: null,
+        currentDay: 1,
+        visiblePartnerEntries: [],
+        switchCount: user.switch_count
+      });
       const waitingEntry = stmts.getWaitingEntry.get(userId);
 
       if (match) {
         const partnerId = getPartnerId(match, userId);
         const day = getMatchDay(match.started_at);
+        const unlockedJourneyDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
         const partner = parseUser(stmts.getUserById.get(partnerId));
 
         // Get special day info
@@ -244,9 +362,19 @@ function registerAppRoutes(app, deps) {
           .map((e) => ({ day: e.day, text: e.text, mood: e.mood, prompt: e.prompt, created_at: e.created_at }));
 
         // Partner entries — show entries from previous days (midnight unsealing)
-        const allPartnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, day);
+        const allPartnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, unlockedJourneyDay);
         partnerEntries = allPartnerEntries
-          .map((e) => ({ day: e.day, text: e.text, mood: e.mood }));
+          .filter((e) => isEntryUnlocked(e, match))
+          .map((e) => ({ day: e.day, text: e.text, mood: e.mood, created_at: e.created_at }));
+
+        partnerStatus = buildPartnerWritingStatus({
+          userId,
+          partnerId,
+          match,
+          currentDay: day,
+          visiblePartnerEntries: partnerEntries,
+          switchCount: user.switch_count
+        });
 
         const allComments = stmts.getComments.all(match.id, userId, partnerId);
         comments = allComments.map((c) => ({
@@ -325,6 +453,7 @@ function registerAppRoutes(app, deps) {
         match: matchData,
         entries: entriesData,
         partnerEntries,
+        partnerStatus,
         streak,
         reveal: revealData,
         comments,
@@ -394,20 +523,24 @@ function registerAppRoutes(app, deps) {
       const userId = req.session.userId;
       const user = stmts.getUserById.get(userId);
       const match = stmts.getMatch.get(userId, userId);
-      if (!match) return res.json(buildPartnerStatus({ hasPartner: false, switchCount: user ? user.switch_count : 0 }));
+      if (!match) return res.json(buildPartnerWritingStatus({ userId, partnerId: null, match: null, currentDay: 1, visiblePartnerEntries: [], switchCount: user ? user.switch_count : 0 }));
 
       const partnerId = getPartnerId(match, userId);
       const partner = stmts.getUserById.get(partnerId);
-      if (!partner) return res.json(buildPartnerStatus({ hasPartner: false, switchCount: user ? user.switch_count : 0 }));
+      if (!partner) return res.json(buildPartnerWritingStatus({ userId, partnerId: null, match: null, currentDay: 1, visiblePartnerEntries: [], switchCount: user ? user.switch_count : 0 }));
 
-      const lastActive = partner.last_active_date ? new Date(partner.last_active_date) : new Date(partner.created_at);
-      const daysSinceActive = Math.floor((Date.now() - lastActive.getTime()) / 86400000);
-      const partnerEntryCount = db.prepare('SELECT COUNT(*) as c FROM entries WHERE user_id = ? AND match_id = ?').get(partnerId, match.id).c;
+      const currentDay = getMatchDay(match.started_at);
+      const unlockedJourneyDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
+      const visiblePartnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, unlockedJourneyDay)
+        .filter((e) => isEntryUnlocked(e, match))
+        .map((e) => ({ day: e.day, created_at: e.created_at }));
 
-      res.json(buildPartnerStatus({
-        hasPartner: true,
-        daysSinceActive,
-        partnerEntryCount,
+      res.json(buildPartnerWritingStatus({
+        userId,
+        partnerId,
+        match,
+        currentDay,
+        visiblePartnerEntries,
         switchCount: user ? user.switch_count : 0
       }));
     } catch (e) {
@@ -491,7 +624,7 @@ function registerAppRoutes(app, deps) {
       const match = stmts.getMatch.get(userId, userId);
       if (!match) return res.status(400).json({ error: 'No match found' });
 
-      const currentDay = getMatchDay(match.started_at);
+      const currentDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
       if (day >= currentDay) return res.status(400).json({ error: 'That entry is still sealed' });
 
       const partnerId = getPartnerId(match, userId);
@@ -552,7 +685,7 @@ function registerAppRoutes(app, deps) {
       const match = stmts.getMatch.get(userId, userId);
       if (!match) return res.status(400).json({ error: 'No match found' });
 
-      const currentDay = getMatchDay(match.started_at);
+      const currentDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
       if (day >= currentDay) return res.status(400).json({ error: 'That entry is still sealed' });
 
       const partnerId = getPartnerId(match, userId);

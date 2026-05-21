@@ -1183,12 +1183,48 @@ function attemptMatch(userId) {
   return null;
 }
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function parseDateAsUTC(value) {
+  if (!value) return new Date(NaN);
+  const raw = String(value).trim();
+  if (!raw) return new Date(NaN);
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(raw)) return new Date(raw);
+  return new Date(raw.replace(' ', 'T') + 'Z');
+}
+
+function getISTDate(value = new Date()) {
+  const date = value instanceof Date ? value : parseDateAsUTC(value);
+  return new Date(date.getTime() + IST_OFFSET_MS);
+}
+
+function getISTDayIndex(value = new Date()) {
+  const date = value instanceof Date ? value : parseDateAsUTC(value);
+  return Math.floor((date.getTime() + IST_OFFSET_MS) / DAY_MS);
+}
+
+function getCurrentJourneyDayIST(startedAt, now = new Date(), { cap = true } = {}) {
+  const started = parseDateAsUTC(startedAt);
+  if (Number.isNaN(started.getTime())) return 1;
+  const day = Math.max(getISTDayIndex(now) - getISTDayIndex(started) + 1, 1);
+  return cap ? Math.min(day, 21) : day;
+}
+
 function getMatchDay(startedAt) {
-  const started = new Date(startedAt);
-  const now = new Date();
-  const startDay = Date.UTC(started.getUTCFullYear(), started.getUTCMonth(), started.getUTCDate());
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  return Math.min(Math.max(Math.floor((today - startDay) / 86400000) + 1, 1), 21);
+  return getCurrentJourneyDayIST(startedAt);
+}
+
+function getNextUnsealAtIST(now = new Date()) {
+  const date = now instanceof Date ? now : parseDateAsUTC(now);
+  const nextIstMidnightUtcMs = (getISTDayIndex(date) + 1) * DAY_MS - IST_OFFSET_MS;
+  return new Date(nextIstMidnightUtcMs).toISOString();
+}
+
+function isEntryUnlocked(entry, match, now = new Date()) {
+  if (!entry || !match) return false;
+  const unlockedJourneyDay = getCurrentJourneyDayIST(match.started_at, now, { cap: false });
+  return Number(entry.day) < unlockedJourneyDay;
 }
 
 function findUserByIdentifier(identifier) {
@@ -1325,6 +1361,10 @@ registerAppRoutes(app, {
   parseUser,
   getPartnerId,
   getMatchDay,
+  getISTDate,
+  getCurrentJourneyDayIST,
+  getNextUnsealAtIST,
+  isEntryUnlocked,
   prompts,
   getAdaptivePrompt,
   getMoodInsights,
@@ -1697,6 +1737,9 @@ registerAdminRoutes(app, {
   authLimiter,
   getAdminStats,
   getMatchDay,
+  getCurrentJourneyDayIST,
+  getNextUnsealAtIST,
+  isEntryUnlocked,
   attachWaitingEntriesToMatch,
   findUserByIdentifier,
   complementary,

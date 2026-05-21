@@ -93,7 +93,7 @@ const writingTips = [
   'You don\'t have to answer the prompt directly. Let it take you somewhere unexpected.',
   'Short entries are fine. One honest sentence beats three vague paragraphs.',
   'Try starting with "I feel..." or "Today I noticed..."',
-  'Don\'t censor yourself. The seal means this stays private until midnight.',
+  'Don\'t censor yourself. Partner notes open after midnight IST.',
   'If you\'re stuck, write about being stuck. That counts.',
   'Think about what you\'d want your partner to know about your day.',
   'There\'s no wrong way to do this. Just show up and be honest.'
@@ -198,6 +198,12 @@ let matchPollTimer = null;
 let countdownTimer = null;
 let selectedPrompt = null;
 let promptChoiceOffset = 0;
+let motionRaf = null;
+let lastMotionY = -1;
+let typingFocusTimer = null;
+const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+const isLowMotionDevice = prefersReducedMotion || isCoarsePointer || window.innerWidth < 760 || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
 
 // ═══════════════════════════════════════
 // STARS
@@ -213,6 +219,126 @@ let promptChoiceOffset = 0;
   }
 })();
 
+function initStardust() {
+  const host = document.getElementById('floatParticles');
+  if (!host || prefersReducedMotion || host.dataset.ready) return;
+  host.dataset.ready = '1';
+  const count = isLowMotionDevice ? 14 : 34;
+  const cols = ['rgba(248,242,255,.72)','rgba(235,180,194,.62)','rgba(232,208,160,.58)','rgba(176,159,204,.58)'];
+  for (let i = 0; i < count; i++) {
+    const dot = document.createElement('i');
+    dot.className = 'stardust';
+    const size = Math.random() * 1.8 + .8;
+    dot.style.cssText = [
+      'left:' + (Math.random() * 100).toFixed(2) + '%',
+      'top:' + (Math.random() * 100).toFixed(2) + '%',
+      'width:' + size.toFixed(2) + 'px',
+      'height:' + size.toFixed(2) + 'px',
+      'background:' + cols[Math.floor(Math.random() * cols.length)],
+      '--sdx:' + ((Math.random() * 80) - 40).toFixed(1) + 'px',
+      'animation-duration:' + (18 + Math.random() * 22).toFixed(1) + 's',
+      'animation-delay:-' + (Math.random() * 22).toFixed(1) + 's'
+    ].join(';');
+    host.appendChild(dot);
+  }
+}
+
+function setMotionMode(mode) {
+  document.body.dataset.mpMode = mode || 'idle';
+  document.body.classList.toggle('app-active', document.getElementById('app-area') && document.getElementById('app-area').style.display !== 'none');
+}
+
+function modeForScreen(id) {
+  if (id === 's-journal') return 'writing';
+  if (id === 's-waiting') return 'waiting';
+  if (id === 's-sealed' || id === 's-past' || id === 's-profile') return 'archive';
+  if (id && id.indexOf('reveal') >= 0) return 'reveal';
+  if (id && id.indexOf('silent') >= 0) return 'silent';
+  return 'idle';
+}
+
+function initCosmicMotion() {
+  initStardust();
+  if (prefersReducedMotion || motionRaf) return;
+  function tick() {
+    const y = window.scrollY || window.pageYOffset || 0;
+    if (Math.abs(y - lastMotionY) > .5) {
+      document.documentElement.style.setProperty('--mp-scroll', y.toFixed(1) + 'px');
+      lastMotionY = y;
+    }
+    motionRaf = requestAnimationFrame(tick);
+  }
+  motionRaf = requestAnimationFrame(tick);
+}
+
+function enhanceDepthCards(root) {
+  root = root || document;
+  root.querySelectorAll('.write-box,.sealed-card,.partner-card,.entry,.archive-entry-card,.partner-status-panel,.note-card,.daily-note-card,.tq-write-box,.tq-prompt-card,.tq-whisper-card,.silent-line-block,.wall,.profile-planet-card,.traits,.si,.days-card,.contact-card').forEach(function(el) {
+    if (!el.classList.contains('mp-depth-card')) el.classList.add('mp-depth-card');
+  });
+}
+
+function bindFocusMode(root) {
+  root = root || document;
+  root.querySelectorAll('#journal-draft,#tq-draft,.silent-textarea').forEach(function(area) {
+    if (area.dataset.focusBound) return;
+    area.dataset.focusBound = '1';
+    area.addEventListener('focus', function() {
+      document.body.classList.add('focus-writing');
+      document.documentElement.style.setProperty('--mp-focus', '1');
+      setMotionMode('writing');
+    });
+    area.addEventListener('blur', function() {
+      clearTimeout(typingFocusTimer);
+      typingFocusTimer = setTimeout(function() {
+        document.body.classList.remove('focus-writing');
+        document.documentElement.style.setProperty('--mp-focus', '0');
+        const active = document.querySelector('.screen.active');
+        setMotionMode(modeForScreen(active && active.id));
+      }, 180);
+    });
+    area.addEventListener('input', function() {
+      document.body.classList.add('focus-writing');
+      document.documentElement.style.setProperty('--mp-focus', '1');
+      const orb = document.getElementById('celestialAnchor');
+      if (orb && !prefersReducedMotion) {
+        orb.animate([
+          { transform: 'translate3d(0,calc(var(--mp-scroll) * .04 - 4px),0) scale(1.04)' },
+          { transform: 'translate3d(0,calc(var(--mp-scroll) * .04 - 6px),0) scale(1.08)' },
+          { transform: 'translate3d(0,calc(var(--mp-scroll) * .04 - 4px),0) scale(1.04)' }
+        ], { duration: 520, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      }
+    });
+  });
+}
+
+function afterRenderMotion(root) {
+  enhanceDepthCards(root || document);
+  bindFocusMode(root || document);
+}
+
+if (!isLowMotionDevice) {
+  document.addEventListener('pointermove', function(e) {
+    const card = e.target.closest && e.target.closest('.mp-depth-card');
+    if (!card || card.matches('textarea, input') || card.querySelector(':focus')) return;
+    const r = card.getBoundingClientRect();
+    const px = (e.clientX - r.left) / Math.max(r.width, 1);
+    const py = (e.clientY - r.top) / Math.max(r.height, 1);
+    card.style.setProperty('--mp-card-ry', ((px - .5) * 4.5).toFixed(2) + 'deg');
+    card.style.setProperty('--mp-card-rx', ((.5 - py) * 3.5).toFixed(2) + 'deg');
+    card.style.setProperty('--mp-card-glow-x', (px * 100).toFixed(1) + '%');
+    card.style.setProperty('--mp-card-glow-y', (py * 100).toFixed(1) + '%');
+  }, { passive: true });
+  document.addEventListener('pointerout', function(e) {
+    const card = e.target.closest && e.target.closest('.mp-depth-card');
+    if (!card) return;
+    card.style.removeProperty('--mp-card-rx');
+    card.style.removeProperty('--mp-card-ry');
+  }, { passive: true });
+}
+
+initCosmicMotion();
+
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
@@ -222,6 +348,8 @@ function go(id) {
   if (prev === el) return;
   if (prev) prev.classList.remove('active','entering');
   el.classList.add('active','entering');
+  setMotionMode(modeForScreen(id));
+  afterRenderMotion(el);
   window.scrollTo(0,0);
 }
 
@@ -248,6 +376,7 @@ function typingDots() { return '<div class="typing-dots"><span></span><span></sp
 function startApp() {
   document.getElementById('landing').style.display = 'none';
   document.getElementById('app-area').style.display = 'block';
+  document.body.classList.add('app-active');
   document.getElementById('navCta').textContent = '← Back to Home';
   document.getElementById('navCta').onclick = function() { showLanding(); };
   // Close mobile menu if open
@@ -261,6 +390,8 @@ function startApp() {
 function showLanding() {
   document.getElementById('landing').style.display = '';
   document.getElementById('app-area').style.display = 'none';
+  document.body.classList.remove('app-active','focus-writing');
+  setMotionMode('idle');
   document.getElementById('navCta').textContent = 'Begin tonight';
   document.getElementById('navCta').onclick = function() { startApp(); };
   window.scrollTo(0, 0);
@@ -795,6 +926,8 @@ function renderTonightsQuestion(data) {
     toast('Draft saved ✓');
   });
 
+  afterRenderMotion(document.getElementById('s-waiting'));
+
   // Poll for match
   clearInterval(matchPollTimer);
   matchPollTimer = setInterval(async function() {
@@ -900,6 +1033,7 @@ function renderTQSealed(data) {
       <div style="height:20px;"></div>
       ${renderTQTabs('tonight')}
     </div>`;
+  afterRenderMotion(document.getElementById('s-waiting'));
 
   // Continue polling for match
   clearInterval(matchPollTimer);
@@ -1010,7 +1144,7 @@ function renderJournal() {
     </div>
     <div id="daily-note-container"></div>
     ${renderPromptChooser()}
-    <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until entries unseal</div></div>
+    <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until midnight IST</div></div>
     <div class="prompt-block reveal-on-scroll">
       <div class="eyebrow">${state.specialDay ? '✦ ' + state.specialDay.title : 'Tonight\'s prompt'}</div>
       <div class="prompt-text">${escapeHtml(prompt)}</div>
@@ -1147,9 +1281,14 @@ async function sealEntry() {
 function startCountdown() {
   clearInterval(countdownTimer);
   function tick() {
-    const now = new Date(), mid = new Date(now);
-    mid.setHours(24,0,0,0);
-    const d = mid - now;
+    const now = new Date();
+    const nextFromState = state && state.partnerStatus && state.partnerStatus.nextUnsealAt
+      ? new Date(state.partnerStatus.nextUnsealAt)
+      : null;
+    const target = nextFromState && !isNaN(nextFromState.getTime())
+      ? nextFromState
+      : new Date((Math.floor((now.getTime() + 19800000) / 86400000) + 1) * 86400000 - 19800000);
+    const d = Math.max(0, target - now);
     const h = String(Math.floor(d/3600000)).padStart(2,'0');
     const m = String(Math.floor((d%3600000)/60000)).padStart(2,'0');
     const s = String(Math.floor((d%60000)/1000)).padStart(2,'0');
@@ -1159,32 +1298,50 @@ function startCountdown() {
   tick(); countdownTimer = setInterval(tick, 1000);
 }
 
+function formatUnsealAt(value) {
+  if (!value) return 'midnight IST';
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return 'midnight IST';
+  return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' }) + ' IST';
+}
+
 function renderSealed() {
   if (!state || !state.match) return;
   const day = state.match.day;
   const matchArch = archetypes[state.match.partner.archetype];
   const lastEntry = state.entries.length ? state.entries[0] : null;
+  const ps = state.partnerStatus || {};
+  const sealedCopy = ps.hasPartner
+    ? (ps.unsealMessage || 'Notes open after midnight IST.')
+    : 'You can write tonight while we look for the right anonymous match.';
+  const partnerLine = ps.hasPartner
+    ? (ps.partnerHasWrittenToday ? 'Partner wrote today: yes' : 'Partner wrote today: no')
+    : 'Waiting for match';
+  const nextLine = ps.nextUnsealAt ? ('Next note opens at: ' + formatUnsealAt(ps.nextUnsealAt)) : 'Notes open after midnight IST';
 
   document.getElementById('s-sealed').innerHTML = `
     <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
     <div class="sealed-hero">
       <div class="moon-base sealed-moon"></div>
       <div class="sealed-ey">Entry sealed ✦</div>
-      <h2 class="sealed-h">Written.<br/><em>Waiting for midnight.</em></h2>
-      <p class="sealed-p">Your entry is locked. You'll both unseal at midnight — together.</p>
+      <h2 class="sealed-h">Written.<br/><em>Waiting for midnight IST.</em></h2>
+      <p class="sealed-p">${escapeHtml(sealedCopy)}</p>
     </div>
     ${lastEntry ? `<div class="sealed-card">
       <div class="sealed-card-top"><div class="sealed-card-lbl">Your entry · Day ${lastEntry.day} · ${lastEntry.mood}</div><div class="sealed-card-badge">🔒 sealed</div></div>
       <div class="sealed-txt">${escapeHtml(lastEntry.text)}</div>
-      <div class="unseals">Unseals at midnight</div>
+      <div class="unseals">Partner notes open after midnight IST</div>
     </div>` : ''}
     <div class="partner-card">
       <div class="p-moon">${matchArch.emoji}</div>
-      <div><div class="p-ey">Your partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text">Checking… ${typingDots()}</div></div>
+      <div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text">${escapeHtml(partnerLine)} · ${escapeHtml(nextLine)}</div></div>
     </div>
+    <div id="partner-status-module"></div>
     <div id="switch-banner-area"></div>
     <div style="height:40px;"></div>
     ${renderTabs('partner')}`;
+
+  renderPartnerStatusModule('partner-status-module', true);
 
   // Check partner activity and build unsealing slot for previous day's partner entry
   checkPartnerStatus().then(ps => {
@@ -1558,6 +1715,7 @@ async function devPartnerReveal() {
 // PARTNER SWITCHING
 // ═══════════════════════════════════════
 async function checkPartnerStatus() {
+  if (state && state.partnerStatus) return state.partnerStatus;
   try {
     return await api('GET', '/partner-status');
   } catch { return null; }
@@ -1568,8 +1726,12 @@ function partnerStatusHtml(ps, compact) {
     return `<div class="partner-status-panel"><div class="partner-status-title">Checking your anonymous room...</div><p class="partner-status-copy">Opening your room gently.</p></div>`;
   }
   const title = ps.friendlyTitle || (ps.hasPartner ? 'Your anonymous partner is here.' : 'We are still looking for the right anonymous match.');
-  const copy = ps.friendlyMessage || 'You can keep writing while the room settles.';
-  const meta = ps.hasPartner ? `${ps.partnerEntryCount || 0} opened note${ps.partnerEntryCount === 1 ? '' : 's'}` : 'waiting room';
+  const copy = ps.friendlyMessage || ps.unsealMessage || 'You can keep writing while the room settles.';
+  const visibleCount = ps.partnerEntriesVisible || 0;
+  const totalCount = ps.partnerTotalEntries || ps.partnerEntryCount || 0;
+  const meta = ps.hasPartner ? `${visibleCount} opened of ${totalCount} note${totalCount === 1 ? '' : 's'}` : 'waiting room';
+  const wroteToday = ps.hasPartner ? `<span>Partner wrote today: ${ps.partnerHasWrittenToday ? 'yes' : 'no'}</span>` : '';
+  const nextOpen = ps.nextUnsealAt ? `<span>Next opens: ${escapeHtml(formatUnsealAt(ps.nextUnsealAt))}</span>` : '<span>Opens after midnight IST</span>';
   const switchActions = ps.canSwitch ? `
     <div class="partner-status-actions">
       <button class="prompt-small-btn ghost" type="button" data-keep-waiting>Keep waiting</button>
@@ -1581,6 +1743,8 @@ function partnerStatusHtml(ps, compact) {
     <p class="partner-status-copy">${escapeHtml(copy)}</p>
     <div class="partner-status-meta">
       <span>${escapeHtml(meta)}</span>
+      ${wroteToday}
+      ${nextOpen}
       <span>${ps.switchesRemaining || 0} quiet switch${ps.switchesRemaining === 1 ? '' : 'es'} left</span>
     </div>
     ${switchActions}
@@ -1831,7 +1995,7 @@ function renderAbout() {
       <div class="sec-ey">Why it works</div>
       <div class="about-card"><div class="about-card-h"><div class="about-card-ico">🌒</div><div class="about-card-title">Opposite types, on purpose</div></div><div class="about-card-p">You're matched with someone who connects differently. That tension is the growth.</div></div>
       <div class="about-card"><div class="about-card-h"><div class="about-card-ico">🔒</div><div class="about-card-title">Anonymous until Day 21</div></div><div class="about-card-p">No profile pictures. No names. Just words — raw, honest, and unfiltered.</div></div>
-      <div class="about-card"><div class="about-card-h"><div class="about-card-ico">🌙</div><div class="about-card-title">Midnight ritual</div></div><div class="about-card-p">Entries seal at midnight and unseal together. The ritual creates intimacy.</div></div>
+      <div class="about-card"><div class="about-card-h"><div class="about-card-ico">🌙</div><div class="about-card-title">Midnight ritual</div></div><div class="about-card-p">Partner notes open after midnight IST. The ritual creates intimacy without same-night pressure.</div></div>
       <div class="about-card"><div class="about-card-h"><div class="about-card-ico">✦</div><div class="about-card-title">Consent-based reveal</div></div><div class="about-card-p">Both must say yes to reveal. One no keeps it anonymous forever. Zero rejection risk.</div></div>
     </div>
     <div class="builder-card"><div class="builder-avatar">✦</div><div><div class="builder-name">Built by Anushka Kumar</div><div class="builder-sub">HP Dreams Unlocked Top 40 · HPAIR Harvard Delegate · IIT Kharagpur</div></div></div>
@@ -1980,7 +2144,7 @@ function showEntryDetail(idx) {
                }
              </div>
              <button class="report-btn" id="entryReportBtn" type="button">⚑ Report this entry</button>`
-          : `<div class="edc-partner-text" style="filter:blur(4px);user-select:none;">This entry hasn't been revealed yet.</div><div class="edc-partner-note">Partner entries appear the next day</div>`
+          : `<div class="edc-partner-text" style="filter:blur(4px);user-select:none;">Nothing has opened yet.</div><div class="edc-partner-note">${escapeHtml((state.partnerStatus && state.partnerStatus.unsealMessage) || 'Your partner’s note will appear here after midnight IST if they wrote today.')}</div>`
         }
       </div>
     </div>`;
@@ -2454,6 +2618,8 @@ function renderDailyNoteCard(container, noteData) {
       <div id="note-card-body">${isOpened ? renderNoteOpen(note) : renderNoteSealed()}</div>
     </div>`;
 
+  afterRenderMotion(container);
+
   if (!isOpened) {
     var card = document.getElementById('daily-note-card');
     card.addEventListener('click', function() { unsealNote(note); });
@@ -2465,7 +2631,7 @@ function renderNoteSealed() {
   return `<div class="note-sealed-inner">
     <div class="note-seal-ring"></div>
     <div class="note-seal-ico">✦</div>
-    <div class="note-sealed-arrived">arrived at 8:00 am · tap to unseal</div>
+    <div class="note-sealed-arrived">arrived at 8:00 am · tap to open</div>
   </div>`;
 }
 
@@ -2563,29 +2729,42 @@ function renderConstellation(matchData, entries, partnerEntries, day) {
   if (!myArch || !partnerArch) return '<div class="constellation-empty">✦</div>';
 
   var key = myArch + '-' + partnerArch;
-  var points = CONSTELLATION_SHAPES[key] || CONSTELLATION_SHAPES['protector-connector'];
+  var points = [
+    [9,74],[15,56],[26,42],[18,25],[34,18],[46,30],[58,16],
+    [74,24],[83,42],[69,54],[88,68],[72,80],[58,70],[48,86],
+    [35,75],[24,88],[14,82],[28,62],[42,54],[54,44],[64,62]
+  ];
   var name = CONSTELLATION_NAMES[key] || 'The Unknown';
 
+  var writtenMap = {};
   var partnerMap = {};
+  (entries || []).forEach(function(e) { writtenMap[e.day] = true; });
   (partnerEntries || []).forEach(function(e) { partnerMap[e.day] = true; });
-  var bothWroteDays = (entries || []).filter(function(e) { return partnerMap[e.day]; }).length;
-  var starsToShow = Math.max(1, Math.min(bothWroteDays + 1, points.length));
+  var writtenCount = Math.min((entries || []).length, 21);
+  var completeUntil = Math.max(writtenCount, Math.min(day, 21) - 1);
   var showName = day >= 7;
 
-  var starPoints = points.slice(0, starsToShow);
-  var lines = starPoints.length > 1 ? starPoints.slice(1).map(function(p, i) {
-    var prev = starPoints[i];
-    return '<line x1="' + prev[0] + '" y1="' + prev[1] + '" x2="' + p[0] + '" y2="' + p[1] + '" class="const-line" />';
-  }).join('') : '';
-
-  var stars = starPoints.map(function(p, i) {
-    var isLatest = i === starPoints.length - 1;
-    return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (isLatest ? 3.5 : 2.8) + '" class="const-star' + (isLatest ? ' latest' : '') + '" />';
+  var orbit = '<path class="const-orbit" d="M9 74 C20 18 52 2 83 42 S73 96 24 88 S28 44 64 62" />';
+  var lines = points.slice(1).map(function(p, i) {
+    var prev = points[i];
+    var cls = i + 2 <= completeUntil ? 'const-line complete' : 'const-line';
+    return '<line x1="' + prev[0] + '" y1="' + prev[1] + '" x2="' + p[0] + '" y2="' + p[1] + '" class="' + cls + '" />';
   }).join('');
+
+  var stars = points.map(function(p, i) {
+    var d = i + 1;
+    var classes = ['const-star'];
+    if (writtenMap[d]) classes.push('complete'); else classes.push('future');
+    if (partnerMap[d] && writtenMap[d]) classes.push('sync');
+    if (d === day) classes.push('current');
+    var label = 'Day ' + d + (writtenMap[d] ? ' written' : ' future');
+    return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (d === day ? 3.2 : writtenMap[d] ? 2.75 : 1.8) + '" class="' + classes.join(' ') + '"><title>' + label + '</title></circle>';
+  }).join('');
+  var starsToShow = writtenCount;
 
   return `<div class="constellation-wrap">
     <svg class="constellation-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Constellation map">
-      ${lines}${stars}
+      ${orbit}${lines}${stars}
     </svg>
     ${showName ? `<div class="constellation-name">${name}</div>` : ''}
     <div class="constellation-days">${starsToShow} of 21 nights ✦</div>
@@ -2616,7 +2795,7 @@ function buildUnsealingSlot(partnerEntry, day, partnerArchetype) {
         <div class="envelope-flap"></div>
         <div class="envelope-label">Day ${day} · ${archInfo.name || 'Your partner'}</div>
       </div>
-      <button class="btn-unseal" id="btn-unseal-ceremony" onclick="revealPartnerEntry()">🌙 Unseal tonight's entry</button>
+      <button class="btn-unseal" id="btn-unseal-ceremony" onclick="revealPartnerEntry()">🌙 Open partner note</button>
     </div>
     <div class="partner-reveal-text" id="partner-reveal-text" style="display:none;"></div>`;
   slot._partnerEntry = partnerEntry;

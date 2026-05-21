@@ -40,9 +40,20 @@
 </head>
 <body>
 
+<div class="cosmic-depth" aria-hidden="true">
+  <div class="depth-plane depth-back" data-depth-plane="back"></div>
+  <div class="depth-plane depth-nebula" data-depth-plane="nebula"></div>
+  <div class="depth-plane depth-fore" data-depth-plane="fore"></div>
+</div>
 <div class="stars" id="stars"></div>
 <div class="particles" id="particles"></div>
 <div class="float-particles" id="floatParticles"></div>
+<div class="celestial-anchor" id="celestialAnchor" aria-hidden="true">
+  <div class="celestial-glow"></div>
+  <div class="celestial-core"></div>
+  <div class="celestial-ring ring-a"></div>
+  <div class="celestial-ring ring-b"></div>
+</div>
 <div class="cursor-glow" id="cursorGlow"></div>
 
 <!-- APP NAVBAR -->
@@ -470,7 +481,7 @@
   <div class="slide">
     <div class="slide-visual">
       <div class="journal-preview">
-        <div class="jp-card"><div class="jp-top"><div class="jp-label">Day 6 · Your entry · 🌔</div></div><div class="jp-text">I keep wondering who you are. That might be weird to say. But I think about it.</div><div class="jp-sealed">🔒 Seals at midnight</div></div>
+        <div class="jp-card"><div class="jp-top"><div class="jp-label">Day 6 · Your entry · 🌔</div></div><div class="jp-text">I keep wondering who you are. That might be weird to say. But I think about it.</div><div class="jp-sealed">🔒 Partner notes open after midnight IST</div></div>
         <div class="jp-card" style="opacity:.55;filter:blur(1.5px);"><div class="jp-top"><div class="jp-label">Day 6 · Partner's entry</div></div><div class="jp-text">I keep wondering who you are too. I hope that's not too much to say this early.</div></div>
       </div>
     </div>
@@ -562,7 +573,7 @@
   <div class="slide">
     <div class="slide-visual" style="padding:24px 0 8px;flex-direction:column;align-items:flex-start;">
       <div class="perm-list">
-        <div class="perm-item"><div class="perm-ico">🌙</div><div class="perm-info"><div class="perm-title">Midnight notifications</div><div class="perm-sub">When your partner's entry unseals — we'll let you know.</div></div><button class="perm-toggle" type="button" aria-pressed="true" aria-label="Toggle midnight notifications"></button></div>
+        <div class="perm-item"><div class="perm-ico">🌙</div><div class="perm-info"><div class="perm-title">Midnight notifications</div><div class="perm-sub">When your partner's entry opens after midnight IST, we'll let you know.</div></div><button class="perm-toggle" type="button" aria-pressed="true" aria-label="Toggle midnight notifications"></button></div>
         <div class="perm-item"><div class="perm-ico">✍️</div><div class="perm-info"><div class="perm-title">Daily prompt reminder</div><div class="perm-sub">A gentle nudge at 9pm so you don't break your streak.</div></div><button class="perm-toggle" type="button" aria-pressed="true" aria-label="Toggle daily prompt reminders"></button></div>
         <div class="perm-item"><div class="perm-ico">🔒</div><div class="perm-info"><div class="perm-title">Anonymous — always</div><div class="perm-sub">Your real name is never shared until both say yes on Day 21.</div></div><span class="perm-toggle" aria-hidden="true" style="cursor:default;opacity:.5;"></span></div>
       </div>
@@ -574,7 +585,7 @@
     <div class="slide-text">
       <div class="eyebrow">One last thing</div>
       <h2 class="slide-h">A few things<br/><em>before you begin.</em></h2>
-      <p class="slide-p">Turn on notifications so you don't miss your partner's entry unsealing at midnight.</p>
+      <p class="slide-p">Turn on notifications so you don't miss your partner's entry opening after midnight IST.</p>
     </div>
     <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:10px;">
       <input type="checkbox" id="ageCheckbox" style="margin-top:3px;accent-color:var(--rose);width:16px;height:16px;flex-shrink:0;"/>

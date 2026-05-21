@@ -10,6 +10,9 @@ function registerAdminRoutes(app, deps) {
     authLimiter,
     getAdminStats,
     getMatchDay,
+    getCurrentJourneyDayIST,
+    getNextUnsealAtIST,
+    isEntryUnlocked,
     attachWaitingEntriesToMatch,
     findUserByIdentifier,
     complementary,
@@ -29,8 +32,8 @@ function registerAdminRoutes(app, deps) {
 
   function startOfToday() {
     const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+    const istDay = Math.floor((d.getTime() + 5.5 * 60 * 60 * 1000) / 86400000);
+    return new Date(istDay * 86400000 - 5.5 * 60 * 60 * 1000);
   }
 
   function daysSince(value, fallback = null) {
@@ -285,6 +288,39 @@ function registerAdminRoutes(app, deps) {
       res.json(getAdminStats());
     } catch (e) {
       res.status(500).json({ error: 'Failed to load stats' });
+    }
+  });
+
+  app.get('/admin/matches-debug', requireAdmin, (req, res) => {
+    try {
+      const matches = db.prepare('SELECT * FROM matches ORDER BY started_at DESC').all();
+      const rows = matches.map(match => {
+        const user1Entries = db.prepare('SELECT day, created_at FROM entries WHERE user_id = ? AND match_id = ? ORDER BY day DESC').all(match.user1_id, match.id);
+        const user2Entries = db.prepare('SELECT day, created_at FROM entries WHERE user_id = ? AND match_id = ? ORDER BY day DESC').all(match.user2_id, match.id);
+        const currentDay = getMatchDay(match.started_at);
+        const unlockedDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
+        const user1Visible = user2Entries.filter(e => isEntryUnlocked(e, match)).length;
+        const user2Visible = user1Entries.filter(e => isEntryUnlocked(e, match)).length;
+        return {
+          matchId: match.id,
+          currentDay,
+          unlockedDay,
+          startedAt: match.started_at,
+          user1Id: match.user1_id,
+          user2Id: match.user2_id,
+          user1LastEntryDay: user1Entries[0] ? user1Entries[0].day : null,
+          user2LastEntryDay: user2Entries[0] ? user2Entries[0].day : null,
+          user1WroteToday: user1Entries.some(e => Number(e.day) === Number(currentDay)),
+          user2WroteToday: user2Entries.some(e => Number(e.day) === Number(currentDay)),
+          entriesVisibleToUser1: user1Visible,
+          entriesVisibleToUser2: user2Visible,
+          nextUnsealAt: getNextUnsealAtIST()
+        };
+      });
+      res.json({ ok: true, generatedAt: new Date().toISOString(), timezone: 'Asia/Kolkata', matches: rows });
+    } catch (e) {
+      console.error('Match debug admin error:', e);
+      res.status(500).json({ error: 'Failed to load match debug data' });
     }
   });
 
