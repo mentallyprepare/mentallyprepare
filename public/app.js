@@ -129,28 +129,28 @@ const prompts = [
 ];
 
 const writingTips = [
-  'Write for yourself first. Honesty matters more than polish.',
-  'If nothing comes to mind, describe the last thing that made you feel something.',
-  'You don\'t have to answer the prompt directly. Let it take you somewhere unexpected.',
-  'Short entries are fine. One honest sentence beats three vague paragraphs.',
+  'Let’s keep this simple. One small answer is enough.',
+  'Just notice what feels heavy.',
+  'You do not need to solve this right now.',
+  'Short entries are fine. A few words count.',
   'Try starting with "I feel..." or "Today I noticed..."',
-  'Don\'t censor yourself. Partner notes open after midnight IST.',
+  'Write only what feels okay to share.',
   'If you\'re stuck, write about being stuck. That counts.',
-  'Think about what you\'d want your partner to know about your day.',
-  'There\'s no wrong way to do this. Just show up and be honest.'
+  'You can write about one moment from today.',
+  'There is no right way to do this. Just show up.'
 ];
 
 const fallbackPromptChoices = [
-  { text: 'What did you pretend was okay today?', category: 'Honest' },
-  { text: 'What is one thing you wish someone noticed?', category: 'Something unsaid' },
-  { text: 'What felt heavy, even if it looked small?', category: 'Deep' },
+  { text: 'What felt a little heavy today?', category: 'Notice' },
+  { text: 'What is one thing you wish someone noticed?', category: 'One thing' },
+  { text: 'What do you want to name without fixing?', category: 'Gentle' },
   { text: 'What is one tiny thing you survived today?', category: 'Tiny win' },
-  { text: 'What do you want your anonymous partner to understand?', category: 'Honest' },
-  { text: 'What are you not ready to say out loud yet?', category: 'Something unsaid' },
+  { text: 'What do you want your anonymous partner to understand?', category: 'Simple' },
+  { text: 'What are you not ready to say out loud yet?', category: 'Quiet' },
   { text: 'What softened today, even a little?', category: 'Light' },
-  { text: 'What are you carrying that nobody can see?', category: 'Deep' },
-  { text: 'What would feel honest to write tonight?', category: 'Honest' },
-  { text: 'What do you need without explaining why?', category: 'What I need tonight' }
+  { text: 'What are you carrying that nobody can see?', category: 'Notice' },
+  { text: 'What would feel easy to write tonight?', category: 'Easy' },
+  { text: 'What do you need without explaining why?', category: 'Need' }
 ];
 
 function normalizePromptText(text) {
@@ -220,10 +220,10 @@ function bindPromptChooser() {
     document.querySelectorAll('#s-journal .prompt-choice').forEach(function(item) { item.classList.remove('selected'); });
     const area = document.getElementById('journal-draft');
     if (area) {
-      area.placeholder = 'Start with the sentence you keep avoiding...';
+      area.placeholder = 'One small sentence is enough...';
       area.focus();
     }
-    toast('Write freely. No prompt needed.');
+    toast('No prompt needed. Keep it small.');
   });
 }
 
@@ -901,7 +901,7 @@ function renderTonightsQuestion(data) {
         </div>
         <div class="tq-eyebrow">Tonight's question</div>
         <div class="tq-greeting">${getGreeting(state.user.name)}</div>
-        <div class="tq-sub">Write something honest tonight. See what strangers wrote. Your match is on the way.</div>
+        <div class="tq-sub">One small answer is enough. Your match is on the way.</div>
       </div>
 
       ${writerCount > 0 ? `<div class="tq-counter"><div class="tq-counter-dot"></div><div class="tq-counter-text"><span class="tq-counter-num">${writerCount}</span> ${writerCount === 1 ? 'person' : 'people'} wrote tonight</div></div>` : ''}
@@ -933,7 +933,7 @@ function renderTonightsQuestion(data) {
       <div class="tq-write-block">
         <div class="tq-write-box">
           <div class="tq-write-date">${dayNames[today.getDay()]}, ${today.getDate()} ${monthNames[today.getMonth()]} · Night ${nightsWritten + 1}</div>
-          <textarea id="tq-draft" placeholder="Write one honest thing tonight...">${escapeHtml(draft)}</textarea>
+          <textarea id="tq-draft" placeholder="Write one small thing tonight...">${escapeHtml(draft)}</textarea>
           <div class="tq-write-ft"><div class="ww" id="tq-ww">${wordCount(draft)} words</div></div>
         </div>
       </div>
@@ -945,7 +945,7 @@ function renderTonightsQuestion(data) {
 
       <div class="tq-waiting-info">
         <div class="tq-waiting-ico">🔍</div>
-        <div class="tq-waiting-text">Finding someone on a similar emotional frequency. While you wait, this note stays private to your room.</div>
+        <div class="tq-waiting-text">Finding someone gentle to write with. While you wait, this note stays private.</div>
       </div>
 
       ${whispers.length > 0 ? renderWhispers(whispers) : ''}
@@ -1033,7 +1033,7 @@ function getTimeAgo(dateStr) {
 async function sealTonightsEntry() {
   var area = document.getElementById('tq-draft');
   var text = area ? area.value.trim() : '';
-  if (!text) { toast('Write something before sealing ✍️'); return; }
+  if (!text) { toast('A few words are enough before sealing.'); return; }
 
   try {
     var result = await api('POST', '/tonights-question', { text: text, mood: tqMood });
@@ -1070,8 +1070,8 @@ function renderTQSealed(data) {
           <div class="tq-moon"></div>
         </div>
         <div class="tq-sealed-badge">Entry sealed ✦</div>
-        <h2 class="tq-sealed-h">Written.<br/><em>Shared with strangers.</em></h2>
-        <div class="tq-sealed-p">Your words joined tonight's community. Come back tomorrow for a new question.</div>
+        <h2 class="tq-sealed-h">You showed up today.<br/><em>That matters.</em></h2>
+        <div class="tq-sealed-p">Nothing has to be solved right now. Come back tomorrow for the next small step.</div>
       </div>
 
       ${writerCount > 0 ? `<div class="tq-counter"><div class="tq-counter-dot"></div><div class="tq-counter-text"><span class="tq-counter-num">${writerCount}</span> ${writerCount === 1 ? 'person' : 'people'} wrote tonight</div></div>` : ''}
@@ -1157,8 +1157,8 @@ function renderJournal() {
     const sd = state.specialDay;
     specialDayHTML = `<div class="special-day-banner ${sd.type} reveal-on-scroll">
       <div class="special-day-badge">${sd.badge} ${sd.title}</div>
-      <div class="special-day-title">${sd.type === 'unsent_letter' ? 'Write a letter to your stranger.' : sd.type === 'weekly_ritual' ? (day === 7 ? 'One truth. No filter.' : 'Look back at where you started.') : 'The final night.'}</div>
-      <div class="special-day-sub">${sd.type === 'unsent_letter' ? 'This letter will be revealed on Day 21.' : sd.type === 'final_night' ? 'Tomorrow, everything changes.' : 'A special milestone prompt.'}</div>
+      <div class="special-day-title">${sd.type === 'unsent_letter' ? 'Write a small note to your stranger.' : sd.type === 'weekly_ritual' ? (day === 7 ? 'One small truth is enough.' : 'Notice where you started.') : 'The final night.'}</div>
+      <div class="special-day-sub">${sd.type === 'unsent_letter' ? 'This note can stay simple.' : sd.type === 'final_night' ? 'Take this one step at a time.' : 'A simple milestone prompt.'}</div>
     </div>`;
   }
 
@@ -1183,7 +1183,7 @@ function renderJournal() {
       partnerInactiveCard = `
         <div class="info-card" style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:18px auto 0 auto;max-width:520px;color:var(--ink-s);font-family:'Lora',serif;font-size:15px;text-align:center;">
           <div style="font-size:16px;font-family:'Playfair Display',serif;color:var(--ink-m);margin-bottom:6px;">Your partner hasn't written in a few days.</div>
-          <div>This happens sometimes. Keep writing — your entries are saved and they'll see everything when they return.</div>
+          <div>This happens sometimes. Keep your note simple today.</div>
         </div>
       `;
     }
@@ -1204,7 +1204,7 @@ function renderJournal() {
     ${renderPromptChooser()}
     <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until midnight IST</div></div>
     <div class="prompt-block reveal-on-scroll">
-      <div class="eyebrow">${state.specialDay ? '✦ ' + state.specialDay.title : 'Tonight\'s prompt'}</div>
+      <div class="eyebrow">${state.specialDay ? '✦ ' + state.specialDay.title : 'Tonight\'s small step'}</div>
       <div class="prompt-text">${escapeHtml(prompt)}</div>
       ${state.specialDay && state.specialDay.type === 'unsent_letter' ? '<div class="dare">💌 This letter seals until Day 21</div>' : day % 7 === 0 ? '<div class="dare">⚡ Weekly dare</div>' : ''}
     </div>
@@ -1228,7 +1228,7 @@ function renderJournal() {
     <div class="write-block reveal-on-scroll">
       <div class="write-box">
         <div class="write-date">${dayNames[today.getDay()]}, ${today.getDate()} ${monthNames[today.getMonth()]} · Day ${day}</div>
-        <textarea id="journal-draft" placeholder="${state.specialDay && state.specialDay.type === 'unsent_letter' ? 'Dear stranger, I want you to know...' : 'Write one honest thing tonight...'}">${escapeHtml(draft)}</textarea>
+        <textarea id="journal-draft" placeholder="${state.specialDay && state.specialDay.type === 'unsent_letter' ? 'Dear stranger, one thing I can say is...' : 'Write one small thing tonight...'}">${escapeHtml(draft)}</textarea>
         <div class="write-ft"><div class="ww" id="ww">${wordCount(draft)} words</div><div id="word-milestone"></div></div>
         <button class="btn-ghost" id="journalReportBtn" type="button" style="margin-top:8px;font-size:12px;float:right;">Report something unsafe</button>
       </div>
@@ -1288,10 +1288,10 @@ function updateWordCount(el) {
   const milestoneEl = document.getElementById('word-milestone');
   if (milestoneEl) {
     const milestones = [
-      { at: 50, ico: '✨', text: '50 words — you\'re finding your voice' },
-      { at: 100, ico: '📝', text: '100 words — real honesty takes space' },
-      { at: 200, ico: '💎', text: '200 words — this is deep writing' },
-      { at: 300, ico: '🔥', text: '300+ words — your partner will feel this' }
+      { at: 10, ico: '✨', text: '10 words — that counts' },
+      { at: 25, ico: '📝', text: '25 words — you kept it simple' },
+      { at: 50, ico: '💎', text: '50 words — enough for tonight' },
+      { at: 100, ico: '🔥', text: '100 words — stop whenever you feel done' }
     ];
     const hit = milestones.filter(m => n >= m.at).pop();
     if (hit && !milestoneEl.dataset.shown || (hit && milestoneEl.dataset.shown !== String(hit.at))) {
@@ -1315,7 +1315,7 @@ function saveDraft() {
 async function sealEntry() {
   const area = document.getElementById('journal-draft');
   const text = area ? area.value.trim() : '';
-  if (!text) { toast('Write something before sealing ✍️'); return; }
+  if (!text) { toast('A few words are enough before sealing.'); return; }
 
   try {
     const result = await api('POST', '/entry', { text, mood: currentMood, selectedPrompt: selectedPrompt || null });
@@ -1370,20 +1370,20 @@ function renderSealed() {
   const lastEntry = state.entries.length ? state.entries[0] : null;
   const ps = state.partnerStatus || {};
   const sealedCopy = ps.hasPartner
-    ? (ps.unsealMessage || 'Notes open after midnight IST.')
-    : 'You can write tonight while we look for the right anonymous match.';
+    ? (ps.unsealMessage || 'Nothing has to be solved right now.')
+    : 'You showed up today. That matters.';
   const partnerLine = ps.hasPartner
     ? (ps.partnerHasWrittenToday ? 'Partner wrote today: yes' : 'Partner wrote today: no')
     : 'Waiting for match';
-  const nextLine = ps.nextUnsealAt ? ('Next note opens at: ' + formatUnsealAt(ps.nextUnsealAt)) : 'Notes open after midnight IST';
+  const nextLine = ps.nextUnsealAt ? ('Next note opens at: ' + formatUnsealAt(ps.nextUnsealAt)) : 'Come back tomorrow for the next small step';
 
   document.getElementById('s-sealed').innerHTML = `
     <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
     <div class="sealed-hero">
       <div class="moon-base sealed-moon"></div>
       <div class="sealed-ey">Entry sealed ✦</div>
-      <h2 class="sealed-h">Written.<br/><em>Waiting for midnight IST.</em></h2>
-      <p class="sealed-p">${escapeHtml(sealedCopy)}</p>
+      <h2 class="sealed-h">You showed up today.<br/><em>That matters.</em></h2>
+      <p class="sealed-p">${escapeHtml(sealedCopy)} Nothing has to be solved right now. Come back tomorrow for the next small step.</p>
     </div>
     ${lastEntry ? `<div class="sealed-card">
       <div class="sealed-card-top"><div class="sealed-card-lbl">Your entry · Day ${lastEntry.day} · ${lastEntry.mood}</div><div class="sealed-card-badge">🔒 sealed</div></div>
