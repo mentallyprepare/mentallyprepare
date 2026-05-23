@@ -1308,7 +1308,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opa
 .site-nav-menu{font-size:22px}
 #app-area .nav{padding:22px 24px 4px}
 .nav-logo{display:flex;align-items:center;gap:9px;color:rgba(248,242,255,.74);font-size:13px;letter-spacing:.03em}
-.nav-logo::before{content:'';width:22px;height:22px;border-radius:8px;background:url('/icon-192.svg') center/cover no-repeat;box-shadow:0 0 18px rgba(176,159,204,.28)}
+.nav-logo::before{content:'';width:22px;height:22px;border-radius:8px;background:url('/icon-192x192.png') center/cover no-repeat;box-shadow:0 0 18px rgba(176,159,204,.28)}
 .day-pill{border-color:rgba(235,180,194,.22);background:rgba(235,180,194,.07);color:var(--rose-l);letter-spacing:.11em}
 .screen{min-height:calc(100vh - 70px)}
 .screen::after{content:'';position:absolute;left:20px;right:20px;top:86px;bottom:20px;border:1px solid rgba(248,242,255,.028);border-radius:30px;pointer-events:none;z-index:-1}

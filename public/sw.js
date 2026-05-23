@@ -1,10 +1,13 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'stable-fix-1';
+const CACHE_NAME = 'stable-fix-2';
 const STATIC_ASSETS = [
-  '/manifest.json',
-  '/icon-192.svg'
+  '/site.webmanifest',
+  '/favicon.ico',
+  '/favicon-48x48.png',
+  '/icon-192x192.png',
+  '/icon-512x512.png'
 ];
 
 // Install — cache only icons/manifest (not HTML)
@@ -76,8 +79,8 @@ self.addEventListener('push', event => {
   const title = data.title || 'Mentally Prepare';
   const options = {
     body: data.body || 'Your partner wrote something new.',
-    icon: '/icon-192.svg',
-    badge: '/icon-192.svg',
+    icon: '/icon-192x192.png',
+    badge: '/icon-192x192.png',
     vibrate: [100, 50, 100],
     data: { url: data.url || '/' }
   };

@@ -1,11 +1,9 @@
 {
   "name": "Mentally Prepare",
   "short_name": "Mentally Prepare",
-  "description": "Anonymous 21-day emotional journal for college students",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0B0614",
   "theme_color": "#0B0614",
+  "background_color": "#0B0614",
+  "display": "standalone",
   "icons": [
     {
       "src": "/icon-192x192.png",
