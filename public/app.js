@@ -650,7 +650,16 @@ async function register() {
     document.getElementById('app-area').style.display = 'block';
     toast('Account created! ✦');
     go('s-scan-intro');
-  } catch (e) { toast(e.message); }
+  } catch (e) {
+    await loadState().catch(() => {});
+    if (state && state.user && !state.user.emailVerified) {
+      document.getElementById('landing').style.display = 'none';
+      document.getElementById('app-area').style.display = 'block';
+      renderEmailVerification();
+      go('s-scan-intro');
+    }
+    toast(e.message);
+  }
 }
 
 async function login() {

@@ -26,6 +26,12 @@ function normalizeMatchYear(value) {
   return raw || '';
 }
 
+function isValidCollegeName(value) {
+  const raw = clean(value);
+  if (raw.length >= 3) return true;
+  return /^d\.?u\.?$/i.test(raw);
+}
+
 function validateRegistration(body) {
   const values = {
     name: clean(body.name),
@@ -42,7 +48,7 @@ function validateRegistration(body) {
 
   const errors = {};
   if (values.name.length < 2) errors.name = 'Name must be at least 2 characters.';
-  if (values.college.length < 3) errors.college = 'Please enter your college name.';
+  if (!isValidCollegeName(values.college)) errors.college = 'Please enter your college name.';
   if (!values.year || !YEARS.has(values.year)) errors.year = 'Please choose your year.';
   if (!values.email) errors.email = 'Please enter your email.';
   else if (!EMAIL_RE.test(values.email)) errors.email = 'Please enter a valid email.';
@@ -128,11 +134,17 @@ function registerAuthRoutes(app, deps) {
 
       req.session.userId = Number(result.lastInsertRowid);
       trackEvent(req.session.userId, 'signup_completed');
-      sendVerificationEmail({ sendEmail, to: values.email, name: values.name, token, baseUrl: BASE_URL })
-        .catch((err) => {
-          trackEvent(req.session.userId, 'email_send_failed', { type: 'verification' });
-          console.error('Verification email failed:', err.message);
+      try {
+        await sendVerificationEmail({ sendEmail, to: values.email, name: values.name, token, baseUrl: BASE_URL });
+      } catch (err) {
+        trackEvent(req.session.userId, 'email_send_failed', { type: 'verification' });
+        console.error('Verification email failed:', err.message);
+        return res.status(502).json({
+          ok: false,
+          emailVerificationRequired: true,
+          error: 'Account created, but we could not send the verification email right now. Please try Resend verification in a minute or contact support.'
         });
+      }
       res.json({ ok: true, emailVerificationRequired: true, message: 'Account created. Please verify your email before starting the scan.' });
     } catch (e) {
       console.error('Register error:', e);
