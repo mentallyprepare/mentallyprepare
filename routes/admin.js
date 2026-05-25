@@ -23,6 +23,7 @@ function registerAdminRoutes(app, deps) {
   } = deps;
 
   const appLink = process.env.APP_BASE_URL || 'https://mymentallyprepare.com/app';
+  const baseUrl = (process.env.APP_BASE_URL || 'https://mymentallyprepare.com').replace(/\/app\/?$/, '').replace(/\/$/, '');
 
   function parseDate(value) {
     if (!value) return null;
@@ -164,6 +165,31 @@ function registerAdminRoutes(app, deps) {
       res.json(rows.map(row => ({ ...row, has_match: !!row.match_id })));
     } catch (e) {
       res.status(500).json({ error: 'Failed to load users' });
+    }
+  });
+
+  app.post('/admin/create-verification-link', authLimiter, requireAdmin, (req, res) => {
+    try {
+      const email = String(req.body.email || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Valid email required' });
+      }
+
+      const user = stmts.getUserByEmail.get(email);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.email_verified) return res.json({ ok: true, alreadyVerified: true });
+
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      stmts.updateVerificationToken.run(token, new Date().toISOString(), user.id);
+      res.json({
+        ok: true,
+        email: user.email,
+        verifyUrl: `${baseUrl}/api/verify-email?token=${encodeURIComponent(token)}`
+      });
+    } catch (e) {
+      console.error('Create verification link error:', e);
+      res.status(500).json({ error: 'Failed to create verification link' });
     }
   });
 
