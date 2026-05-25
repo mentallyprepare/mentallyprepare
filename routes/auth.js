@@ -8,13 +8,13 @@ const MATCH_GENDERS = new Set(['any', 'female', 'male', 'non-binary', 'prefer_no
 const MATCH_YEARS = new Set(['any', '1st', '2nd', '3rd', '4th', '5th', '5th+', 'nearby', '+-1_year', '±1_year']);
 const CONSENT_POLICY_VERSION = '2026-05-24-18-plus';
 const MANUAL_VERIFY_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqbg52Swr2Hcux8MCrNbg
-nxc3YIEC+4j10qwUzUC4KcHvgxNFN03WGnnkVfbI3/D2jGnkO4ZEtSi7TpAptiWd
-p23oPecQSjzFxNZySnnDfM/ZKurH2UQg9o6YGbSiRAlN+w93D7W53W0QMb3cBcBI
-YLw3lYm3CH+W+jz1Paf9pis06u5NgI5lANpNfB3skMIO1uG665w7Zj3000NhveC1
-R3S14hV1Oc/8TS7npJtzmACH1qnJ3FvH2CUyOMQWxN34/2NLt/ZEeaG6tFvz7Hut
-EjkasBKyeY5O4eksv/bE0WHAqGydMJxcarsCvqVGJGooBryAvQSw8tJFZ8lYTliI
-LQIDAQAB
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvM+5OnGHYVe0IVh8ymyv
+9wh5luIsO/MGmK9NmTUZLxhejmcxv/6fltPnnprt16Y0RbSRpKMa2StUzOrulcT/
+c8Wpp4QjYgLyKIGksSWFf71rXE70Bu9nTusZboQy5bXj3eFlcRPaPgss0N5Yaw04
+yb9GRP6ARuzmhPeG4IzSNkJQQkcGwP2eecEsFByJ9VVg/8bBvMtGJAv5fvuOC3qO
+raiHJlZehBrpEhx4AbsPVKz/cKcOSuiOa/1rghb3XN/Qjhs+HLZjI8LhwhJ83tNk
+lvLFite2dmPCOECNPgxYyaKEOXL64JGsKvu/x0pE6Fv6xiR8qqsWM8bTr4tI9eey
+fwIDAQAB
 -----END PUBLIC KEY-----`;
 
 function clean(value) {
