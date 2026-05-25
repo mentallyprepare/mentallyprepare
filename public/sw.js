@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'stable-fix-2';
+const CACHE_NAME = 'verification-fix-1';
 const STATIC_ASSETS = [
   '/site.webmanifest',
   '/favicon.ico',

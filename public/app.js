@@ -421,6 +421,37 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
+function verificationPendingHtml() {
+  if (!state || !state.user || state.user.emailVerified) return '';
+  return `
+    <div style="margin:0 0 16px;padding:14px 16px;border:1px solid rgba(224,197,143,.24);border-radius:16px;background:rgba(224,197,143,.07);text-align:left;">
+      <div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">Verification pending</div>
+      <div style="font-family:'Lora',serif;font-style:italic;font-size:12.5px;color:var(--ink-m);line-height:1.7;">You can continue now. Please verify your email when it arrives so matching can start smoothly.</div>
+      <button class="btn-ghost" style="margin-top:10px" onclick="resendVerification()">Resend verification email</button>
+      <div id="verification-status" class="field-error" style="min-height:18px;margin-top:8px;"></div>
+    </div>`;
+}
+
+function injectVerificationPendingNotice(screenId) {
+  const el = document.getElementById(screenId);
+  if (!el || !state || !state.user || state.user.emailVerified || el.querySelector('#verification-pending-inline')) return;
+  el.insertAdjacentHTML('afterbegin', `<div id="verification-pending-inline" style="padding:16px 20px 0;">${verificationPendingHtml()}</div>`);
+}
+
+function consumeVerificationQueryNotice() {
+  const params = new URLSearchParams(window.location.search);
+  let message = '';
+  if (params.get('verified') === '1') message = 'Verification successful. You can now continue.';
+  if (params.get('verify_error') === 'expired') message = 'Verification link expired. Please request a new one.';
+  if (params.get('verify_error') === 'system') message = 'Verification failed. Please request a new one.';
+  if (!message) return;
+  params.delete('verified');
+  params.delete('verify_error');
+  const query = params.toString();
+  window.history.replaceState({}, '', `${window.location.pathname}${query ? '?' + query : ''}${window.location.hash}`);
+  setTimeout(() => toast(message, 4200), 250);
+}
+
 function typingDots() { return '<div class="typing-dots"><span></span><span></span><span></span></div>'; }
 
 // ═══════════════════════════════════════
@@ -535,25 +566,13 @@ function bindStaticUi() {
   const loggedIn = await loadState();
   if (!loggedIn) {
     if (window.location.pathname.indexOf('/app') === 0) startApp();
+    consumeVerificationQueryNotice();
     return;
   }
 
   // Auto-start app for logged-in users
   startApp();
-
-  if (!state.user.emailVerified) {
-    renderEmailVerification(); go('s-scan-intro');
-  } else if (!state.user.archetype) {
-    go('s-scan-intro');
-  } else if (!state.match) {
-    renderWaiting(); go('s-waiting');
-  } else if (state.match.day >= 21) {
-    handleRevealFlow();
-  } else {
-    const todayDone = state.entries.find(e => e.day === state.match.day);
-    if (todayDone) { renderSealed(); go('s-sealed'); }
-    else { renderJournal(); go('s-journal'); }
-  }
+  consumeVerificationQueryNotice();
 })();
 
 // ═══════════════════════════════════════
@@ -643,20 +662,23 @@ async function register() {
   if (!ok) return;
 
   try {
-    await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven, ageConfirmed: ageChecked });
+    const result = await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven, ageConfirmed: ageChecked });
     await loadState();
     // Make sure app area is visible
     document.getElementById('landing').style.display = 'none';
     document.getElementById('app-area').style.display = 'block';
-    toast('Account created! ✦');
+    toast(result.message || 'Account created. You can continue now.', 3600);
+    injectVerificationPendingNotice('s-scan-intro');
     go('s-scan-intro');
   } catch (e) {
     await loadState().catch(() => {});
     if (state && state.user && !state.user.emailVerified) {
       document.getElementById('landing').style.display = 'none';
       document.getElementById('app-area').style.display = 'block';
-      renderEmailVerification();
+      toast('You can continue while verification is pending.', 3600);
+      injectVerificationPendingNotice('s-scan-intro');
       go('s-scan-intro');
+      return;
     }
     toast(e.message);
   }
@@ -688,8 +710,7 @@ async function logout() {
 
 function routeToScreen() {
   if (!state) { go('s-splash'); return; }
-  if (!state.user.emailVerified) { renderEmailVerification(); go('s-scan-intro'); return; }
-  if (!state.user.archetype) { go('s-scan-intro'); return; }
+  if (!state.user.archetype) { injectVerificationPendingNotice('s-scan-intro'); go('s-scan-intro'); return; }
   if (!state.match) { renderWaiting(); go('s-waiting'); return; }
   if (state.match.day >= 21) { handleRevealFlow(); return; }
   const todayDone = state.entries.find(e => e.day === state.match.day);
@@ -770,10 +791,11 @@ function renderEmailVerification() {
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
       <div style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.8;margin-bottom:14px;">Verify email</div>
       <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;line-height:1;margin-bottom:16px;">Check your<br/><em style="font-style:italic;color:var(--rose-l);">inbox</em></h1>
-      <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;max-width:360px;">We sent a verification link to ${escapeHtml(email)}. The emotional scan and matching open after your email is verified.</p>
+      <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;max-width:360px;">We sent a verification link to ${escapeHtml(email)}. You can continue now while verification is pending.</p>
       <button class="btn" onclick="resendVerification()">Resend verification email</button>
       <div id="verification-status" class="field-error" style="min-height:18px;margin-top:12px;text-align:center;"></div>
       <button class="btn-ghost" style="margin-top:12px" onclick="loadState().then(routeToScreen)">I've verified</button>
+      <button class="btn-ghost" style="margin-top:12px" onclick="routeToScreen()">Continue for now</button>
     </div>`;
 }
 
@@ -909,8 +931,9 @@ async function submitScan() {
   if (scanAnswers.some(v => v === null)) { toast('Please answer every scan question before continuing.'); return; }
   calculateScoresLocal();
   try {
-    const { matched } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype, answers: scanAnswers });
+    const { matched, verificationPending, message } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype, answers: scanAnswers });
     await loadState();
+    if (verificationPending && message) toast(message, 4200);
     renderResult(matched);
     go('s-result');
   } catch (e) { toast(e.message); }
@@ -973,6 +996,7 @@ function renderResult(matched) {
       <div class="match-icon">${arch.matchEmoji}</div>
       <div><div class="match-title">You'll be matched with</div><div class="match-name">${arch.matchName}</div></div>
     </div>
+    ${verificationPendingHtml()}
     ${actionBtn}
     <button class="share-btn" onclick="shareArchetype()" style="margin-bottom:10px;">📋 Share my archetype</button>`;
   setTimeout(() => {
@@ -1034,6 +1058,7 @@ function renderTonightsQuestion(data) {
 
   document.getElementById('s-waiting').innerHTML = `
     <div class="tq-body">
+      ${verificationPendingHtml()}
       <div class="nav"><div class="nav-logo"><div class="site-nav-orb" style="width:20px;height:20px;"></div>mentally prepare</div><div class="day-pill">Night ${nightsWritten + 1}</div></div>
       <div class="tq-hero">
         <div class="tq-moon-wrap">

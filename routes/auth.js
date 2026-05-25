@@ -83,6 +83,11 @@ function withEmailTimeout(promise, label) {
   ]);
 }
 
+function logVerification(message, details) {
+  if (details) console.log(message, details);
+  else console.log(message);
+}
+
 function verifyManualSignature(email, expires, signature) {
   const expiresMs = Number(expires);
   if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) return false;
@@ -138,6 +143,7 @@ function registerAuthRoutes(app, deps) {
       const hash = await bcrypt.hash(values.password, 12);
       const now = new Date().toISOString();
       const token = crypto.randomBytes(32).toString('hex');
+      logVerification('Verification token created', { email: values.email });
       const result = stmts.insertUser.run(
         values.name,
         values.email,
@@ -161,20 +167,23 @@ function registerAuthRoutes(app, deps) {
       req.session.userId = Number(result.lastInsertRowid);
       trackEvent(req.session.userId, 'signup_completed');
       try {
+        logVerification('Email service ready', { provider: 'configured email service' });
         await withEmailTimeout(
           sendVerificationEmail({ sendEmail, to: values.email, name: values.name, token, baseUrl: BASE_URL }),
           'Verification email'
         );
+        logVerification('Verification email sent', { email: values.email });
       } catch (err) {
         trackEvent(req.session.userId, 'email_send_failed', { type: 'verification' });
-        console.error('Verification email failed:', err.message);
-        return res.status(502).json({
-          ok: false,
+        console.error('Verification failed with reason', { reason: 'email_send_failed', email: values.email, error: err.message });
+        return res.json({
+          ok: true,
           emailVerificationRequired: true,
-          error: 'Account created, but we could not send the verification email right now. Please try Resend verification in a minute or contact support.'
+          emailDeliveryFailed: true,
+          message: 'We could not send the email. Please try again. You can continue while verification is pending.'
         });
       }
-      res.json({ ok: true, emailVerificationRequired: true, message: 'Account created. Please verify your email before starting the scan.' });
+      res.json({ ok: true, emailVerificationRequired: true, message: 'Account created. Please verify your email when it arrives. You can continue now.' });
     } catch (e) {
       console.error('Register error:', e);
       res.status(500).json({ error: 'Registration failed' });
@@ -184,16 +193,28 @@ function registerAuthRoutes(app, deps) {
   app.get('/api/verify-email', async (req, res) => {
     try {
       const token = clean(req.query.token);
-      if (!token || token.length < 32) return res.status(400).send('Invalid verification link.');
+      if (!token || token.length < 32) {
+        logVerification('Verification failed with reason', { reason: 'invalid_token_format' });
+        return res.redirect('/app?verify_error=expired');
+      }
       const user = stmts.getUserByVerificationToken.get(token);
-      if (!user) return res.status(400).send('This verification link is invalid or already used.');
+      if (!user) {
+        logVerification('Verification failed with reason', { reason: 'token_not_found' });
+        return res.redirect('/app?verify_error=expired');
+      }
+      const sentAt = user.email_verification_sent_at ? new Date(user.email_verification_sent_at).getTime() : 0;
+      if (!sentAt || Date.now() - sentAt > 24 * 60 * 60 * 1000) {
+        logVerification('Verification failed with reason', { reason: 'expired_token', email: user.email });
+        return res.redirect('/app?verify_error=expired');
+      }
       stmts.verifyUserEmail.run(new Date().toISOString(), user.id);
       if (req.session) req.session.userId = user.id;
       trackEvent(user.id, 'email_verified');
+      logVerification('Verification successful', { email: user.email });
       res.redirect('/app?verified=1');
     } catch (e) {
-      console.error('Verify email error:', e);
-      res.status(500).send('Email verification failed.');
+      console.error('Verification failed with reason', { reason: 'system_error', error: e.message });
+      res.redirect('/app?verify_error=system');
     }
   });
 
@@ -211,6 +232,7 @@ function registerAuthRoutes(app, deps) {
       if (!user.email_verified) {
         stmts.verifyUserEmail.run(new Date().toISOString(), user.id);
         trackEvent(user.id, 'email_verified', { method: 'manual_signed_link' });
+        logVerification('Verification successful', { email: user.email, method: 'manual_signed_link' });
       }
       if (req.session) req.session.userId = user.id;
       res.redirect('/app?verified=1');
@@ -226,19 +248,23 @@ function registerAuthRoutes(app, deps) {
       const user = stmts.getUserById.get(req.session.userId);
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.email_verified) return res.json({ ok: true, verified: true });
+      logVerification('Resend verification triggered', { email: user.email });
       const lastSent = user.email_verification_sent_at ? new Date(user.email_verification_sent_at).getTime() : 0;
       if (Date.now() - lastSent < 60 * 1000) return res.status(429).json({ error: 'Please wait a minute before requesting another verification email.' });
       const token = crypto.randomBytes(32).toString('hex');
+      logVerification('Verification token created', { email: user.email });
       const now = new Date().toISOString();
       stmts.updateVerificationToken.run(token, now, user.id);
+      logVerification('Email service ready', { provider: 'configured email service' });
       await withEmailTimeout(
         sendVerificationEmail({ sendEmail, to: user.email, name: user.name, token, baseUrl: BASE_URL }),
         'Verification email'
       );
+      logVerification('Verification email sent', { email: user.email });
       res.json({ ok: true, message: 'Verification email sent.' });
     } catch (e) {
-      console.error('Resend verification error:', e);
-      res.status(500).json({ error: 'Could not send verification email right now.' });
+      console.error('Verification failed with reason', { reason: 'resend_email_failed', error: e.message });
+      res.status(500).json({ error: 'We could not send the email. Please try again.' });
     }
   });
 

@@ -504,14 +504,21 @@ function registerAppRoutes(app, deps) {
 
       const userId = req.session.userId;
       const user = stmts.getUserById.get(userId);
-      if (!user || !user.email_verified) return res.status(403).json({ error: 'Please verify your email before starting the emotional scan.' });
+      if (!user) return res.status(404).json({ error: 'User not found.' });
       const existingMatch = stmts.getMatch.get(userId, userId);
       if (existingMatch) return res.status(400).json({ error: 'Cannot retake scan after matching' });
 
       stmts.updateUserScan.run(archetype, JSON.stringify(scores), userId);
-      const matchId = attemptMatch(userId);
+      const matchId = user.email_verified ? attemptMatch(userId) : null;
       if (trackEvent) trackEvent(userId, 'scan_completed', { archetype });
-      res.json({ ok: true, matched: !!matchId });
+      res.json({
+        ok: true,
+        matched: !!matchId,
+        verificationPending: !user.email_verified,
+        message: user.email_verified
+          ? undefined
+          : 'Verification pending. You can write while we wait, and matching will start after your email is verified.'
+      });
     } catch (e) {
       console.error('Scan error:', e);
       res.status(500).json({ error: 'Failed to save scan' });
@@ -558,7 +565,11 @@ function registerAppRoutes(app, deps) {
     try {
       const userId = req.session.userId;
       const user = stmts.getUserById.get(userId);
-      const match = stmts.getMatch.get(userId, userId);
+      let match = stmts.getMatch.get(userId, userId);
+      if (!match && user.email_verified && user.archetype) {
+        attemptMatch(userId);
+        match = stmts.getMatch.get(userId, userId);
+      }
       if (!match) return res.json(buildPartnerWritingStatus({ userId, partnerId: null, match: null, currentDay: 1, visiblePartnerEntries: [], switchCount: user ? user.switch_count : 0 }));
 
       const partnerId = getPartnerId(match, userId);
@@ -680,7 +691,11 @@ function registerAppRoutes(app, deps) {
       const userId = req.session.userId;
       const { day, reason, category } = req.body;
       if (!reason || !reason.trim()) return res.status(400).json({ error: 'Reason required' });
-      const match = stmts.getMatch.get(userId, userId);
+      let match = stmts.getMatch.get(userId, userId);
+      if (!match && user.email_verified && user.archetype) {
+        attemptMatch(userId);
+        match = stmts.getMatch.get(userId, userId);
+      }
       const partnerId = match ? getPartnerId(match, userId) : null;
       const entryDay = Number.isInteger(Number(day)) ? Number(day) : 0;
       stmts.insertReport.run(userId, match ? match.id : null, partnerId, entryDay, entryDay, category || 'entry', reason.trim().substring(0, 500));
