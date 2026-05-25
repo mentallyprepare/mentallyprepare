@@ -153,7 +153,7 @@ function registerSilentRoutes(app, deps) {
           id: null,
           status: 'crisis_intercepted',
           show_resources: true,
-          message: `What you wrote matters. Before we publish, please call iCall: ${HELPLINES.iCall}. We are here. They are too.`,
+          message: `This app is not emergency support. If you feel unsafe, contact emergency services, a trusted person, or Tele MANAS India: ${HELPLINES.teleManas}.`,
           helplines: HELPLINES
         });
       }

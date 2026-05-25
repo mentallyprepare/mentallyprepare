@@ -1,11 +1,11 @@
 // Route for saving Day 1 entry while waiting for a match
 module.exports = function(app, deps) {
-  const { apiLimiter, requireAuth, stmts, prompts, scanForSafety, HELPLINES } = deps;
+  const { apiLimiter, requireAuth, stmts, prompts, scanForSafety, HELPLINES, trackEvent } = deps;
 
   app.post('/api/waiting-entry', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
-      const { text, mood, selectedPrompt } = req.body;
+      const { text, mood, selectedPrompt, piiConfirmed } = req.body;
       if (!text || !text.trim()) return res.status(400).json({ error: 'Entry text required' });
       if (text.length > 5000) return res.status(400).json({ error: 'Entry too long (max 5000 chars)' });
 
@@ -14,12 +14,21 @@ module.exports = function(app, deps) {
       if (match) return res.status(400).json({ error: 'Already matched' });
 
       const safety = scanForSafety(text);
+      if (safety.crisis && trackEvent) trackEvent(userId, 'crisis_keyword_triggered', { surface: 'waiting_entry' });
+      if (safety.pii && !piiConfirmed) {
+        return res.status(422).json({
+          error: 'This may reveal who you are. Please remove personal details to keep this space anonymous.',
+          code: 'pii_detected',
+          safety: { pii: true, piiFlags: safety.piiFlags }
+        });
+      }
       const prompt = (typeof selectedPrompt === 'string' && selectedPrompt.trim())
         ? selectedPrompt.trim().replace(/\s+/g, ' ').slice(0, 220)
         : prompts[0];
       stmts.upsertWaitingEntry.run(userId, text.trim(), mood || '🌓', prompt);
 
-      res.json({ ok: true, safety: { crisis: safety.crisis, pii: safety.pii, helplines: safety.crisis ? HELPLINES : null } });
+      if (trackEvent) trackEvent(userId, 'day_1_written', { waiting: true });
+      res.json({ ok: true, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: safety.crisis ? HELPLINES : null } });
     } catch (e) {
       console.error('Waiting entry error:', e);
       res.status(500).json({ error: 'Failed to save waiting entry' });

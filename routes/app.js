@@ -17,6 +17,7 @@ function registerAppRoutes(app, deps) {
     scanForSafety,
     HELPLINES,
     attemptMatch,
+    trackEvent,
     attachWaitingEntriesToMatch,
     complementary,
     deleteMatchData,
@@ -304,6 +305,7 @@ function registerAppRoutes(app, deps) {
         email: user.email,
         college: user.college,
         year: user.year,
+        emailVerified: !!user.email_verified,
         archetype: user.archetype,
         scores: user.scores
       };
@@ -416,20 +418,34 @@ function registerAppRoutes(app, deps) {
         if (day >= 21) {
           const myReveal = stmts.getReveal.get(match.id, userId);
           const partnerReveal = stmts.getReveal.get(match.id, partnerId);
-          const bothYes = myReveal && myReveal.choice === 'yes' && partnerReveal && partnerReveal.choice === 'yes';
-          const eitherNo = (myReveal && myReveal.choice === 'no') || (partnerReveal && partnerReveal.choice === 'no');
+          const revealChoices = ['first_name', 'name_college', 'contact_details'];
+          const myWantsReveal = myReveal && revealChoices.includes(myReveal.choice);
+          const partnerWantsReveal = partnerReveal && revealChoices.includes(partnerReveal.choice);
+          const bothReveal = !!(myWantsReveal && partnerWantsReveal);
+          const eitherAnonymous = (myReveal && myReveal.choice === 'stay_anonymous') || (partnerReveal && partnerReveal.choice === 'stay_anonymous');
 
           // Get partner's unsent letter for reveal
           const partnerDay11 = stmts.getEntry.get(partnerId, match.id, 11);
+          let partnerIdentity = null;
+          if (bothReveal && partner) {
+            const firstName = String(partner.name || '').trim().split(/\s+/)[0] || 'Your partner';
+            partnerIdentity = { name: firstName };
+            if (partnerReveal.choice === 'name_college' || partnerReveal.choice === 'contact_details') {
+              partnerIdentity = { ...partnerIdentity, fullName: partner.name, college: partner.college, year: partner.year };
+            }
+            if (partnerReveal.choice === 'contact_details') {
+              partnerIdentity.email = partner.email;
+            }
+          }
 
           revealData = {
             available: true,
             myChoice: myReveal ? myReveal.choice : null,
             partnerChose: !!partnerReveal,
-            revealed: bothYes,
-            anonymous: eitherNo,
-            partner: bothYes && partner ? { name: partner.name, college: partner.college, year: partner.year, email: partner.email } : null,
-            partnerUnsentLetter: (bothYes || eitherNo) && partnerDay11 ? partnerDay11.text : null
+            revealed: bothReveal,
+            anonymous: eitherAnonymous,
+            partner: partnerIdentity,
+            partnerUnsentLetter: (bothReveal || eitherAnonymous) && partnerDay11 ? partnerDay11.text : null
           };
         }
       }
@@ -474,17 +490,27 @@ function registerAppRoutes(app, deps) {
 
   app.post('/api/scan', apiLimiter, requireAuth, (req, res) => {
     try {
-      const { scores, archetype } = req.body;
+      const { scores, archetype, answers } = req.body;
       if (!archetype || !scores) return res.status(400).json({ error: 'Scan data required' });
       const validTypes = ['protector', 'connector', 'performer', 'disconnector'];
       if (!validTypes.includes(archetype)) return res.status(400).json({ error: 'Invalid archetype' });
+      if (!Array.isArray(answers) || answers.length !== 11 || answers.some((answer) => !Number.isInteger(answer) || answer < 1 || answer > 7)) {
+        return res.status(400).json({ error: 'Please answer every scan question before continuing.' });
+      }
+      const validScoreKeys = ['openness', 'awareness', 'guard', 'reciprocity'];
+      if (!validScoreKeys.every((key) => Number.isFinite(Number(scores[key])) && Number(scores[key]) >= 0 && Number(scores[key]) <= 100)) {
+        return res.status(400).json({ error: 'Invalid scan score data.' });
+      }
 
       const userId = req.session.userId;
+      const user = stmts.getUserById.get(userId);
+      if (!user || !user.email_verified) return res.status(403).json({ error: 'Please verify your email before starting the emotional scan.' });
       const existingMatch = stmts.getMatch.get(userId, userId);
       if (existingMatch) return res.status(400).json({ error: 'Cannot retake scan after matching' });
 
       stmts.updateUserScan.run(archetype, JSON.stringify(scores), userId);
       const matchId = attemptMatch(userId);
+      if (trackEvent) trackEvent(userId, 'scan_completed', { archetype });
       res.json({ ok: true, matched: !!matchId });
     } catch (e) {
       console.error('Scan error:', e);
@@ -495,11 +521,19 @@ function registerAppRoutes(app, deps) {
   app.post('/api/entry', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
-      const { text, mood, selectedPrompt } = req.body;
+      const { text, mood, selectedPrompt, piiConfirmed } = req.body;
       if (!text || !text.trim()) return res.status(400).json({ error: 'Entry text required' });
       if (text.length > 5000) return res.status(400).json({ error: 'Entry too long (max 5000 chars)' });
 
       const safety = scanForSafety(text);
+      if (safety.crisis && trackEvent) trackEvent(userId, 'crisis_keyword_triggered', { surface: 'journal_entry' });
+      if (safety.pii && !piiConfirmed) {
+        return res.status(422).json({
+          error: 'This may reveal who you are. Please remove personal details to keep this space anonymous.',
+          code: 'pii_detected',
+          safety: { pii: true, piiFlags: safety.piiFlags }
+        });
+      }
       stmts.updateUserActivity.run(new Date().toISOString(), userId);
 
       const match = stmts.getMatch.get(userId, userId);
@@ -509,9 +543,11 @@ function registerAppRoutes(app, deps) {
       if (day > 21) return res.status(400).json({ error: 'Journey complete' });
 
       const prompt = cleanSelectedPrompt(selectedPrompt) || prompts[(day - 1) % prompts.length];
+      if (trackEvent && day === 1) trackEvent(userId, 'day_1_written', { day });
+      if (trackEvent && day === 2) trackEvent(userId, 'day_2_returned', { day });
       stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
 
-      res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, helplines: safety.crisis ? HELPLINES : null } });
+      res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: safety.crisis ? HELPLINES : null } });
     } catch (e) {
       console.error('Entry error:', e);
       res.status(500).json({ error: 'Failed to save entry' });
@@ -642,9 +678,13 @@ function registerAppRoutes(app, deps) {
   app.post('/api/report', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
-      const { day, reason } = req.body;
+      const { day, reason, category } = req.body;
       if (!reason || !reason.trim()) return res.status(400).json({ error: 'Reason required' });
-      stmts.insertReport.run(userId, day || 0, reason.trim().substring(0, 500));
+      const match = stmts.getMatch.get(userId, userId);
+      const partnerId = match ? getPartnerId(match, userId) : null;
+      const entryDay = Number.isInteger(Number(day)) ? Number(day) : 0;
+      stmts.insertReport.run(userId, match ? match.id : null, partnerId, entryDay, entryDay, category || 'entry', reason.trim().substring(0, 500));
+      if (trackEvent) trackEvent(userId, 'report_clicked', { category: category || 'entry' });
       res.json({ ok: true });
     } catch (e) {
       console.error('Report error:', e);
@@ -652,11 +692,48 @@ function registerAppRoutes(app, deps) {
     }
   });
 
+  app.post('/api/block-partner', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const match = stmts.getMatch.get(userId, userId);
+      if (!match) return res.status(400).json({ error: 'No active match found' });
+      const partnerId = getPartnerId(match, userId);
+      const reason = String(req.body.reason || 'blocked_by_user').trim().slice(0, 500);
+      db.transaction(() => {
+        stmts.insertBlock.run(userId, partnerId, match.id, reason);
+        stmts.insertReport.run(userId, match.id, partnerId, 0, 0, 'block', reason || 'Partner blocked');
+        deleteMatchData(match.id);
+      })();
+      if (trackEvent) trackEvent(userId, 'block_clicked', { matchId: match.id });
+      res.json({ ok: true, message: 'Partner blocked. Your identity remains anonymous and the match has been closed.' });
+    } catch (e) {
+      console.error('Block error:', e);
+      res.status(500).json({ error: 'Failed to block partner' });
+    }
+  });
+
+  app.post('/api/rematch-request', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const match = stmts.getMatch.get(userId, userId);
+      const reason = String(req.body.reason || 'requested_by_user').trim().slice(0, 500);
+      stmts.insertRematchRequest.run(userId, match ? match.id : null, reason);
+      if (trackEvent) trackEvent(userId, 'rematch_requested', { hasMatch: !!match });
+      res.json({ ok: true, message: 'Rematch request saved for review.' });
+    } catch (e) {
+      console.error('Rematch request error:', e);
+      res.status(500).json({ error: 'Failed to request rematch' });
+    }
+  });
+
   app.post('/api/reveal', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
-      const { choice } = req.body;
-      if (choice !== 'yes' && choice !== 'no') return res.status(400).json({ error: 'Choice must be yes or no' });
+      let { choice } = req.body;
+      if (choice === 'yes') choice = 'first_name';
+      if (choice === 'no') choice = 'stay_anonymous';
+      const validChoices = ['first_name', 'name_college', 'contact_details', 'stay_anonymous'];
+      if (!validChoices.includes(choice)) return res.status(400).json({ error: 'Choose what you want to reveal, or stay anonymous.' });
 
       const match = stmts.getMatch.get(userId, userId);
       if (!match) return res.status(400).json({ error: 'No match found' });
@@ -664,7 +741,10 @@ function registerAppRoutes(app, deps) {
       const day = getMatchDay(match.started_at);
       if (day < 21) return res.status(400).json({ error: 'Not yet Day 21' });
 
-      stmts.upsertReveal.run(match.id, userId, choice);
+      const existing = stmts.getReveal.get(match.id, userId);
+      if (existing) return res.status(409).json({ error: 'Reveal choice is already locked.' });
+      stmts.insertRevealChoice.run(match.id, userId, choice, new Date().toISOString());
+      if (trackEvent) trackEvent(userId, 'reveal_choice_submitted', { choice });
       res.json({ ok: true });
     } catch (e) {
       console.error('Reveal error:', e);
@@ -817,7 +897,7 @@ function registerAppRoutes(app, deps) {
       if (!match) return res.status(400).json({ error: 'No match found' });
 
       const partnerId = getPartnerId(match, userId);
-      stmts.upsertReveal.run(match.id, partnerId, 'yes');
+      if (!stmts.getReveal.get(match.id, partnerId)) stmts.insertRevealChoice.run(match.id, partnerId, 'first_name', new Date().toISOString());
       res.json({ ok: true });
     } catch (e) {
       console.error('Dev reveal error:', e);
@@ -891,6 +971,7 @@ function registerAppRoutes(app, deps) {
       const passwordValid = await bcrypt.compare(password, user.password);
       if (!passwordValid) return res.status(401).json({ error: 'Incorrect password. Account not deleted.' });
 
+      if (trackEvent) trackEvent(userId, 'account_deleted');
       deleteUserDataTx(userId, 'user_requested');
 
       req.session.destroy(() => {

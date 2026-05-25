@@ -541,7 +541,9 @@ function bindStaticUi() {
   // Auto-start app for logged-in users
   startApp();
 
-  if (!state.user.archetype) {
+  if (!state.user.emailVerified) {
+    renderEmailVerification(); go('s-scan-intro');
+  } else if (!state.user.archetype) {
     go('s-scan-intro');
   } else if (!state.match) {
     renderWaiting(); go('s-waiting');
@@ -557,26 +559,91 @@ function bindStaticUi() {
 // ═══════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════
+function fieldError(id, message) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('invalid', !!message);
+  let msg = el.parentElement && el.parentElement.querySelector('.field-error');
+  if (!msg && el.parentElement) {
+    msg = document.createElement('div');
+    msg.className = 'field-error';
+    el.parentElement.appendChild(msg);
+  }
+  if (msg) msg.textContent = message || '';
+}
+
+function clearSignupErrors() {
+  ['inp-name', 'inp-college', 'inp-email', 'inp-password'].forEach(id => fieldError(id, ''));
+  document.querySelectorAll('.signup-step-error').forEach(el => el.remove());
+}
+
+function showStepError(containerSelector, message) {
+  const container = document.querySelector(containerSelector);
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'field-error signup-step-error';
+  el.textContent = message;
+  container.appendChild(el);
+}
+
+function validEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function continueFromSignupBasics() {
+  const name = document.getElementById('inp-name').value.trim();
+  const college = document.getElementById('inp-college').value.trim();
+  const email = document.getElementById('inp-email').value.trim();
+  const password = document.getElementById('inp-password').value;
+  const yearEl = document.querySelector('.year-btn.on');
+  clearSignupErrors();
+  let ok = true;
+  if (name.length < 2) { fieldError('inp-name', 'Name must be at least 2 characters.'); ok = false; }
+  if (college.length < 3) { fieldError('inp-college', 'Please enter your college name.'); ok = false; }
+  if (!yearEl) { showStepError('.year-row', 'Please choose your year.'); ok = false; }
+  if (!email) { fieldError('inp-email', 'Please enter your email.'); ok = false; }
+  else if (!validEmail(email)) { fieldError('inp-email', 'Please enter a valid email.'); ok = false; }
+  if (!password || password.length < 8) { fieldError('inp-password', 'Password must be at least 8 characters.'); ok = false; }
+  if (ok) go('s-ob4b');
+}
+
+function continueFromPreferences() {
+  document.querySelectorAll('.signup-step-error').forEach(el => el.remove());
+  let ok = true;
+  if (!prefGender) { showStepError('#gender-grid', 'Please choose your gender.'); ok = false; }
+  if (!prefMatchGender) { showStepError('#match-gender-grid', 'Please choose who you feel comfortable matching with.'); ok = false; }
+  if (!prefMatchYear) { showStepError('#match-year-grid', 'Please choose your partner year preference.'); ok = false; }
+  if (ok) go('s-ob5');
+}
+
 async function register() {
   const name = document.getElementById('inp-name').value.trim();
   const college = document.getElementById('inp-college').value.trim();
   const email = document.getElementById('inp-email').value.trim();
   const password = document.getElementById('inp-password').value;
   const yearEl = document.querySelector('.year-btn.on');
-  const year = yearEl ? yearEl.textContent.trim() : '3rd';
+  const year = yearEl ? yearEl.textContent.trim() : '';
 
-  if (!name) { toast('Please enter your name'); return; }
-  if (!college) { toast('Please enter your college'); return; }
-  if (!email) { toast('Please enter your email'); return; }
-  if (!password || password.length < 8) { toast('Password must be at least 8 characters'); return; }
+  clearSignupErrors();
+  let ok = true;
+  if (name.length < 2) { fieldError('inp-name', 'Name must be at least 2 characters.'); ok = false; }
+  if (college.length < 3) { fieldError('inp-college', 'Please enter your college name.'); ok = false; }
+  if (!year) { showStepError('.year-row', 'Please choose your year.'); ok = false; }
+  if (!email) { fieldError('inp-email', 'Please enter your email.'); ok = false; }
+  else if (!validEmail(email)) { fieldError('inp-email', 'Please enter a valid email.'); ok = false; }
+  if (!password || password.length < 8) { fieldError('inp-password', 'Password must be at least 8 characters.'); ok = false; }
+  if (!prefGender) { showStepError('#gender-grid', 'Please choose your gender.'); ok = false; }
+  if (!prefMatchGender) { showStepError('#match-gender-grid', 'Please choose who you feel comfortable matching with.'); ok = false; }
+  if (!prefMatchYear) { showStepError('#match-year-grid', 'Please choose your partner year preference.'); ok = false; }
 
   const ageChecked = document.getElementById('ageCheckbox').checked;
   const consentGiven = document.getElementById('consentCheckbox').checked;
-  if (!ageChecked) { toast('You must confirm you are 18+ or have guardian consent'); return; }
-  if (!consentGiven) { toast('Please accept the Privacy Policy to continue'); return; }
+  if (!ageChecked) { toast('You must confirm you are 18 or older.'); ok = false; }
+  if (!consentGiven) { toast('Please accept the consent before continuing.'); ok = false; }
+  if (!ok) return;
 
   try {
-    await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven });
+    await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven, ageConfirmed: ageChecked });
     await loadState();
     // Make sure app area is visible
     document.getElementById('landing').style.display = 'none';
@@ -612,6 +679,7 @@ async function logout() {
 
 function routeToScreen() {
   if (!state) { go('s-splash'); return; }
+  if (!state.user.emailVerified) { renderEmailVerification(); go('s-scan-intro'); return; }
   if (!state.user.archetype) { go('s-scan-intro'); return; }
   if (!state.match) { renderWaiting(); go('s-waiting'); return; }
   if (state.match.day >= 21) { handleRevealFlow(); return; }
@@ -640,9 +708,9 @@ function togglePerm(el) {
 // ═══════════════════════════════════════
 // PREFERENCES
 // ═══════════════════════════════════════
-let prefGender = 'prefer_not_to_say';
-let prefMatchGender = 'any';
-let prefMatchYear = 'any';
+let prefGender = '';
+let prefMatchGender = '';
+let prefMatchYear = '';
 
 function pickPref(el, gridId, type) {
   document.getElementById(gridId).querySelectorAll('.pref-btn').forEach(b => b.classList.remove('on'));
@@ -668,14 +736,62 @@ function pickPref(el, gridId, type) {
 // ═══════════════════════════════════════
 // SAFETY
 // ═══════════════════════════════════════
-function showSafety() { document.getElementById('safety-overlay').classList.add('show'); }
+function showSafety() {
+  const overlay = document.getElementById('safety-overlay');
+  const card = overlay && overlay.querySelector('.safety-card');
+  if (card && !document.getElementById('safetyHelpActions')) {
+    const actions = document.createElement('div');
+    actions.id = 'safetyHelpActions';
+    actions.innerHTML = `
+      <button class="btn" onclick="window.location.href='tel:14416'" style="margin-bottom:8px;">Get help now</button>
+      <button class="btn-ghost" onclick="closeSafety();routeToScreen();" style="margin-bottom:8px;">Pause journaling</button>`;
+    const helplines = card.querySelector('.safety-helplines');
+    if (helplines) helplines.insertAdjacentElement('afterend', actions);
+  }
+  if (overlay) overlay.classList.add('show');
+}
 function closeSafety() { document.getElementById('safety-overlay').classList.remove('show'); }
+
+function renderEmailVerification() {
+  const email = state && state.user ? state.user.email : 'your email';
+  const el = document.getElementById('s-scan-intro');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="nav"><div class="nav-logo">mentally prepare</div></div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
+      <div style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.8;margin-bottom:14px;">Verify email</div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;line-height:1;margin-bottom:16px;">Check your<br/><em style="font-style:italic;color:var(--rose-l);">inbox</em></h1>
+      <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;max-width:360px;">We sent a verification link to ${escapeHtml(email)}. The emotional scan and matching open after your email is verified.</p>
+      <button class="btn" onclick="resendVerification()">Resend verification email</button>
+      <button class="btn-ghost" style="margin-top:12px" onclick="loadState().then(routeToScreen)">I've verified</button>
+    </div>`;
+}
+
+async function resendVerification() {
+  try {
+    const result = await api('POST', '/resend-verification', {});
+    toast(result.message || 'Verification email sent.');
+  } catch (e) { toast(e.message); }
+}
 
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
   closeSafety();
   closeEntryDetail();
 });
+
+function injectUrgentHelpButton() {
+  if (document.getElementById('urgentHelpBtn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'urgentHelpBtn';
+  btn.className = 'urgent-help-btn';
+  btn.type = 'button';
+  btn.textContent = 'I need urgent help';
+  btn.addEventListener('click', showSafety);
+  document.body.appendChild(btn);
+}
+
+document.addEventListener('DOMContentLoaded', injectUrgentHelpButton);
 
 // ═══════════════════════════════════════
 // SCAN
@@ -688,7 +804,8 @@ function startScan() {
 
 function renderScan() {
   const q = questions[scanIndex];
-  const pct = Math.round((scanIndex / questions.length) * 100);
+  const answeredCount = scanAnswers.filter(v => v !== null).length;
+  const pct = Math.round((answeredCount / questions.length) * 100);
   const val = scanAnswers[scanIndex];
   const sliderVal = val !== null ? val : 4;
   const labels = ['','Strongly disagree','Disagree','Slightly disagree','Neutral','Slightly agree','Agree','Strongly agree'];
@@ -703,7 +820,7 @@ function renderScan() {
   document.getElementById('s-scan').innerHTML = `
     <div class="quiz-header" style="padding:20px 24px 0;">
       <button class="back-btn" onclick="${scanIndex===0?'go(\'s-scan-intro\')':'prevScanQ()'}"><span style="font-size:16px;">←</span> Back</button>
-      <div class="progress-row"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label">${scanIndex+1} of ${questions.length}</div></div>
+      <div class="progress-row"><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><div class="progress-label">${answeredCount} of ${questions.length} answered</div></div>
       <div class="q-category">${escapeHtml(q.category)}</div>
     </div>
     <div style="padding:0 24px;">
@@ -713,7 +830,7 @@ function renderScan() {
       </div>
       ${inputHTML}
       <div class="nav-row">
-        <button class="btn-skip" onclick="nextScanQ()">Skip</button>
+        <button class="btn-skip" onclick="prevScanQ()" ${scanIndex === 0 ? 'disabled' : ''}>Back</button>
         <button class="btn btn-next" onclick="${isLast?'submitScan()':'nextScanQ()'}" ${isLast?'style="background:linear-gradient(135deg,var(--gold),var(--rose-d));"':''}>${isLast?'✦ See my profile':'Continue →'}</button>
       </div>
     </div>`;
@@ -725,6 +842,8 @@ function renderScan() {
     style.textContent = '.scan-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--ink);cursor:pointer;box-shadow:0 0 12px rgba(212,133,154,.4)}.scan-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--ink);cursor:pointer;border:none}';
     if (!document.getElementById('slider-thumb-style')) { style.id = 'slider-thumb-style'; document.head.appendChild(style); }
   }
+  const nextBtn = document.querySelector('#s-scan .btn-next');
+  if (nextBtn) nextBtn.disabled = val === null;
 }
 
 function pickScanSlider(val) {
@@ -732,8 +851,13 @@ function pickScanSlider(val) {
   const labels = ['','Strongly disagree','Disagree','Slightly disagree','Neutral','Slightly agree','Agree','Strongly agree'];
   const lbl = document.getElementById('slider-label');
   if (lbl) { lbl.textContent = labels[val]; lbl.style.color = 'var(--rose-l)'; }
+  const nextBtn = document.querySelector('#s-scan .btn-next');
+  if (nextBtn) nextBtn.disabled = false;
 }
-function nextScanQ() { if (scanIndex < questions.length - 1) { scanIndex++; renderScan(); go('s-scan'); } }
+function nextScanQ() {
+  if (scanAnswers[scanIndex] === null) { toast('Please answer this question before continuing.'); return; }
+  if (scanIndex < questions.length - 1) { scanIndex++; renderScan(); go('s-scan'); }
+}
 function prevScanQ() { if (scanIndex > 0) { scanIndex--; renderScan(); go('s-scan'); } }
 
 function calculateScoresLocal() {
@@ -741,7 +865,7 @@ function calculateScoresLocal() {
   const counts = { openness:0, awareness:0, guard:0, reciprocity:0 };
   questions.forEach((q, idx) => {
     let val = scanAnswers[idx];
-    if (val === null) val = 4; // neutral default for skipped
+    if (val === null) throw new Error('Please answer every scan question before continuing.');
     // reverse-scored items: high agreement = low score on that dimension
     const score = q.reverse ? (8 - val) : val;
     totals[q.axis] += score;
@@ -765,9 +889,10 @@ function calculateScoresLocal() {
 }
 
 async function submitScan() {
+  if (scanAnswers.some(v => v === null)) { toast('Please answer every scan question before continuing.'); return; }
   calculateScoresLocal();
   try {
-    const { matched } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype });
+    const { matched } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype, answers: scanAnswers });
     await loadState();
     renderResult(matched);
     go('s-result');
@@ -1036,7 +1161,13 @@ async function sealTonightsEntry() {
   if (!text) { toast('A few words are enough before sealing.'); return; }
 
   try {
-    var result = await api('POST', '/tonights-question', { text: text, mood: tqMood });
+    var piiConfirmed = false;
+    var pii = clientPiiFlags(text);
+    if (pii.length) {
+      piiConfirmed = confirm('This may reveal who you are. Please remove personal details to keep this space anonymous. Continue only if you understand the risk.');
+      if (!piiConfirmed) return;
+    }
+    var result = await api('POST', '/tonights-question', { text: text, mood: tqMood, piiConfirmed: piiConfirmed });
     sessionStorage.removeItem('mp-tq-draft');
 
     if (result.safety && result.safety.crisis) showSafety();
@@ -1306,6 +1437,13 @@ function updateWordCount(el) {
 
 function wordCount(str) { return str && str.trim() ? str.trim().split(/\s+/).length : 0; }
 
+function detectClientPii(text) {
+  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text)
+    || /(?:\+91[- ]?)?(?:[6-9][0-9]{9})/.test(text)
+    || /\b(?:instagram|telegram|whatsapp|snapchat|linkedin|t\.me|wa\.me|https?:\/\/|www\.|@[a-z0-9_.]{3,})/i.test(text)
+    || /\b(?:hostel|room|flat|block|sector|department|batch)\b/i.test(text);
+}
+
 function saveDraft() {
   const area = document.getElementById('journal-draft');
   if (area) sessionStorage.setItem('mp-draft', area.value);
@@ -1316,9 +1454,14 @@ async function sealEntry() {
   const area = document.getElementById('journal-draft');
   const text = area ? area.value.trim() : '';
   if (!text) { toast('A few words are enough before sealing.'); return; }
+  let piiConfirmed = false;
+  if (detectClientPii(text)) {
+    piiConfirmed = confirm('This may reveal who you are. Please remove personal details to keep this space anonymous. Continue only if you understand the risk.');
+    if (!piiConfirmed) return;
+  }
 
   try {
-    const result = await api('POST', '/entry', { text, mood: currentMood, selectedPrompt: selectedPrompt || null });
+    const result = await api('POST', '/entry', { text, mood: currentMood, selectedPrompt: selectedPrompt || null, piiConfirmed });
     sessionStorage.removeItem('mp-draft');
     currentMood = '🌓';
     await loadState();
@@ -1333,7 +1476,13 @@ async function sealEntry() {
 
     celebrateStreak();
     renderSealed(); go('s-sealed');
-  } catch (e) { toast(e.message); }
+  } catch (e) {
+    if (e.message && e.message.includes('reveal who you are')) {
+      toast('Please remove personal details before saving.');
+    } else {
+      toast(e.message);
+    }
+  }
 }
 
 function startCountdown() {
@@ -1735,6 +1884,8 @@ function renderSettings() {
     </div>
     <div class="settings-list">
       ${state && state.match ? `<button class="si" id="si-switch" type="button" onclick="switchPartner()"><div class="si-ico">&#128260;</div><div class="si-lbl">Switch partner (if inactive 5+ days)</div><div class="si-arrow">&#8250;</div></button>` : ''}
+      ${state && state.match ? `<button class="si" type="button" onclick="requestRematch()"><div class="si-ico">&#8635;</div><div class="si-lbl">Request rematch</div><div class="si-arrow">&#8250;</div></button>` : ''}
+      ${state && state.match ? `<button class="si" type="button" onclick="blockPartner()"><div class="si-ico">&#9940;</div><div class="si-lbl">Block partner / I feel unsafe</div><div class="si-arrow">&#8250;</div></button>` : ''}
     </div>
     <div style="padding:20px 24px 0;">
       <div style="font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-s);margin-bottom:12px;">Privacy</div>
@@ -1875,6 +2026,27 @@ async function switchPartner() {
 // ═══════════════════════════════════════
 // REPORTING
 // ═══════════════════════════════════════
+async function requestRematch() {
+  const reason = prompt('Why do you want a rematch? You can keep this short.');
+  if (reason === null) return;
+  try {
+    const result = await api('POST', '/rematch-request', { reason: reason || 'requested_by_user' });
+    toast(result.message || 'Rematch request saved.');
+  } catch (e) { toast(e.message); }
+}
+
+async function blockPartner() {
+  const reason = prompt('Tell us what felt unsafe. Your identity will stay anonymous.');
+  if (reason === null) return;
+  if (!confirm('Block this partner and close the match?')) return;
+  try {
+    const result = await api('POST', '/block-partner', { reason: reason || 'blocked_by_user' });
+    await loadState();
+    toast(result.message || 'Partner blocked.');
+    routeToScreen();
+  } catch (e) { toast(e.message); }
+}
+
 async function reportEntry(day) {
   const reason = prompt('What made you uncomfortable? (This helps us keep everyone safe)');
   if (!reason || !reason.trim()) return;
@@ -1893,13 +2065,13 @@ function handleRevealFlow() {
 
   if (!r.myChoice) {
     renderRevealConsent(); go('s-reveal-wait');
-  } else if (r.myChoice === 'no' || r.anonymous) {
+  } else if (r.myChoice === 'stay_anonymous' || r.anonymous) {
     renderRevealAnonymous(); go('s-reveal-wait');
-  } else if (r.myChoice === 'yes' && r.revealed) {
+  } else if (r.myChoice && r.revealed) {
     renderRevealed(); go('s-revealed');
-  } else if (r.myChoice === 'yes' && !r.partnerChose) {
+  } else if (r.myChoice && !r.partnerChose) {
     renderRevealWaiting(); go('s-reveal-wait');
-  } else if (r.myChoice === 'yes' && r.partnerChose && !r.revealed) {
+  } else if (r.myChoice && r.partnerChose && !r.revealed) {
     renderRevealAnonymous(); go('s-reveal-wait');
   }
 }
@@ -1912,17 +2084,19 @@ function renderRevealConsent() {
     <div class="wait-body">
       <div class="wait-moon-wrap"><div class="ring"></div><div class="ring ring2"></div><div class="moon-base wait-moon"></div></div>
       <div class="wait-eyebrow">Day 21 · The Reveal</div>
-      <h2 class="wait-h">Tonight,<br/>the stranger<br/><em>gets a name.</em></h2>
-      <p class="wait-p">You've written to each other for 21 nights. Do you want to know who you've been writing to?</p>
+      <h2 class="wait-h">Tonight,<br/>you choose<br/><em>what opens.</em></h2>
+      <p class="wait-p">You've written to each other for 21 nights. Choose what, if anything, you want to reveal. Email is never shared automatically.</p>
       <div class="streak-complete">${Array.from({length:21}, () => '<div class="s-pip"></div>').join('')}</div>
       <div class="partner-wait">
         <div class="pw-moon">${matchArch.emoji}</div>
         <div><div class="pw-ey">Your partner</div><div class="pw-name">${matchArch.name}</div><div class="pw-status">Waiting for your decision</div></div>
         <div class="pw-dot"></div>
       </div>
-      <button class="btn-yes" onclick="submitReveal('yes')" style="margin-top:20px;">✦ Yes — reveal who they are</button>
-      <button class="btn-no" onclick="submitReveal('no')">Keep it anonymous forever</button>
-      <div class="anon-note">One "no" keeps both identities private forever.<br/>No awkwardness. No rejection risk.</div>
+      <button class="btn-yes" onclick="submitReveal('first_name')" style="margin-top:20px;">Reveal first name only</button>
+      <button class="btn-yes" onclick="submitReveal('name_college')">Reveal name and college</button>
+      <button class="btn-yes" onclick="submitReveal('contact_details')">Reveal contact details</button>
+      <button class="btn-no" onclick="submitReveal('stay_anonymous')">Stay anonymous</button>
+      <div class="anon-note">One "stay anonymous" keeps both identities private.<br/>No one is told who chose privacy.</div>
     </div>`;
 }
 
@@ -1932,9 +2106,9 @@ function renderRevealWaiting() {
     <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day 21 ✦</div></div>
     <div class="wait-body">
       <div class="wait-moon-wrap"><div class="ring"></div><div class="ring ring2"></div><div class="moon-base wait-moon"></div></div>
-      <div class="wait-eyebrow">You said yes ✦</div>
+      <div class="wait-eyebrow">Choice locked</div>
       <h2 class="wait-h">Waiting for<br/><em>your partner.</em></h2>
-      <p class="wait-p">You chose to reveal. Now waiting for your partner to make their choice.</p>
+      <p class="wait-p">Your reveal choice is locked. Now waiting for your partner to make their choice.</p>
       <div class="partner-wait">
         <div class="pw-moon">${matchArch.emoji}</div>
         <div><div class="pw-ey">Your partner</div><div class="pw-name">${matchArch.name}</div><div class="pw-status">Deciding… ${typingDots()}</div></div>
@@ -1957,10 +2131,11 @@ function renderRevealAnonymous() {
 }
 
 async function submitReveal(choice) {
+  if (!confirm('Lock this reveal choice? You cannot change it after submitting.')) return;
   try {
     await api('POST', '/reveal', { choice });
     await loadState();
-    if (choice === 'yes' && state.reveal.revealed) {
+    if (choice !== 'stay_anonymous' && state.reveal.revealed) {
       spawnParticles();
       setTimeout(() => { renderRevealed(); go('s-revealed'); }, 400);
     } else {
@@ -1986,6 +2161,11 @@ function renderRevealed() {
   const partner = state.reveal.partner;
   const matchArch = archetypes[state.match.partner.archetype];
   const totalEntries = state.entries.length;
+  const displayName = partner.fullName || partner.name || 'Your partner';
+  const detailLine = partner.college
+    ? `${escapeHtml(partner.year || '')} year · ${escapeHtml(partner.college)}`
+    : 'First name revealed';
+  const canShowContact = !!partner.email;
 
   document.getElementById('s-revealed').innerHTML = `
     <div class="nav"><div class="nav-logo">mentally prepare</div><div class="day-pill">Day 21 ✦</div></div>
@@ -1993,8 +2173,8 @@ function renderRevealed() {
       <div class="rev-moon-wrap"><div class="rev-ring"></div><div class="rev-ring rev-ring2"></div><div class="moon-base rev-moon"></div></div>
       <div class="rev-eyebrow">The stranger had a name all along</div>
       <div class="rev-label">You've been writing to</div>
-      <div class="rev-name">${escapeHtml(partner.name)}</div>
-      <div class="rev-college">${escapeHtml(partner.year)} year · ${escapeHtml(partner.college)}</div>
+      <div class="rev-name">${escapeHtml(displayName)}</div>
+      <div class="rev-college">${detailLine}</div>
       <div class="arch-badge">
         <div style="font-size:26px;animation:floatSlow 4s ease-in-out infinite;">${matchArch.emoji}</div>
         <div><div class="arch-ey">Their archetype</div><div style="font-family:'Playfair Display',serif;font-size:15px;font-style:italic;color:var(--ink);">${matchArch.name}</div></div>
@@ -2006,7 +2186,7 @@ function renderRevealed() {
       </div>
       <div class="meet-section">
         <div class="meet-question">Now that you know —<br/><em>do you want to meet?</em></div>
-        <button class="btn-yes" onclick="renderRevealYes();go('s-reveal-yes')">✦ Yes, I want to meet ${escapeHtml(partner.name)}</button>
+        ${canShowContact ? `<button class="btn-yes" onclick="renderRevealYes();go('s-reveal-yes')">Show shared contact details</button>` : ''}
         <button class="btn-no" onclick="renderProfile();go('s-profile')">Maybe later</button>
       </div>
     </div>`;
@@ -2016,6 +2196,8 @@ function renderRevealed() {
 
 function renderRevealYes() {
   const partner = state.reveal.partner;
+  if (!partner.email) { toast('Contact details were not shared.'); renderProfile(); go('s-profile'); return; }
+  const displayName = partner.fullName || partner.name || 'Your partner';
   document.getElementById('s-reveal-yes').innerHTML = `
     <div class="nav"><div class="nav-logo">mentally prepare</div><div class="day-pill">Day 21 ✦</div></div>
     <div class="yes-body">
@@ -2024,8 +2206,8 @@ function renderRevealYes() {
       <h2 class="yes-h">Time to<br/><em>say hello.</em></h2>
       <p class="yes-p">You've been writing to each other for 21 nights. Now you know who wrote those words. Go say hello.</p>
       <div class="contact-card">
-        <div class="contact-ey">${escapeHtml(partner.name)}'s contact</div>
-        <div class="contact-name">${escapeHtml(partner.name)}</div>
+        <div class="contact-ey">${escapeHtml(displayName)}'s contact</div>
+        <div class="contact-name">${escapeHtml(displayName)}</div>
         <div class="contact-detail">${escapeHtml(partner.college)} · ${escapeHtml(partner.year)} year<br/>${escapeHtml(partner.email)}</div>
       </div>
       <button class="btn" onclick="renderProfile();go('s-profile')" style="margin-bottom:12px;">🌙 Back to profile</button>
@@ -2042,7 +2224,7 @@ function renderAbout() {
       <div class="moon-base" style="width:72px;height:72px;margin:0 auto 20px;box-shadow:0 0 40px rgba(201,169,110,.5),0 0 80px rgba(201,169,110,.15);animation:float 5s ease-in-out infinite;"></div>
       <div class="eyebrow">About the project</div>
       <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;line-height:1.15;margin-bottom:12px;">An anonymous peer reset<br/>for <em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">lonely college students.</em></h2>
-      <p style="font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.85;max-width:300px;margin:0 auto;">Free. Always. No payment. No subscription. No freemium wall. Just connection.</p>
+      <p style="font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.85;max-width:300px;margin:0 auto;">Currently free during early access. No payment is needed to start.</p>
     </div>
     <div class="about-stat-row">
       <div class="about-stat"><div class="about-stat-n">52%</div><div class="about-stat-l">of college students report loneliness</div></div>

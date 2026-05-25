@@ -83,8 +83,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .confession{padding-top:40px}.founder-note{max-width:720px;margin:0 auto;text-align:left}
 .founder-note .note-body{font-family:var(--display);font-size:clamp(24px,3.2vw,38px);line-height:1.18;color:rgba(251,245,255,.86)}
 .signature{margin-top:26px;color:var(--soft);font-size:12px;letter-spacing:.05em}
-.quote-strip{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:28px 0;background:rgba(251,245,255,.018)}
-.quote-track{display:flex;gap:56px;width:max-content;animation:marquee 42s linear infinite}.quote-track span{font-family:var(--display);font-style:italic;font-size:clamp(18px,2vw,26px);color:rgba(251,245,255,.36);white-space:nowrap}
+.quote-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:32px 24px;background:rgba(251,245,255,.018)}
+.quote-lines{max-width:760px;margin:0 auto;display:grid;gap:14px;text-align:center}.quote-lines p{font-family:var(--display);font-style:italic;font-size:clamp(20px,2.4vw,30px);line-height:1.25;color:rgba(251,245,255,.48)}
 
 .ritual-grid{display:grid;grid-template-columns:.78fr 1fr;gap:48px;align-items:start;padding:34px;border:1px solid rgba(251,245,255,.12);background:linear-gradient(135deg,rgba(251,245,255,.035),rgba(212,133,154,.025));border-radius:28px}.ritual-intro{position:sticky;top:110px}
 .timeline{position:relative;border-left:1px solid rgba(212,133,154,.22);padding-left:30px}
@@ -154,7 +154,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
           <a class="btn" href="/app">Begin tonight</a>
           <a class="btn secondary" href="#ritual">See the ritual</a>
         </div>
-        <p class="micro reveal">Free. Anonymous. Takes 3 minutes. No public profile.</p>
+        <p class="micro reveal">Currently free during early access. Anonymous. Takes 3 minutes. No public profile.</p>
       </div>
       <div class="artifact-wrap reveal" aria-label="Private journal preview">
         <div class="artifact-glow"></div>
@@ -170,7 +170,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
             <div class="status-note">Your partner has written back. It unlocks tomorrow morning.</div>
           </div>
         </div>
-        <div class="reveal-pill"><strong>Day 21</strong><span>Reveal opens only if both of you say yes.</span></div>
+        <div class="reveal-pill"><strong>Day 21</strong><span>Reveal opens only at the level both of you choose.</span></div>
       </div>
     </div>
   </section>
@@ -184,9 +184,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     </div>
   </section>
 
-  <div class="quote-strip" aria-hidden="true"><div class="quote-track">
-    <span>"What kind of tired are you that sleep does not fix?"</span><span>"When did you last feel fully seen?"</span><span>"What would you say if no one knew it was you?"</span><span>"What are you carrying alone?"</span>
-    <span>"What kind of tired are you that sleep does not fix?"</span><span>"When did you last feel fully seen?"</span><span>"What would you say if no one knew it was you?"</span><span>"What are you carrying alone?"</span>
+  <div class="quote-strip"><div class="quote-lines">
+    <p>What kind of tired are you that sleep does not fix?</p>
+    <p>When did you last feel fully seen?</p>
+    <p>What would you say if no one knew it was you?</p>
+    <p>What are you carrying alone?</p>
   </div></div>
 
   <section class="section" id="ritual">
@@ -201,13 +203,13 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
           <div class="moment reveal"><small>01 / 3 minutes</small><h3>Answer a small emotional quiz.</h3><p>Eleven sliders about closeness, distance, trust, and how you protect yourself when things feel too real.</p></div>
           <div class="moment reveal"><small>02 / quietly matched</small><h3>Get paired with another student.</h3><p>Someone from another college. Anonymous by default. You meet their thoughts before you meet their name.</p></div>
           <div class="moment reveal"><small>03 / every night</small><h3>Write one note. Read one note.</h3><p>A prompt opens. You write what you can. Their reply reaches you later, without pressure to perform a perfect self.</p></div>
-          <div class="moment reveal"><small>04 / day 21</small><h3>Choose what becomes real.</h3><p>Names unlock only if both people say yes. One no keeps both identities private. No rejection spectacle.</p></div>
+          <div class="moment reveal"><small>04 / day 21</small><h3>Choose what becomes real.</h3><p>Both people choose a reveal level. Email is never shared automatically. One stay-anonymous choice keeps both identities private.</p></div>
         </div>
       </div>
     </div>
     <div class="inner safety-row reveal" id="safety">
       <div class="safety-item"><h4>Anonymous first</h4><p>No public profile, no photos, no visible college until a mutual reveal.</p></div>
-      <div class="safety-item"><h4>Mutual reveal</h4><p>Day 21 only opens identities when both people independently choose yes.</p></div>
+      <div class="safety-item"><h4>Mutual reveal</h4><p>Day 21 only opens identity details at the level both people independently choose.</p></div>
       <div class="safety-item"><h4>Not therapy</h4><p>This is a writing ritual and peer connection experiment, not clinical care or crisis support.</p></div>
       <div class="safety-item"><h4>Private by design</h4><p>No social feed. No follower count. No likes. Your words are not content.</p></div>
     </div>
@@ -253,10 +255,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
         <div class="day-note two"><small>Day 14</small><p>Slept a little deeper. Still showing up.</p></div>
         <div class="day-note three"><small>Day 21</small><p>Clarity is not loud. It stays.</p></div>
         <div class="field-head">
-          <div class="label">Field notes</div>
+          <div class="label">Sample journey notes</div>
           <h2 class="headline">What stayed after <em>twenty-one days.</em></h2>
           <div class="field-divider" aria-hidden="true"></div>
-          <p class="copy">Short excerpts from people who finished the experiment. Names removed. Details softened where needed.</p>
+          <p class="copy">Inspired by early user emotions. Details are fictionalized for privacy.</p>
         </div>
       </div>
       <div class="field-grid reveal">
@@ -273,11 +275,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
       <h2 class="headline">Write one honest thing tonight.</h2>
       <p class="copy">Worst case, you spend 3 minutes being real with yourself. Best case, someone understands.</p>
       <a class="btn" href="/app">Begin tonight</a>
-      <p class="micro">Free. Anonymous. No public profile.</p>
+      <p class="micro">Currently free during early access. Anonymous. No public profile.</p>
     </div>
   </section>
 </main>
-<footer class="footer"><div class="footer-inner"><div>Mentally Prepare - 2026</div><div class="footer-links"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#ritual">How it works</a><a href="https://www.instagram.com/mymentallyprepare" target="_blank" rel="noopener noreferrer">Instagram</a></div></div></footer>
+<footer class="footer"><div class="footer-inner"><div>Mentally Prepare - 2026</div><div class="footer-links"><a href="/safety">Safety</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#ritual">How it works</a><a href="https://www.instagram.com/mymentallyprepare" target="_blank" rel="noopener noreferrer">Instagram</a></div></div></footer>
 <script>
 (function(){
   var stars=document.getElementById('stars');var count=Math.min(120,Math.floor(innerWidth/7));

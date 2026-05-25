@@ -114,17 +114,16 @@ function registerAdminRoutes(app, deps) {
   app.get('/admin/reports', requireAdmin, (req, res) => {
     try {
       const rows = db.prepare(`
-        SELECT r.id, r.reporter_id, r.day, r.reason, r.created_at, u.name as reporter_name
+        SELECT r.id, r.day, r.reason, r.created_at, r.category, r.status
         FROM reports r
-        LEFT JOIN users u ON u.id = r.reporter_id
         ORDER BY r.created_at DESC
         LIMIT 20
       `).all();
       res.json(rows.map(r => ({
         id: r.id,
-        reporter_id: r.reporter_id,
-        reporter_name: r.reporter_name,
         day: r.day,
+        category: r.category,
+        status: r.status,
         reason: r.reason,
         date: r.created_at
       })));
@@ -377,9 +376,8 @@ function registerAdminRoutes(app, deps) {
           LIMIT 8
         `).all(),
         ...db.prepare(`
-          SELECT r.created_at, 'report' as type, 'Report from ' || COALESCE(u.name, 'user #' || r.reporter_id) || ': ' || r.reason as message
+          SELECT r.created_at, 'report' as type, 'Report #' || r.id || ' submitted: ' || r.reason as message
           FROM reports r
-          LEFT JOIN users u ON u.id = r.reporter_id
           ORDER BY r.created_at DESC
           LIMIT 8
         `).all(),
@@ -412,6 +410,7 @@ function registerAdminRoutes(app, deps) {
       if (!userA || !userB) return res.status(404).json({ error: 'Both users must exist' });
       if (userA.id === userB.id) return res.status(400).json({ error: 'Choose two different users' });
       if (!userA.archetype || !userB.archetype) return res.status(400).json({ error: 'Both users must complete the scan first' });
+      if (!userA.email_verified || !userB.email_verified) return res.status(400).json({ error: 'Both users must verify email before matching' });
       // Admins can bypass college and archetype rules in a manual force match
       // if (userA.college.trim().toLowerCase() === userB.college.trim().toLowerCase()) {
       //   return res.status(400).json({ error: 'Users must be from different colleges' });
@@ -453,7 +452,7 @@ function registerAdminRoutes(app, deps) {
       const waiting = db.prepare(`
         SELECT u.id FROM users u
         LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
-        WHERE m.id IS NULL AND u.archetype IS NOT NULL
+        WHERE m.id IS NULL AND u.archetype IS NOT NULL AND u.email_verified = 1
         ORDER BY u.created_at ASC
       `).all();
 

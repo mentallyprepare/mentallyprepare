@@ -206,6 +206,10 @@ body:not(.app-active) .celestial-anchor{opacity:0}
 
 /* ── Input ── */
 .input-block{width:100%;margin-bottom:12px}
+.field-help,.field-error{font-family:'DM Sans',sans-serif;font-size:10.5px;line-height:1.45;margin-top:6px}
+.field-help{color:var(--ink-s)}
+.field-error{color:var(--rose-l)}
+.input-field.invalid{border-color:rgba(248,113,113,.62)!important;background:rgba(248,113,113,.06)!important}
 .input-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-s);margin-bottom:8px;display:block}
 .input-field{width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);outline:none;transition:border-color .2s}
 .input-field:focus{border-color:rgba(212,133,154,.35)}
@@ -224,6 +228,7 @@ body:not(.app-active) .celestial-anchor{opacity:0}
 /* ── Safety Popup ── */
 .safety-overlay{position:fixed;inset:0;background:rgba(8,5,15,.92);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .safety-overlay.show{opacity:1;pointer-events:auto}
+.urgent-help-btn{position:fixed;right:16px;bottom:16px;z-index:120;border:1px solid rgba(248,113,113,.28);background:rgba(80,20,30,.88);color:#fff;border-radius:999px;min-height:42px;padding:0 16px;font-family:var(--font-body);font-size:12px;font-weight:800;box-shadow:0 12px 36px rgba(0,0,0,.32);cursor:pointer}
 .safety-card{background:var(--card);border:1px solid rgba(126,200,160,.2);border-radius:24px;padding:28px 24px;margin:20px;max-width:390px;width:100%;text-align:center}
 .safety-ico{font-size:36px;margin-bottom:16px}
 .safety-h{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;line-height:1.2;margin-bottom:12px;color:var(--ink)}

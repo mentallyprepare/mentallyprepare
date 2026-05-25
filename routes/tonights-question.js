@@ -11,7 +11,8 @@ function registerTonightsQuestionRoutes(app, deps) {
     parseUser,
     prompts,
     scanForSafety,
-    HELPLINES
+    HELPLINES,
+    trackEvent
   } = deps;
 
   // Tonight's prompt index — rotates daily based on UTC date
@@ -75,7 +76,7 @@ function registerTonightsQuestionRoutes(app, deps) {
   app.post('/api/tonights-question', apiLimiter, requireAuth, (req, res) => {
     try {
       const userId = req.session.userId;
-      const { text, mood } = req.body;
+      const { text, mood, piiConfirmed } = req.body;
       if (!text || !text.trim()) return res.status(400).json({ error: 'Entry text required' });
       if (text.length > 5000) return res.status(400).json({ error: 'Entry too long (max 5000 chars)' });
 
@@ -84,6 +85,13 @@ function registerTonightsQuestionRoutes(app, deps) {
       if (match) return res.status(400).json({ error: 'You are already matched — use the journal instead' });
 
       const safety = scanForSafety(text);
+      if (safety.crisis && trackEvent) trackEvent(userId, 'crisis_keyword_triggered', { surface: 'tonights_question' });
+      if (safety.pii && !piiConfirmed) {
+        return res.status(422).json({
+          error: 'This may reveal who you are. Please remove personal details to keep this space anonymous.',
+          piiFlags: safety.piiFlags || []
+        });
+      }
       const promptIndex = getTonightsPromptIndex();
 
       stmts.upsertTonightsEntry.run(userId, promptIndex, text.trim(), mood || '🌓');

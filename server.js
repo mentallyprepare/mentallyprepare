@@ -166,10 +166,17 @@ db.exec(`
     gender TEXT DEFAULT 'prefer_not_to_say',
     match_gender_pref TEXT DEFAULT 'any',
     match_year_pref TEXT DEFAULT 'any',
+    college_normalized TEXT,
     archetype TEXT,
     scores TEXT,
+    email_verified INTEGER DEFAULT 0,
+    email_verified_at TEXT,
+    email_verification_token TEXT,
+    email_verification_sent_at TEXT,
     consent_given INTEGER DEFAULT 0,
     consent_date TEXT,
+    consent_age_confirmed INTEGER DEFAULT 0,
+    consent_policy_version TEXT,
     consent_withdrawn_at TEXT,
     last_active_date TEXT,
     switch_count INTEGER DEFAULT 0,
@@ -212,6 +219,7 @@ db.exec(`
     user_id INTEGER NOT NULL REFERENCES users(id),
     choice TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now')),
+    locked_at TEXT,
     UNIQUE(match_id, user_id)
   );
 
@@ -229,8 +237,40 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     reporter_id INTEGER NOT NULL REFERENCES users(id),
+    match_id INTEGER,
+    reported_user_id INTEGER,
+    entry_day INTEGER,
+    category TEXT DEFAULT 'entry',
     day INTEGER DEFAULT 0,
     reason TEXT NOT NULL,
+    status TEXT DEFAULT 'open',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS blocked_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    blocker_id INTEGER NOT NULL REFERENCES users(id),
+    blocked_user_id INTEGER NOT NULL REFERENCES users(id),
+    match_id INTEGER REFERENCES matches(id),
+    reason TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(blocker_id, blocked_user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS rematch_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    match_id INTEGER REFERENCES matches(id),
+    reason TEXT,
+    status TEXT DEFAULT 'open',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS analytics_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id),
+    event_name TEXT NOT NULL,
+    metadata TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -392,9 +432,28 @@ ensureColumn('matches', 'constellation_name', 'TEXT');
 ensureColumn('users', 'gender', 'TEXT');
 ensureColumn('users', 'match_gender_pref', "TEXT DEFAULT 'any'");
 ensureColumn('users', 'match_year_pref', "TEXT DEFAULT 'any'");
+ensureColumn('users', 'college_normalized', 'TEXT');
+ensureColumn('users', 'email_verified', 'INTEGER DEFAULT 0');
+ensureColumn('users', 'email_verified_at', 'TEXT');
+ensureColumn('users', 'email_verification_token', 'TEXT');
+ensureColumn('users', 'email_verification_sent_at', 'TEXT');
+ensureColumn('users', 'consent_age_confirmed', 'INTEGER DEFAULT 0');
+ensureColumn('users', 'consent_policy_version', 'TEXT');
 ensureColumn('users', 'last_active_date', 'TEXT');
 ensureColumn('users', 'switch_count', 'INTEGER DEFAULT 0');
 ensureColumn('users', 'login_email_sent_at', 'TEXT');
+ensureColumn('users', 'updated_at', 'TEXT');
+ensureColumn('matches', 'matched_at', 'TEXT');
+ensureColumn('matches', 'updated_at', 'TEXT');
+ensureColumn('entries', 'updated_at', 'TEXT');
+ensureColumn('waiting_entries', 'scan_completed_at', 'TEXT');
+ensureColumn('reports', 'updated_at', 'TEXT');
+ensureColumn('reveals', 'locked_at', 'TEXT');
+ensureColumn('reports', 'match_id', 'INTEGER');
+ensureColumn('reports', 'reported_user_id', 'INTEGER');
+ensureColumn('reports', 'entry_day', 'INTEGER');
+ensureColumn('reports', 'category', "TEXT DEFAULT 'entry'");
+ensureColumn('reports', 'status', "TEXT DEFAULT 'open'");
 
 // Silent Room — presence/witness columns
 ensureColumn('silent_lines', 'seen_count', 'INTEGER NOT NULL DEFAULT 0');
@@ -553,14 +612,22 @@ function handleReadinessText(req, res) {
 const stmts = {
   getUserById: db.prepare('SELECT * FROM users WHERE id = ?'),
   getUserByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
+  getUserByVerificationToken: db.prepare('SELECT * FROM users WHERE email_verification_token = ?'),
   getUsersByName: db.prepare('SELECT * FROM users WHERE LOWER(name) = LOWER(?) ORDER BY created_at DESC'),
   insertUser: db.prepare(`
-    INSERT INTO users (name, email, password, college, year, gender, match_gender_pref, match_year_pref, consent_given, consent_date, last_active_date)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO users (
+      name, email, password, college, college_normalized, year, gender,
+      match_gender_pref, match_year_pref, consent_given, consent_date,
+      consent_age_confirmed, consent_policy_version, email_verified,
+      email_verification_token, email_verification_sent_at, last_active_date
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `),
   updateUserScan: db.prepare('UPDATE users SET archetype = ?, scores = ? WHERE id = ?'),
   updateUserActivity: db.prepare('UPDATE users SET last_active_date = ? WHERE id = ?'),
   updateUserPassword: db.prepare('UPDATE users SET password = ? WHERE id = ?'),
+  verifyUserEmail: db.prepare('UPDATE users SET email_verified = 1, email_verified_at = ?, email_verification_token = NULL WHERE id = ?'),
+  updateVerificationToken: db.prepare('UPDATE users SET email_verification_token = ?, email_verification_sent_at = ? WHERE id = ?'),
   updateUserConsent: db.prepare('UPDATE users SET consent_given = ?, consent_withdrawn_at = ? WHERE id = ?'),
   updateUserSwitch: db.prepare('UPDATE users SET switch_count = ? WHERE id = ?'),
   updatePushSub: db.prepare('UPDATE users SET push_subscription = ? WHERE id = ?'),
@@ -568,14 +635,15 @@ const stmts = {
   deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
 
   getMatch: db.prepare('SELECT * FROM matches WHERE user1_id = ? OR user2_id = ?'),
-  insertMatch: db.prepare('INSERT INTO matches (user1_id, user2_id) VALUES (?, ?)'),
+  insertMatch: db.prepare("INSERT INTO matches (user1_id, user2_id, matched_at) VALUES (?, ?, datetime('now'))"),
   deleteMatch: db.prepare('DELETE FROM matches WHERE id = ?'),
   updateMatchStart: db.prepare('UPDATE matches SET started_at = ? WHERE id = ?'),
 
   findCandidates: db.prepare(`
     SELECT * FROM users
     WHERE archetype = ?
-      AND LOWER(college) != LOWER(?)
+      AND email_verified = 1
+      AND COALESCE(college_normalized, LOWER(college)) != ?
       AND id != ?
       AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
   `),
@@ -610,6 +678,7 @@ const stmts = {
     ON CONFLICT(match_id, user_id) DO UPDATE SET choice = excluded.choice
   `),
   deleteUserReveals: db.prepare('DELETE FROM reveals WHERE user_id = ?'),
+  insertRevealChoice: db.prepare('INSERT INTO reveals (match_id, user_id, choice, locked_at) VALUES (?, ?, ?, ?)'),
 
   getComments: db.prepare('SELECT * FROM comments WHERE match_id = ? AND (user_id = ? OR user_id = ?)'),
   getComment: db.prepare('SELECT * FROM comments WHERE user_id = ? AND match_id = ? AND day = ?'),
@@ -621,9 +690,19 @@ const stmts = {
   deleteUserComments: db.prepare('DELETE FROM comments WHERE user_id = ?'),
   deleteMatchComments: db.prepare('DELETE FROM comments WHERE match_id = ?'),
 
-  insertReport: db.prepare("INSERT INTO reports (reporter_id, day, reason, created_at) VALUES (?, ?, ?, datetime('now'))"),
+  insertReport: db.prepare(`
+    INSERT INTO reports (reporter_id, match_id, reported_user_id, entry_day, day, category, reason, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'open', datetime('now'))
+  `),
   deleteUserReports: db.prepare('DELETE FROM reports WHERE reporter_id = ?'),
   deleteReportById: db.prepare('DELETE FROM reports WHERE id = ?'),
+  insertBlock: db.prepare(`
+    INSERT INTO blocked_users (blocker_id, blocked_user_id, match_id, reason)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(blocker_id, blocked_user_id) DO NOTHING
+  `),
+  insertRematchRequest: db.prepare('INSERT INTO rematch_requests (user_id, match_id, reason) VALUES (?, ?, ?)'),
+  insertAnalyticsEvent: db.prepare('INSERT INTO analytics_events (user_id, event_name, metadata) VALUES (?, ?, ?)'),
 
   deleteUserMatches: db.prepare('DELETE FROM matches WHERE user1_id = ? OR user2_id = ?'),
   deleteMatchEntries: db.prepare('DELETE FROM entries WHERE match_id = ?'),
@@ -730,6 +809,63 @@ const stmts = {
 function parseUser(row) {
   if (!row) return null;
   return { ...row, scores: row.scores ? JSON.parse(row.scores) : null };
+}
+
+const COLLEGE_ALIASES = new Map([
+  ['du', 'university-of-delhi'],
+  ['d u', 'university-of-delhi'],
+  ['d.u', 'university-of-delhi'],
+  ['d.u.', 'university-of-delhi'],
+  ['delhi university', 'university-of-delhi'],
+  ['delhi uni', 'university-of-delhi'],
+  ['university of delhi', 'university-of-delhi'],
+  ['miranda house', 'miranda-house-delhi'],
+  ['miranda house delhi', 'miranda-house-delhi'],
+  ['srcc', 'shri-ram-college-of-commerce'],
+  ['shri ram college of commerce', 'shri-ram-college-of-commerce'],
+  ['lsr', 'lady-shri-ram-college'],
+  ['lady shri ram college', 'lady-shri-ram-college']
+]);
+
+function normalizeCollegeName(value) {
+  const clean = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/\./g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!clean) return '';
+  return COLLEGE_ALIASES.get(clean) || clean.replace(/\s+/g, '-');
+}
+
+(function backfillNormalizedColleges() {
+  try {
+    const rows = db.prepare('SELECT id, college FROM users WHERE college_normalized IS NULL OR college_normalized = ?').all('');
+    const update = db.prepare('UPDATE users SET college_normalized = ? WHERE id = ?');
+    const tx = db.transaction((items) => {
+      for (const user of items) update.run(normalizeCollegeName(user.college), user.id);
+    });
+    tx(rows);
+  } catch (e) {
+    console.warn('College normalization backfill skipped:', e.message);
+  }
+})();
+
+function trackEvent(userId, eventName, metadata = {}) {
+  try {
+    const allowed = new Set([
+      'signup_started', 'signup_completed', 'email_verified', 'scan_started', 'scan_completed',
+      'matched', 'day_1_written', 'day_2_returned', 'missed_day', 'report_clicked',
+      'block_clicked', 'rematch_requested', 'reveal_choice_submitted', 'account_deleted',
+      'crisis_keyword_triggered', 'signup_error', 'email_send_failed'
+    ]);
+    if (!allowed.has(eventName)) return;
+    stmts.insertAnalyticsEvent.run(userId || null, eventName, JSON.stringify(metadata || {}));
+  } catch (e) {
+    console.warn('Analytics event skipped:', e.message);
+  }
 }
 
 // --- Middleware --------------------------
@@ -882,7 +1018,9 @@ registerAuthRoutes(app, {
   bcrypt,
   crypto,
   stmts,
-  sendLoginWelcome
+  sendLoginWelcome,
+  normalizeCollegeName,
+  trackEvent
 });
 
 const apiLimiter = rateLimit({
@@ -932,18 +1070,33 @@ const CONTENT_FLAGS = [
 ];
 
 const HELPLINES = {
+  teleManas: '14416 or 1800 891 4416',
   iCall: '9152987821',
-  vandrevala: '1860-2662-345',
+  vandrevala: '+91 9999 666 555',
   nimhans: '080-46110007'
 };
 
 function scanForSafety(text) {
   const lower = text.toLowerCase();
   const crisis = SAFETY_KEYWORDS.some(kw => lower.includes(kw));
+  const piiFlags = [];
   let pii = CONTENT_FLAGS.some(kw => lower.includes(kw));
+  if (pii) piiFlags.push('personal_identifier_keyword');
   // Regex for Indian phone numbers (10 digits, with or without spaces/dashes)
   const phoneRegex = /(?:\+91[- ]?)?(?:[6-9][0-9]{9})|(?:[0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{4})/g;
-  if (phoneRegex.test(text)) pii = true;
+  if (phoneRegex.test(text)) { pii = true; piiFlags.push('phone_or_whatsapp'); }
+
+  const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
+  if (emailRegex.test(text)) { pii = true; piiFlags.push('email'); }
+
+  const linkRegex = /\b(?:https?:\/\/|www\.|[a-z0-9-]+\.(?:com|in|org|net|edu|io|me)\b)/i;
+  if (linkRegex.test(text)) { pii = true; piiFlags.push('external_link'); }
+
+  const addressRegex = /\b(?:house|flat|room|block|sector|street|road|lane|hostel|pg|apartment|tower)\s+(?:no\.?\s*)?[a-z0-9-]{1,12}\b/i;
+  if (addressRegex.test(text)) { pii = true; piiFlags.push('address_or_hostel'); }
+
+  const collegeDeptBatchRegex = /\b(?:college|university|du|iit|iim|bits|vit|amity|department|dept|batch)\b.*\b(?:department|dept|batch|20\d{2}|1st|2nd|3rd|4th|5th)\b/i;
+  if (collegeDeptBatchRegex.test(text)) { pii = true; piiFlags.push('college_department_batch_combo'); }
 
   // Regex for common social media handles/links
   const socialRegexes = [
@@ -958,8 +1111,8 @@ function scanForSafety(text) {
     /(?:youtube|yt)\s*[:@]?\s*([a-zA-Z0-9_.-]{3,})/i,
     /(?:facebook\.com|instagram\.com|twitter\.com|linkedin\.com|t\.me|wa\.me|youtube\.com|snapchat\.com|fb\.com|x\.com)\/[a-zA-Z0-9_.-]+/i
   ];
-  if (socialRegexes.some(r => r.test(text))) pii = true;
-  return { crisis, pii };
+  if (socialRegexes.some(r => r.test(text))) { pii = true; piiFlags.push('social_or_messaging_handle'); }
+  return { crisis, pii, piiFlags: Array.from(new Set(piiFlags)) };
 }
 
 // --- Emotional Theme Detection ----------
@@ -1105,20 +1258,24 @@ const complementary = {
 function attemptMatch(userId) {
   const user = parseUser(stmts.getUserById.get(userId));
   if (!user || !user.archetype) return null;
+  if (!user.email_verified) return null;
   const targetType = complementary[user.archetype];
   if (!targetType) return null;
+  const userCollegeKey = user.college_normalized || normalizeCollegeName(user.college);
 
-  let candidates = stmts.findCandidates.all(targetType, user.college, userId).map(parseUser);
+  let candidates = stmts.findCandidates.all(targetType, userCollegeKey, userId).map(parseUser);
 
-  // Fallback if no strict candidates are found matching the exact archetype or different college rules
+  // Fallback if no complementary candidate is available: keep email verification and different-college rules hard.
   if (candidates.length === 0) {
     const fallbackStmt = db.prepare(`
       SELECT * FROM users
       WHERE archetype IS NOT NULL
+        AND email_verified = 1
+        AND COALESCE(college_normalized, LOWER(college)) != ?
         AND id != ?
         AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
     `);
-    candidates = fallbackStmt.all(userId).map(parseUser);
+    candidates = fallbackStmt.all(userCollegeKey, userId).map(parseUser);
   }
 
   // Gender preference filtering
@@ -1152,11 +1309,12 @@ function attemptMatch(userId) {
   if (!partner) {
     let fallback = db.prepare(`
       SELECT * FROM users
-      WHERE LOWER(college) != LOWER(?)
+      WHERE COALESCE(college_normalized, LOWER(college)) != ?
         AND id != ?
+        AND email_verified = 1
         AND archetype IS NOT NULL
         AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
-    `).all(user.college, userId).map(parseUser);
+    `).all(userCollegeKey, userId).map(parseUser);
 
     // Respect gender preferences on fallback too
     if (user.match_gender_pref && user.match_gender_pref !== 'any') {
@@ -1173,6 +1331,8 @@ function attemptMatch(userId) {
   if (partner) {
     const result = stmts.insertMatch.run(userId, partner.id);
     attachWaitingEntriesToMatch(result.lastInsertRowid, [userId, partner.id]);
+    trackEvent(userId, 'matched', { matchId: result.lastInsertRowid });
+    trackEvent(partner.id, 'matched', { matchId: result.lastInsertRowid });
 
     // Dispatch match found emails asynchronously
     sendMatchFoundNotification(user.email, user.name, partner.archetype).catch(err => console.error("Match email error:", err));
@@ -1371,6 +1531,7 @@ registerAppRoutes(app, {
   scanForSafety,
   HELPLINES,
   attemptMatch,
+  trackEvent,
   attachWaitingEntriesToMatch,
   complementary,
   deleteMatchData,
@@ -1386,7 +1547,8 @@ registerWaitingEntryRoute(app, {
   stmts,
   prompts,
   scanForSafety,
-  HELPLINES
+  HELPLINES,
+  trackEvent
 });
 
 // Register Tonight's Question routes
@@ -1398,7 +1560,8 @@ registerTonightsQuestionRoutes(app, {
   parseUser,
   prompts,
   scanForSafety,
-  HELPLINES
+  HELPLINES,
+  trackEvent
 });
 
 // ─── Silent Room Routes ───────────────────────────────────────
@@ -1674,7 +1837,13 @@ function requireAdmin(req, res, next) {
 
 function getAdminStats() {
   const totalUsers = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+  const verifiedUsers = db.prepare('SELECT COUNT(*) as c FROM users WHERE email_verified = 1').get().c;
   const activeMatches = db.prepare('SELECT COUNT(*) as c FROM matches').get().c;
+  const blockedUsers = db.prepare('SELECT COUNT(*) as c FROM blocked_users').get().c;
+  const rematchRequests = db.prepare("SELECT COUNT(*) as c FROM rematch_requests WHERE status = 'open'").get().c;
+  const crisisTriggers = db.prepare('SELECT COUNT(*) as c FROM crisis_review').get().c;
+  const failedEmailSends = db.prepare("SELECT COUNT(*) as c FROM analytics_events WHERE event_name = 'email_send_failed'").get().c;
+  const signupErrors = db.prepare("SELECT COUNT(*) as c FROM analytics_events WHERE event_name = 'signup_error'").get().c;
   const entriesToday = db.prepare(`
     SELECT COUNT(*) as c
     FROM entries
@@ -1688,7 +1857,7 @@ function getAdminStats() {
     FROM (
       SELECT match_id
       FROM reveals
-      WHERE choice = 'yes'
+      WHERE choice IN ('first_name', 'name_college', 'contact_details')
       GROUP BY match_id
       HAVING COUNT(*) = 2
     )
@@ -1708,7 +1877,7 @@ function getAdminStats() {
     SELECT u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at
     FROM users u
     LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
-    WHERE m.id IS NULL AND u.archetype IS NOT NULL
+    WHERE m.id IS NULL AND u.archetype IS NOT NULL AND u.email_verified = 1
     ORDER BY u.created_at ASC
   `).all().map(user => ({
     ...user,
@@ -1717,12 +1886,18 @@ function getAdminStats() {
 
   return {
     totalUsers,
+    verifiedUsers,
     activeMatches,
     waitingForMatch: waitingUsers.length,
     entriesToday,
     reachedDay21,
     bothRevealed,
     openReports,
+    crisisTriggers,
+    blockedUsers,
+    rematchRequests,
+    failedEmailSends,
+    signupErrors,
     archetypes,
     waitingUsers
   };
