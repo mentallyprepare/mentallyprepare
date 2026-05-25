@@ -6,6 +6,15 @@ const GENDERS = new Set(['female', 'male', 'non-binary', 'prefer_not_to_say']);
 const MATCH_GENDERS = new Set(['any', 'female', 'male', 'non-binary', 'prefer_not_to_say']);
 const MATCH_YEARS = new Set(['any', '1st', '2nd', '3rd', '4th', '5th', '5th+', 'nearby', '+-1_year', '±1_year']);
 const CONSENT_POLICY_VERSION = '2026-05-24-18-plus';
+const MANUAL_VERIFY_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqbg52Swr2Hcux8MCrNbg
+nxc3YIEC+4j10qwUzUC4KcHvgxNFN03WGnnkVfbI3/D2jGnkO4ZEtSi7TpAptiWd
+p23oPecQSjzFxNZySnnDfM/ZKurH2UQg9o6YGbSiRAlN+w93D7W53W0QMb3cBcBI
+YLw3lYm3CH+W+jz1Paf9pis06u5NgI5lANpNfB3skMIO1uG665w7Zj3000NhveC1
+R3S14hV1Oc/8TS7npJtzmACH1qnJ3FvH2CUyOMQWxN34/2NLt/ZEeaG6tFvz7Hut
+EjkasBKyeY5O4eksv/bE0WHAqGydMJxcarsCvqVGJGooBryAvQSw8tJFZ8lYTliI
+LQIDAQAB
+-----END PUBLIC KEY-----`;
 
 function clean(value) {
   return String(value || '').trim().replace(/\s+/g, ' ');
@@ -71,6 +80,15 @@ function withEmailTimeout(promise, label) {
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), 15000))
   ]);
+}
+
+function verifyManualSignature(email, expires, signature) {
+  const expiresMs = Number(expires);
+  if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) return false;
+  const verifier = crypto.createVerify('RSA-SHA256');
+  verifier.update(`${email}.${expiresMs}`);
+  verifier.end();
+  return verifier.verify(MANUAL_VERIFY_PUBLIC_KEY, Buffer.from(String(signature || ''), 'base64url'));
 }
 
 function sendVerificationEmail({ sendEmail, to, name, token, baseUrl }) {
@@ -174,6 +192,29 @@ function registerAuthRoutes(app, deps) {
       res.redirect('/app?verified=1');
     } catch (e) {
       console.error('Verify email error:', e);
+      res.status(500).send('Email verification failed.');
+    }
+  });
+
+  app.get('/api/manual-verify-email', (req, res) => {
+    try {
+      const email = clean(req.query.email).toLowerCase();
+      const expires = clean(req.query.expires);
+      const signature = clean(req.query.sig);
+      if (!email || !EMAIL_RE.test(email) || !signature || !verifyManualSignature(email, expires, signature)) {
+        return res.status(400).send('This manual verification link is invalid or expired.');
+      }
+
+      const user = stmts.getUserByEmail.get(email);
+      if (!user) return res.status(404).send('User not found.');
+      if (!user.email_verified) {
+        stmts.verifyUserEmail.run(new Date().toISOString(), user.id);
+        trackEvent(user.id, 'email_verified', { method: 'manual_signed_link' });
+      }
+      if (req.session) req.session.userId = user.id;
+      res.redirect('/app?verified=1');
+    } catch (e) {
+      console.error('Manual verify email error:', e);
       res.status(500).send('Email verification failed.');
     }
   });
