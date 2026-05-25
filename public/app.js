@@ -772,15 +772,23 @@ function renderEmailVerification() {
       <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;line-height:1;margin-bottom:16px;">Check your<br/><em style="font-style:italic;color:var(--rose-l);">inbox</em></h1>
       <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;max-width:360px;">We sent a verification link to ${escapeHtml(email)}. The emotional scan and matching open after your email is verified.</p>
       <button class="btn" onclick="resendVerification()">Resend verification email</button>
+      <div id="verification-status" class="field-error" style="min-height:18px;margin-top:12px;text-align:center;"></div>
       <button class="btn-ghost" style="margin-top:12px" onclick="loadState().then(routeToScreen)">I've verified</button>
     </div>`;
 }
 
 async function resendVerification() {
   try {
+    const status = document.getElementById('verification-status');
+    if (status) status.textContent = 'Sending...';
     const result = await api('POST', '/resend-verification', {});
+    if (status) status.textContent = '';
     toast(result.message || 'Verification email sent.');
-  } catch (e) { toast(e.message); }
+  } catch (e) {
+    const status = document.getElementById('verification-status');
+    if (status) status.textContent = e.message;
+    toast(e.message);
+  }
 }
 
 document.addEventListener('keydown', function(e) {

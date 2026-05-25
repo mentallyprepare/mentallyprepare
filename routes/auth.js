@@ -66,6 +66,13 @@ function firstError(errors) {
   return Object.values(errors)[0] || 'Please check the highlighted fields.';
 }
 
+function withEmailTimeout(promise, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), 15000))
+  ]);
+}
+
 function sendVerificationEmail({ sendEmail, to, name, token, baseUrl }) {
   const verifyUrl = `${baseUrl.replace(/\/$/, '')}/api/verify-email?token=${encodeURIComponent(token)}`;
   const firstName = escapeHtml(clean(name).split(' ')[0] || 'there');
@@ -135,7 +142,10 @@ function registerAuthRoutes(app, deps) {
       req.session.userId = Number(result.lastInsertRowid);
       trackEvent(req.session.userId, 'signup_completed');
       try {
-        await sendVerificationEmail({ sendEmail, to: values.email, name: values.name, token, baseUrl: BASE_URL });
+        await withEmailTimeout(
+          sendVerificationEmail({ sendEmail, to: values.email, name: values.name, token, baseUrl: BASE_URL }),
+          'Verification email'
+        );
       } catch (err) {
         trackEvent(req.session.userId, 'email_send_failed', { type: 'verification' });
         console.error('Verification email failed:', err.message);
@@ -179,7 +189,10 @@ function registerAuthRoutes(app, deps) {
       const token = crypto.randomBytes(32).toString('hex');
       const now = new Date().toISOString();
       stmts.updateVerificationToken.run(token, now, user.id);
-      await sendVerificationEmail({ sendEmail, to: user.email, name: user.name, token, baseUrl: BASE_URL });
+      await withEmailTimeout(
+        sendVerificationEmail({ sendEmail, to: user.email, name: user.name, token, baseUrl: BASE_URL }),
+        'Verification email'
+      );
       res.json({ ok: true, message: 'Verification email sent.' });
     } catch (e) {
       console.error('Resend verification error:', e);
