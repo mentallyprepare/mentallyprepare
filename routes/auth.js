@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const nodeCrypto = require('crypto');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const YEARS = new Set(['1st', '2nd', '3rd', '4th', '5th', '5th+']);
@@ -85,7 +86,7 @@ function withEmailTimeout(promise, label) {
 function verifyManualSignature(email, expires, signature) {
   const expiresMs = Number(expires);
   if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) return false;
-  const verifier = crypto.createVerify('RSA-SHA256');
+  const verifier = nodeCrypto.createVerify('RSA-SHA256');
   verifier.update(`${email}.${expiresMs}`);
   verifier.end();
   return verifier.verify(MANUAL_VERIFY_PUBLIC_KEY, Buffer.from(String(signature || ''), 'base64url'));
