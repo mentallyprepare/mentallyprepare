@@ -152,6 +152,15 @@ const { BASE_URL } = require('./lib/config');
 const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome, sendMatchFoundNotification, sendDailyPromptReminder, sendPartnerWroteReminder } = require('./email-service');
 const cron = require('node-cron');
 
+const DEFAULT_FIREBASE_WEB_CONFIG = {
+  apiKey: 'AIzaSyCXJTXJj6T0lxbpVOStMa73gFys-Ul76sg',
+  authDomain: 'mentally-prepare.firebaseapp.com',
+  projectId: 'mentally-prepare',
+  appId: '1:1052302846379:web:edbb01face488ffbfb4aee',
+  messagingSenderId: '1052302846379',
+  storageBucket: 'mentally-prepare.firebasestorage.app'
+};
+
 function parseFirebaseServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
@@ -169,6 +178,7 @@ function parseFirebaseServiceAccount() {
 }
 
 let firebaseAuth = null;
+let firebaseCertCache = { expiresAt: 0, certs: {} };
 try {
   const serviceAccount = parseFirebaseServiceAccount();
   if (serviceAccount) {
@@ -179,25 +189,86 @@ try {
     firebaseAuth = admin.auth();
     console.log('Firebase Admin ready');
   } else {
-    console.warn('Firebase Admin not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY.');
+    console.log('Firebase Admin not configured; using public Firebase token verifier');
   }
 } catch (e) {
-  console.error('Firebase Admin setup failed:', e.message);
+  console.warn('Firebase Admin setup failed; using public Firebase token verifier:', e.message);
+  firebaseAuth = null;
 }
 
 function getFirebaseWebConfig() {
   const config = {
-    apiKey: process.env.FIREBASE_API_KEY,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    appId: process.env.FIREBASE_APP_ID,
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    apiKey: process.env.FIREBASE_API_KEY || DEFAULT_FIREBASE_WEB_CONFIG.apiKey,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_WEB_CONFIG.authDomain,
+    projectId: process.env.FIREBASE_PROJECT_ID || DEFAULT_FIREBASE_WEB_CONFIG.projectId,
+    appId: process.env.FIREBASE_APP_ID || DEFAULT_FIREBASE_WEB_CONFIG.appId,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_WEB_CONFIG.messagingSenderId,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || DEFAULT_FIREBASE_WEB_CONFIG.storageBucket,
     measurementId: process.env.FIREBASE_MEASUREMENT_ID
   };
   const required = ['apiKey', 'authDomain', 'projectId', 'appId'];
-  const enabled = required.every((key) => !!config[key]) && !!firebaseAuth;
+  const enabled = required.every((key) => !!config[key]);
   return { enabled, config };
+}
+
+function base64UrlToBuffer(value) {
+  const clean = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+  const padded = clean + '='.repeat((4 - clean.length % 4) % 4);
+  return Buffer.from(padded, 'base64');
+}
+
+function parseJwtPart(value) {
+  return JSON.parse(base64UrlToBuffer(value).toString('utf8'));
+}
+
+async function getFirebasePublicCerts() {
+  if (firebaseCertCache.expiresAt > Date.now() && Object.keys(firebaseCertCache.certs).length) {
+    return firebaseCertCache.certs;
+  }
+  const response = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+  if (!response.ok) throw new Error(`Firebase cert fetch failed: ${response.status}`);
+  const cacheControl = response.headers.get('cache-control') || '';
+  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/i);
+  const maxAgeMs = maxAgeMatch ? Number(maxAgeMatch[1]) * 1000 : 60 * 60 * 1000;
+  firebaseCertCache = {
+    expiresAt: Date.now() + Math.max(5 * 60 * 1000, maxAgeMs - 60 * 1000),
+    certs: await response.json()
+  };
+  return firebaseCertCache.certs;
+}
+
+async function verifyFirebaseIdToken(idToken) {
+  if (firebaseAuth) return firebaseAuth.verifyIdToken(idToken);
+
+  const projectId = getFirebaseWebConfig().config.projectId;
+  if (!projectId) throw new Error('Firebase project ID is missing');
+  const parts = String(idToken || '').split('.');
+  if (parts.length !== 3) throw new Error('Invalid Firebase ID token');
+
+  const [encodedHeader, encodedPayload, encodedSignature] = parts;
+  const header = parseJwtPart(encodedHeader);
+  const payload = parseJwtPart(encodedPayload);
+  if (header.alg !== 'RS256' || !header.kid) throw new Error('Unexpected Firebase token header');
+
+  const certs = await getFirebasePublicCerts();
+  const cert = certs[header.kid];
+  if (!cert) throw new Error('Firebase token certificate not found');
+
+  const verifier = crypto.createVerify('RSA-SHA256');
+  verifier.update(`${encodedHeader}.${encodedPayload}`);
+  verifier.end();
+  if (!verifier.verify(cert, base64UrlToBuffer(encodedSignature))) {
+    throw new Error('Firebase token signature invalid');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.aud !== projectId) throw new Error('Firebase token audience mismatch');
+  if (payload.iss !== `https://securetoken.google.com/${projectId}`) throw new Error('Firebase token issuer mismatch');
+  if (!payload.sub || String(payload.sub).length > 128) throw new Error('Firebase token subject invalid');
+  if (payload.exp <= now) throw new Error('Firebase token expired');
+  if (payload.iat > now + 300) throw new Error('Firebase token issued in the future');
+
+  return { ...payload, uid: payload.sub };
 }
 
 
@@ -1116,7 +1187,7 @@ registerAuthRoutes(app, {
   sendLoginWelcome,
   normalizeCollegeName,
   trackEvent,
-  firebaseAuth,
+  verifyFirebaseIdToken,
   getFirebaseWebConfig
 });
 

@@ -129,7 +129,7 @@ function registerAuthRoutes(app, deps) {
     sendLoginWelcome,
     normalizeCollegeName,
     trackEvent,
-    firebaseAuth,
+    verifyFirebaseIdToken,
     getFirebaseWebConfig
   } = deps;
   const { sendEmail } = require('../lib/email');
@@ -147,14 +147,14 @@ function registerAuthRoutes(app, deps) {
 
   async function requireFirebaseIdToken(req, res, next) {
     try {
-      if (!firebaseAuth) return res.status(503).json({ error: 'Google login is not configured yet.' });
+      if (!verifyFirebaseIdToken) return res.status(503).json({ error: 'Google login is not configured yet.' });
       const idToken = clean(req.body && req.body.idToken);
       if (!idToken) return res.status(400).json({ error: 'Google sign in failed. Please try again.' });
-      const decoded = await firebaseAuth.verifyIdToken(idToken);
+      const decoded = await verifyFirebaseIdToken(idToken);
       req.firebaseUser = decoded;
       next();
     } catch (e) {
-      console.error('Firebase token verification error:', e);
+      console.warn('Firebase token verification failed:', e.message || e);
       res.status(401).json({ error: 'Google login failed. Please try again.' });
     }
   }
