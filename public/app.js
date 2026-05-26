@@ -56,6 +56,17 @@ async function loadState() {
 
 let firebaseAuthClient = null;
 let firebaseInitPromise = null;
+const GOOGLE_REDIRECT_CONTEXT_KEY = 'mp-google-login-context';
+
+function firebaseLoginMessage(error) {
+  if (!error) return 'Google login failed. Please try again.';
+  if (error.code === 'auth/unauthorized-domain') {
+    return 'Google login needs mymentallyprepare.com added in Firebase Authorized Domains.';
+  }
+  if (error.code === 'auth/popup-closed-by-user') return 'Google login was cancelled.';
+  if (error.message) return error.message;
+  return 'Google login failed. Please try again.';
+}
 
 async function initFirebaseAuth() {
   if (firebaseInitPromise) return firebaseInitPromise;
@@ -67,13 +78,18 @@ async function initFirebaseAuth() {
     if (!payload.enabled || !payload.config) return null;
     if (!firebase.apps.length) firebase.initializeApp(payload.config);
     firebaseAuthClient = firebase.auth();
+    firebaseAuthClient.useDeviceLanguage();
     await firebaseAuthClient.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     try {
       const redirectResult = await firebaseAuthClient.getRedirectResult();
-      if (redirectResult && redirectResult.user) await completeFirebaseLogin(redirectResult.user, true);
+      if (redirectResult && redirectResult.user) {
+        await completeFirebaseLogin(redirectResult.user, false, getStoredGoogleRedirectContext());
+      }
     } catch (e) {
       console.warn('Firebase redirect login failed:', e);
-      toast('Google login failed. Please try again.');
+      toast(firebaseLoginMessage(e));
+    } finally {
+      clearStoredGoogleRedirectContext();
     }
     return firebaseAuthClient;
   })();
@@ -103,12 +119,46 @@ function getSignupGoogleProfileHints() {
   };
   const yearEl = document.querySelector('.year-btn.on');
   return {
+    name: valueOf('inp-name'),
     college: valueOf('inp-college'),
+    email: valueOf('inp-email'),
     year: yearEl ? yearEl.textContent.trim() : ''
   };
 }
 
-async function completeFirebaseLogin(firebaseUser, quiet) {
+function getStoredGoogleRedirectContext() {
+  try {
+    return JSON.parse(sessionStorage.getItem(GOOGLE_REDIRECT_CONTEXT_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function clearStoredGoogleRedirectContext() {
+  try { sessionStorage.removeItem(GOOGLE_REDIRECT_CONTEXT_KEY); } catch {}
+}
+
+function saveGoogleRedirectContext(context) {
+  try {
+    sessionStorage.setItem(GOOGLE_REDIRECT_CONTEXT_KEY, JSON.stringify({
+      context: context || 'login',
+      hints: getSignupGoogleProfileHints(),
+      returnPath: location.pathname + location.search + location.hash,
+      savedAt: Date.now()
+    }));
+  } catch {}
+}
+
+function shouldUseRedirectForGoogle() {
+  const host = location.hostname;
+  const local = host === 'localhost' || host === '127.0.0.1';
+  const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const iosStandalone = window.navigator && window.navigator.standalone;
+  const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  return !local || standalone || iosStandalone || mobile;
+}
+
+async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
   if (!firebaseUser) return false;
   try {
     await firebaseUser.reload().catch(() => {});
@@ -116,12 +166,14 @@ async function completeFirebaseLogin(firebaseUser, quiet) {
     if (!idToken || idToken.split('.').length !== 3) {
       throw new Error('Google did not return a Firebase session token. Please try again.');
     }
-    const hints = getSignupGoogleProfileHints();
+    const storedHints = redirectContext && redirectContext.hints ? redirectContext.hints : {};
+    const hints = Object.assign({}, storedHints, getSignupGoogleProfileHints());
     await api('POST', '/auth/firebase/google', {
       idToken,
       displayName: firebaseUser.displayName || '',
       email: firebaseUser.email || '',
       photoURL: firebaseUser.photoURL || '',
+      name: hints.name || '',
       college: hints.college,
       year: hints.year
     });
@@ -132,7 +184,7 @@ async function completeFirebaseLogin(firebaseUser, quiet) {
     return true;
   } catch (e) {
     console.warn('Firebase session exchange failed:', e);
-    if (!quiet) toast(e.message || 'Google login failed. Please try again.');
+    if (!quiet) toast(firebaseLoginMessage(e));
     return false;
   }
 }
@@ -154,15 +206,24 @@ async function googleLogin(context) {
     }
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    provider.addScope('email');
+    provider.addScope('profile');
+    saveGoogleRedirectContext(context);
+    if (shouldUseRedirectForGoogle()) {
+      await auth.signInWithRedirect(provider);
+      return;
+    }
     try {
       const result = await auth.signInWithPopup(provider);
-      await completeFirebaseLogin(result.user, false);
+      await completeFirebaseLogin(result.user, false, getStoredGoogleRedirectContext());
+      clearStoredGoogleRedirectContext();
     } catch (e) {
       if (e && ['auth/popup-blocked', 'auth/cancelled-popup-request'].includes(e.code)) {
         await auth.signInWithRedirect(provider);
         return;
       }
       if (e && e.code === 'auth/popup-closed-by-user') {
+        clearStoredGoogleRedirectContext();
         toast('Google login was cancelled.');
         return;
       }
@@ -170,7 +231,7 @@ async function googleLogin(context) {
     }
   } catch (e) {
     console.warn('Google login error:', e);
-    toast('Google login failed. Please try again.');
+    toast(firebaseLoginMessage(e));
   }
 }
 
