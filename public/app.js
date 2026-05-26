@@ -11,9 +11,22 @@ async function api(method, path, body) {
 }
 
 let state = null;
+const defaultPushPreferences = {
+  enabled: true,
+  morningReminder: true,
+  eveningReminder: true,
+  dailyReflection: true,
+  streakReminder: true,
+  silentRoomReminder: false
+};
+let deferredInstallPrompt = null;
+let installPromptShown = false;
+
 function normalizeState(data) {
   if (!data || typeof data !== 'object') return data;
   data.user = data.user || {};
+  data.user.pushPreferences = Object.assign({}, defaultPushPreferences, data.user.pushPreferences || {});
+  data.user.pushSubscribed = !!data.user.pushSubscribed;
   data.entries = Array.isArray(data.entries) ? data.entries : [];
   data.partnerEntries = Array.isArray(data.partnerEntries) ? data.partnerEntries : [];
   data.comments = Array.isArray(data.comments) ? data.comments : [];
@@ -39,6 +52,122 @@ function normalizeState(data) {
 async function loadState() {
   try { state = normalizeState(await api('GET', '/me')); return true; }
   catch { state = null; return false; }
+}
+
+let firebaseAuthClient = null;
+let firebaseInitPromise = null;
+
+async function initFirebaseAuth() {
+  if (firebaseInitPromise) return firebaseInitPromise;
+  firebaseInitPromise = (async function() {
+    if (!window.firebase || !firebase.auth) return null;
+    const res = await fetch('/api/firebase-config', { credentials: 'same-origin' }).catch(() => null);
+    if (!res || !res.ok) return null;
+    const payload = await res.json().catch(() => ({}));
+    if (!payload.enabled || !payload.config) return null;
+    if (!firebase.apps.length) firebase.initializeApp(payload.config);
+    firebaseAuthClient = firebase.auth();
+    await firebaseAuthClient.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    try {
+      const redirectResult = await firebaseAuthClient.getRedirectResult();
+      if (redirectResult && redirectResult.user) await completeFirebaseLogin(redirectResult.user, true);
+    } catch (e) {
+      console.warn('Firebase redirect login failed:', e);
+      toast('Google login failed. Please try again.');
+    }
+    return firebaseAuthClient;
+  })();
+  return firebaseInitPromise;
+}
+
+function waitForFirebaseUser(auth) {
+  return new Promise(resolve => {
+    if (!auth) return resolve(null);
+    let settled = false;
+    let unsubscribe = function() {};
+    const done = (user) => {
+      if (settled) return;
+      settled = true;
+      if (unsubscribe) unsubscribe();
+      resolve(user || null);
+    };
+    unsubscribe = auth.onAuthStateChanged(done, () => done(null));
+    setTimeout(() => done(auth.currentUser || null), 1600);
+  });
+}
+
+function getSignupGoogleProfileHints() {
+  const valueOf = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  };
+  const yearEl = document.querySelector('.year-btn.on');
+  return {
+    college: valueOf('inp-college'),
+    year: yearEl ? yearEl.textContent.trim() : ''
+  };
+}
+
+async function completeFirebaseLogin(firebaseUser, quiet) {
+  if (!firebaseUser) return false;
+  try {
+    const idToken = await firebaseUser.getIdToken();
+    const hints = getSignupGoogleProfileHints();
+    await api('POST', '/auth/firebase/google', {
+      idToken,
+      displayName: firebaseUser.displayName || '',
+      email: firebaseUser.email || '',
+      photoURL: firebaseUser.photoURL || '',
+      college: hints.college,
+      year: hints.year
+    });
+    await loadState();
+    if (!quiet) toast('Signed in with Google.');
+    if (document.body.classList.contains('app-active')) routeToScreen();
+    else startApp();
+    return true;
+  } catch (e) {
+    console.warn('Firebase session exchange failed:', e);
+    if (!quiet) toast(e.message || 'Google login failed. Please try again.');
+    return false;
+  }
+}
+
+async function restoreFirebaseSession() {
+  const auth = await initFirebaseAuth();
+  if (!auth) return false;
+  const user = await waitForFirebaseUser(auth);
+  if (!user) return false;
+  return completeFirebaseLogin(user, true);
+}
+
+async function googleLogin(context) {
+  try {
+    const auth = await initFirebaseAuth();
+    if (!auth) {
+      toast('Google login is not configured yet.');
+      return;
+    }
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      const result = await auth.signInWithPopup(provider);
+      await completeFirebaseLogin(result.user, false);
+    } catch (e) {
+      if (e && ['auth/popup-blocked', 'auth/cancelled-popup-request'].includes(e.code)) {
+        await auth.signInWithRedirect(provider);
+        return;
+      }
+      if (e && e.code === 'auth/popup-closed-by-user') {
+        toast('Google login was cancelled.');
+        return;
+      }
+      throw e;
+    }
+  } catch (e) {
+    console.warn('Google login error:', e);
+    toast('Google login failed. Please try again.');
+  }
 }
 
 function showAppError() {
@@ -421,6 +550,68 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
+function getPushPreferences() {
+  return Object.assign({}, defaultPushPreferences, state && state.user ? state.user.pushPreferences || {} : {});
+}
+
+function isStandaloneApp() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+}
+
+function getInstallDismissedUntil() {
+  return Number(localStorage.getItem('mp-install-dismissed-until') || 0);
+}
+
+function dismissInstallPrompt(days) {
+  const until = Date.now() + (days || 14) * 86400000;
+  localStorage.setItem('mp-install-dismissed-until', String(until));
+  const el = document.getElementById('pwa-install-card');
+  if (el) el.remove();
+}
+
+function showInstallPromptIfUseful() {
+  if (installPromptShown || isStandaloneApp() || Date.now() < getInstallDismissedUntil()) return;
+  if (!document.body.classList.contains('app-active')) return;
+  if (!deferredInstallPrompt && !isIosDevice()) return;
+  installPromptShown = true;
+  const existing = document.getElementById('pwa-install-card');
+  if (existing) existing.remove();
+  const iosSteps = isIosDevice()
+    ? '<div class="pwa-install-steps"><span>1. Tap Share</span><span>2. Add to Home Screen</span></div>'
+    : '';
+  const cta = deferredInstallPrompt
+    ? '<button class="pwa-install-primary" type="button" onclick="installAppPrompt()">Install</button>'
+    : '<button class="pwa-install-primary" type="button" onclick="dismissInstallPrompt(7)">Got it</button>';
+  const card = document.createElement('div');
+  card.id = 'pwa-install-card';
+  card.className = 'pwa-install-card';
+  card.innerHTML = `
+    <button class="pwa-install-close" type="button" aria-label="Dismiss install prompt" onclick="dismissInstallPrompt(14)">x</button>
+    <div class="pwa-install-icon"><img src="/icon-192x192.png" alt=""/></div>
+    <div class="pwa-install-copy">
+      <strong>Install Mentally Prepare</strong>
+      <span>Open your reset from your home screen.</span>
+      ${iosSteps}
+    </div>
+    ${cta}`;
+  document.body.appendChild(card);
+}
+
+async function installAppPrompt() {
+  if (!deferredInstallPrompt) {
+    dismissInstallPrompt(7);
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice.catch(() => null);
+  deferredInstallPrompt = null;
+  dismissInstallPrompt(30);
+}
+
 function verificationPendingHtml() {
   if (!state || !state.user || state.user.emailVerified) return '';
   return `
@@ -472,6 +663,7 @@ function startApp() {
   if (state) { routeToScreen(); }
   else { go('s-splash'); }
   window.scrollTo(0, 0);
+  setTimeout(showInstallPromptIfUseful, 900);
 }
 
 function showLanding() {
@@ -563,9 +755,18 @@ function bindStaticUi() {
 // ═══════════════════════════════════════
 (async function init() {
   bindStaticUi();
+  await initFirebaseAuth();
   const loggedIn = await loadState();
   if (!loggedIn) {
-    if (window.location.pathname.indexOf('/app') === 0) startApp();
+    const restored = await restoreFirebaseSession();
+    if (restored) {
+      consumeVerificationQueryNotice();
+      return;
+    }
+    if (window.location.pathname.indexOf('/app') === 0) {
+      startApp();
+      go('s-login');
+    }
     consumeVerificationQueryNotice();
     return;
   }
@@ -701,6 +902,7 @@ async function login() {
 }
 
 async function logout() {
+  if (firebaseAuthClient) await firebaseAuthClient.signOut().catch(() => {});
   await api('POST', '/logout');
   state = null;
   sessionStorage.removeItem('mp-draft');
@@ -728,11 +930,9 @@ function pickYear(el) {
 function togglePerm(el) {
   el.classList.toggle('off');
   el.setAttribute('aria-pressed', String(!el.classList.contains('off')));
-  if (!el.classList.contains('off') && 'Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().then(function(result) {
-      if (result === 'granted' && 'serviceWorker' in navigator) subscribeToPush();
-    });
-  }
+  const prefs = getPushPreferences();
+  prefs.enabled = !el.classList.contains('off');
+  savePushPreferences(prefs, true);
 }
 
 // ═══════════════════════════════════════
@@ -936,6 +1136,7 @@ async function submitScan() {
     if (verificationPending && message) toast(message, 4200);
     renderResult(matched);
     go('s-result');
+    maybeShowNotificationNudge('after_onboarding');
   } catch (e) { toast(e.message); }
 }
 
@@ -1220,6 +1421,7 @@ async function sealTonightsEntry() {
     // Reload and show sealed state
     await loadTonightsQuestion();
     renderTQSealed(tqData);
+    maybeShowNotificationNudge('after_reflection');
     toast('Entry sealed ✦');
   } catch (e) { toast(e.message); }
 }
@@ -1518,6 +1720,7 @@ async function sealEntry() {
 
     celebrateStreak();
     renderSealed(); go('s-sealed');
+    maybeShowNotificationNudge('after_reflection');
   } catch (e) {
     if (e.message && e.message.includes('reveal who you are')) {
       toast('Please remove personal details before saving.');
@@ -1906,6 +2109,45 @@ function renderPartner() {
     ${renderTabs('profile')}`;
 }
 
+function renderNotificationSettingsHtml() {
+  const prefs = getPushPreferences();
+  const permission = 'Notification' in window ? Notification.permission : 'unsupported';
+  const enabled = prefs.enabled && permission === 'granted';
+  const status = permission === 'unsupported' ? 'Unsupported' : (enabled ? 'On' : 'Off');
+  const disabled = prefs.enabled ? '' : ' disabled';
+  const prefRow = (key, label) => `
+    <label class="push-pref-row">
+      <span>${label}</span>
+      <input type="checkbox" ${prefs[key] ? 'checked' : ''}${disabled} onchange="toggleNotificationPreference('${key}', this.checked)"/>
+    </label>`;
+  return `
+    <div class="push-settings-card">
+      <div class="push-settings-top">
+        <div>
+          <div class="push-settings-kicker">Notifications</div>
+          <div class="push-settings-title">Gentle daily reminders</div>
+        </div>
+        <span class="push-settings-status">${status}</span>
+      </div>
+      <div class="push-settings-copy">Private lock screen copy only. You can change this anytime.</div>
+      <div class="push-pref-list">
+        ${prefRow('morningReminder', 'Morning reminder')}
+        ${prefRow('eveningReminder', 'Evening reminder')}
+        ${prefRow('dailyReflection', 'Daily reflection reminder')}
+        ${prefRow('streakReminder', 'Streak reminder')}
+        ${prefRow('silentRoomReminder', 'Silent Room reminder')}
+        <label class="push-pref-row push-pref-off">
+          <span>Turn off notifications</span>
+          <input type="checkbox" ${prefs.enabled ? '' : 'checked'} onchange="toggleNotificationsOff(this.checked)"/>
+        </label>
+      </div>
+      <div class="push-settings-actions">
+        <button class="btn-ghost" type="button" onclick="toggleNotifications()">Enable on this device</button>
+        ${state && state.user && state.user.pushSubscribed ? '<button class="btn-ghost danger-soft" type="button" onclick="unsubscribeFromPush()">Unsubscribe</button>' : ''}
+      </div>
+    </div>`;
+}
+
 function renderSettings() {
   const notifsEnabled = 'Notification' in window && Notification.permission === 'granted';
   const notifLabel = notifsEnabled ? 'On' : 'Off';
@@ -1921,6 +2163,7 @@ function renderSettings() {
       <button class="si" type="button" onclick="exportEntries()"><div class="si-ico">&#128196;</div><div class="si-lbl">Export entries</div><div class="si-arrow">&#8250;</div></button>
       <button class="si" type="button" onclick="renderAbout();go('s-about')"><div class="si-ico">&#128161;</div><div class="si-lbl">About Mentally Prepare</div><div class="si-arrow">&#8250;</div></button>
     </div>
+    ${renderNotificationSettingsHtml()}
     <div style="padding:20px 24px 0;">
       <div style="font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-s);margin-bottom:12px;">Partner</div>
     </div>
@@ -2300,6 +2543,33 @@ function renderTabs(active) {
   ];
   return `<div class="tabs">${tabs.map(t =>
     `<button class="tab${t.id===active?' on':''}" type="button" onclick="${t.fn}" aria-pressed="${t.id===active?'true':'false'}"><div class="tab-ico">${t.ico}</div><div class="tab-lbl">${t.lbl}</div></button>`
+  ).join('')}</div>`;
+}
+
+function renderTQTabs(active) {
+  var tabs = [
+    { id:'today', ico:'T', lbl:'Today', fn:'renderWaiting();go(\'s-waiting\')' },
+    { id:'silent', ico:'S', lbl:'Silent Room', fn:'showSilentFeed()' },
+    { id:'journey', ico:'J', lbl:'Journey', fn:'renderWaiting();go(\'s-waiting\')' },
+    { id:'profile', ico:'P', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' }
+  ];
+  return '<div class="tabs app-bottom-tabs">' + tabs.map(function(t) {
+    var isOn = t.id === active || (active === 'tonight' && t.id === 'today') || (active === 'entries' && t.id === 'journey');
+    return '<button class="tab' + (isOn ? ' on' : '') + '" type="button" onclick="' + t.fn + '" aria-pressed="' + (isOn ? 'true' : 'false') + '"><div class="tab-ico">' + t.ico + '</div><div class="tab-lbl">' + t.lbl + '</div></button>';
+  }).join('') + '</div>';
+}
+
+function renderTabs(active) {
+  const normalized = active === 'tonight' || active === 'partner' ? 'today' : (active === 'entries' ? 'journey' : active);
+  if (!state || !state.match) return renderTQTabs(normalized);
+  const tabs = [
+    { id:'today', ico:'T', lbl:'Today', fn:'goToJournal()' },
+    { id:'silent', ico:'S', lbl:'Silent Room', fn:'showSilentFeed()' },
+    { id:'journey', ico:'J', lbl:'Journey', fn:'renderPast();go(\'s-past\')' },
+    { id:'profile', ico:'P', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' }
+  ];
+  return `<div class="tabs app-bottom-tabs">${tabs.map(t =>
+    `<button class="tab${t.id===normalized?' on':''}" type="button" onclick="${t.fn}" aria-pressed="${t.id===normalized?'true':'false'}"><div class="tab-ico">${t.ico}</div><div class="tab-lbl">${t.lbl}</div></button>`
   ).join('')}</div>`;
 }
 
@@ -2694,10 +2964,22 @@ function toggleSiteMenu() {
 }
 
 // Service Worker: force-update old versions
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallPromptIfUseful();
+});
+
+window.addEventListener('appinstalled', function() {
+  deferredInstallPrompt = null;
+  dismissInstallPrompt(365);
+  toast('Mentally Prepare installed.');
+});
+
 if ('serviceWorker' in navigator) {
   // Clear ALL old caches first
   caches.keys().then(names => {
-    names.forEach(n => { if (n !== 'mp-v10') caches.delete(n); });
+    names.forEach(n => { if (n !== 'pwa-push-1') caches.delete(n); });
   });
   navigator.serviceWorker.getRegistrations().then(regs => {
     // Unregister any old SWs, then register fresh
@@ -2727,21 +3009,32 @@ document.addEventListener('visibilitychange', function() {
 // ═══════════════════════════════════════
 async function subscribeToPush() {
   try {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return false;
     const reg = await navigator.serviceWorker.ready;
     const res = await fetch('/api/push/public-key');
-    if (!res.ok) return;
+    if (!res.ok) {
+      toast('We could not turn on notifications. Please try again.');
+      return false;
+    }
     const { publicKey } = await res.json();
-    const sub = await reg.pushManager.subscribe({
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey)
     });
-    await fetch('/api/push/subscribe', {
+    const save = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription: sub })
+      credentials: 'same-origin',
+      body: JSON.stringify({ subscription: sub, preferences: getPushPreferences() })
     });
+    if (!save.ok) throw new Error('save_failed');
+    if (state && state.user) state.user.pushSubscribed = true;
+    return true;
   } catch (e) {
     console.warn('Push subscribe failed:', e);
+    toast('We could not turn on notifications. Please try again.');
+    return false;
   }
 }
 
@@ -2780,6 +3073,163 @@ function toggleNotifications() {
 // ═══════════════════════════════════════
 // PRIVACY — Data Download & Account Delete
 // ═══════════════════════════════════════
+async function savePushPreferences(prefs, silent) {
+  const clean = Object.assign({}, defaultPushPreferences, prefs || {});
+  if (clean.enabled === false) {
+    clean.morningReminder = false;
+    clean.eveningReminder = false;
+    clean.dailyReflection = false;
+    clean.streakReminder = false;
+    clean.silentRoomReminder = false;
+  }
+  try {
+    const result = await api('POST', '/push/preferences', { preferences: clean });
+    if (state && state.user) state.user.pushPreferences = result.preferences || clean;
+    if (!silent) toast('Notification settings saved.');
+    return true;
+  } catch (e) {
+    if (!silent) toast('Could not save notification settings.');
+    return false;
+  }
+}
+
+function notificationPrefToggleHtml(key, label, checked) {
+  return `<label class="notification-pref"><input type="checkbox" data-modal-push-pref="${key}" ${checked ? 'checked' : ''}/><span>${label}</span></label>`;
+}
+
+function renderNotificationPermissionModal(source) {
+  const old = document.getElementById('notification-permission-modal');
+  if (old) old.remove();
+  const prefs = getPushPreferences();
+  const modal = document.createElement('div');
+  modal.id = 'notification-permission-modal';
+  modal.className = 'mp-modal notification-modal show';
+  modal.innerHTML = `
+    <div class="mp-modal-card notification-card" role="dialog" aria-modal="true" aria-labelledby="notif-title">
+      <button class="mp-modal-close" type="button" aria-label="Close" onclick="closeNotificationModal()">x</button>
+      <div class="notification-icon">MP</div>
+      <div class="notification-kicker">Gentle reminders</div>
+      <h2 id="notif-title">Let Mentally Prepare remind you softly.</h2>
+      <p>We only send private, simple prompts. No diagnosis, pressure, or sensitive lock screen copy.</p>
+      <div class="notification-preview">Your reset is ready.</div>
+      <div class="notification-pref-list">
+        ${notificationPrefToggleHtml('morningReminder', 'Morning reminder', prefs.morningReminder)}
+        ${notificationPrefToggleHtml('eveningReminder', 'Evening reminder', prefs.eveningReminder)}
+        ${notificationPrefToggleHtml('dailyReflection', 'Daily reflection reminder', prefs.dailyReflection)}
+        ${notificationPrefToggleHtml('streakReminder', 'Streak reminder', prefs.streakReminder)}
+        ${notificationPrefToggleHtml('silentRoomReminder', 'Silent Room reminder', prefs.silentRoomReminder)}
+      </div>
+      <button class="btn" type="button" onclick="enableNotificationsFromModal()">Allow gentle reminders</button>
+      <button class="btn-ghost" type="button" onclick="closeNotificationModal()">Maybe later</button>
+      <div class="notification-note" id="notification-modal-status"></div>
+    </div>`;
+  document.body.appendChild(modal);
+  localStorage.setItem('mp-notification-nudged', source || 'manual');
+}
+
+function closeNotificationModal() {
+  const modal = document.getElementById('notification-permission-modal');
+  if (modal) modal.remove();
+}
+
+function readModalPushPreferences() {
+  const prefs = getPushPreferences();
+  document.querySelectorAll('[data-modal-push-pref]').forEach(input => {
+    prefs[input.getAttribute('data-modal-push-pref')] = input.checked;
+  });
+  prefs.enabled = true;
+  return prefs;
+}
+
+async function enableNotificationsFromModal() {
+  const status = document.getElementById('notification-modal-status');
+  if (!('Notification' in window)) {
+    if (status) status.textContent = 'Notifications are not supported in this browser.';
+    return;
+  }
+  const prefs = readModalPushPreferences();
+  await savePushPreferences(prefs, true);
+  if (Notification.permission === 'denied') {
+    if (status) status.textContent = 'Notifications are blocked in browser settings. You can still use the app.';
+    return;
+  }
+  const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  if (permission === 'granted') {
+    const ok = await subscribeToPush();
+    if (ok) {
+      toast('Notifications enabled.');
+      closeNotificationModal();
+      renderSettingsIfOpen();
+    } else if (status) {
+      status.textContent = 'We could not turn on notifications. Please try again.';
+    }
+  } else {
+    localStorage.setItem('mp-notifications-declined', '1');
+    if (status) status.textContent = 'Notifications are off. You can continue without them.';
+  }
+}
+
+function maybeShowNotificationNudge(source) {
+  if (!state || !state.user || localStorage.getItem('mp-notification-nudged')) return;
+  if (!('Notification' in window) || Notification.permission !== 'default') return;
+  setTimeout(function() { renderNotificationPermissionModal(source || 'after_reflection'); }, 900);
+}
+
+function renderSettingsIfOpen() {
+  const settings = document.getElementById('s-settings');
+  if (settings && settings.classList.contains('active')) renderSettings();
+}
+
+async function toggleNotificationPreference(key, checked) {
+  const prefs = getPushPreferences();
+  prefs[key] = !!checked;
+  prefs.enabled = true;
+  await savePushPreferences(prefs);
+  renderSettingsIfOpen();
+}
+
+async function toggleNotificationsOff(checked) {
+  const prefs = getPushPreferences();
+  prefs.enabled = !checked;
+  await savePushPreferences(prefs);
+  if (checked) await unsubscribeFromPush(true);
+  renderSettingsIfOpen();
+}
+
+async function unsubscribeFromPush(silent) {
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready.catch(() => null);
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      if (sub) await sub.unsubscribe().catch(() => {});
+    }
+    await api('POST', '/push/unsubscribe');
+    if (state && state.user) {
+      state.user.pushSubscribed = false;
+      state.user.pushPreferences = Object.assign({}, defaultPushPreferences, { enabled: false });
+    }
+    if (!silent) toast('Notifications turned off.');
+  } catch (e) {
+    if (!silent) toast('Could not turn off notifications.');
+  }
+}
+
+function toggleNotifications() {
+  if (!('Notification' in window)) { toast('Notifications not supported in this browser'); return; }
+  if (Notification.permission === 'granted') {
+    subscribeToPush().then(ok => {
+      toast(ok ? 'Notifications are enabled.' : 'We could not turn on notifications. Please try again.');
+      renderSettingsIfOpen();
+    });
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    toast('Notifications are blocked in browser settings.');
+    return;
+  }
+  renderNotificationPermissionModal('settings');
+}
+
 async function downloadMyData() {
   try {
     const res = await fetch('/api/my-data');

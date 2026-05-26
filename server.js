@@ -133,6 +133,7 @@ const SQLiteStore = require('connect-sqlite3')(session);
 const helmet = require('helmet');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const admin = require('firebase-admin');
 
 const { registerStaticRoutes } = require('./routes/static');
 const { registerWaitlistRoutes } = require('./routes/waitlist');
@@ -148,6 +149,54 @@ const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
 const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome, sendMatchFoundNotification, sendDailyPromptReminder, sendPartnerWroteReminder } = require('./email-service');
 const cron = require('node-cron');
+
+function parseFirebaseServiceAccount() {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+    if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+    return parsed;
+  }
+  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    return {
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+    };
+  }
+  return null;
+}
+
+let firebaseAuth = null;
+try {
+  const serviceAccount = parseFirebaseServiceAccount();
+  if (serviceAccount) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID
+    });
+    firebaseAuth = admin.auth();
+    console.log('Firebase Admin ready');
+  } else {
+    console.warn('Firebase Admin not configured. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY.');
+  }
+} catch (e) {
+  console.error('Firebase Admin setup failed:', e.message);
+}
+
+function getFirebaseWebConfig() {
+  const config = {
+    apiKey: process.env.FIREBASE_API_KEY,
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    appId: process.env.FIREBASE_APP_ID,
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    measurementId: process.env.FIREBASE_MEASUREMENT_ID
+  };
+  const required = ['apiKey', 'authDomain', 'projectId', 'appId'];
+  const enabled = required.every((key) => !!config[key]) && !!firebaseAuth;
+  return { enabled, config };
+}
 
 
 const app = express();
@@ -181,6 +230,14 @@ db.exec(`
     last_active_date TEXT,
     switch_count INTEGER DEFAULT 0,
     push_subscription TEXT,
+    push_preferences TEXT,
+    push_subscription_updated_at TEXT,
+    push_last_sent_at TEXT,
+    push_last_sent_type TEXT,
+    firebase_uid TEXT,
+    profile_photo TEXT,
+    auth_provider TEXT DEFAULT 'password',
+    last_login_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -443,6 +500,14 @@ ensureColumn('users', 'last_active_date', 'TEXT');
 ensureColumn('users', 'switch_count', 'INTEGER DEFAULT 0');
 ensureColumn('users', 'login_email_sent_at', 'TEXT');
 ensureColumn('users', 'updated_at', 'TEXT');
+ensureColumn('users', 'push_preferences', 'TEXT');
+ensureColumn('users', 'push_subscription_updated_at', 'TEXT');
+ensureColumn('users', 'push_last_sent_at', 'TEXT');
+ensureColumn('users', 'push_last_sent_type', 'TEXT');
+ensureColumn('users', 'firebase_uid', 'TEXT');
+ensureColumn('users', 'profile_photo', 'TEXT');
+ensureColumn('users', 'auth_provider', "TEXT DEFAULT 'password'");
+ensureColumn('users', 'last_login_at', 'TEXT');
 ensureColumn('matches', 'matched_at', 'TEXT');
 ensureColumn('matches', 'updated_at', 'TEXT');
 ensureColumn('entries', 'updated_at', 'TEXT');
@@ -612,6 +677,7 @@ function handleReadinessText(req, res) {
 const stmts = {
   getUserById: db.prepare('SELECT * FROM users WHERE id = ?'),
   getUserByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
+  getUserByFirebaseUid: db.prepare('SELECT * FROM users WHERE firebase_uid = ?'),
   getUserByVerificationToken: db.prepare('SELECT * FROM users WHERE email_verification_token = ?'),
   getUsersByName: db.prepare('SELECT * FROM users WHERE LOWER(name) = LOWER(?) ORDER BY created_at DESC'),
   insertUser: db.prepare(`
@@ -630,7 +696,34 @@ const stmts = {
   updateVerificationToken: db.prepare('UPDATE users SET email_verification_token = ?, email_verification_sent_at = ? WHERE id = ?'),
   updateUserConsent: db.prepare('UPDATE users SET consent_given = ?, consent_withdrawn_at = ? WHERE id = ?'),
   updateUserSwitch: db.prepare('UPDATE users SET switch_count = ? WHERE id = ?'),
-  updatePushSub: db.prepare('UPDATE users SET push_subscription = ? WHERE id = ?'),
+  updatePushSub: db.prepare("UPDATE users SET push_subscription = ?, push_subscription_updated_at = datetime('now') WHERE id = ?"),
+  updatePushPrefs: db.prepare("UPDATE users SET push_preferences = ?, updated_at = datetime('now') WHERE id = ?"),
+  markPushSent: db.prepare("UPDATE users SET push_last_sent_at = datetime('now'), push_last_sent_type = ? WHERE id = ?"),
+  updateFirebaseUserLogin: db.prepare(`
+    UPDATE users
+    SET firebase_uid = COALESCE(firebase_uid, ?),
+        profile_photo = COALESCE(?, profile_photo),
+        auth_provider = CASE
+          WHEN auth_provider IS NULL OR auth_provider = '' THEN 'google'
+          WHEN instr(auth_provider, 'google') = 0 THEN auth_provider || ',google'
+          ELSE auth_provider
+        END,
+        email_verified = 1,
+        email_verified_at = COALESCE(email_verified_at, ?),
+        last_login_at = ?,
+        updated_at = ?
+    WHERE id = ?
+  `),
+  insertFirebaseUser: db.prepare(`
+    INSERT INTO users (
+      name, email, password, college, college_normalized, year, gender,
+      match_gender_pref, match_year_pref, consent_given, consent_date,
+      consent_age_confirmed, consent_policy_version, email_verified,
+      email_verified_at, last_active_date, firebase_uid, profile_photo,
+      auth_provider, last_login_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `),
   updateLoginEmailTime: db.prepare('UPDATE users SET login_email_sent_at = ? WHERE id = ?'),
   deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
 
@@ -726,9 +819,9 @@ const stmts = {
   getPaymentByOrder: db.prepare('SELECT * FROM payments WHERE provider_order_id = ?'),
   getUserPayments: db.prepare('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC'),
 
-  getAllPushUsers: db.prepare('SELECT id, push_subscription FROM users WHERE push_subscription IS NOT NULL'),
+  getAllPushUsers: db.prepare('SELECT id, push_subscription, push_preferences, last_active_date, created_at, push_last_sent_at, push_last_sent_type FROM users WHERE push_subscription IS NOT NULL'),
   getActiveMatchUsers: db.prepare(`
-    SELECT u.id, u.push_subscription, m.started_at, m.id as match_id
+    SELECT u.id, u.push_subscription, u.push_preferences, u.last_active_date, u.created_at, u.push_last_sent_at, u.push_last_sent_type, m.started_at, m.id as match_id
     FROM users u
     JOIN matches m ON (m.user1_id = u.id OR m.user2_id = u.id)
     WHERE u.push_subscription IS NOT NULL
@@ -859,7 +952,7 @@ function trackEvent(userId, eventName, metadata = {}) {
       'signup_started', 'signup_completed', 'email_verified', 'scan_started', 'scan_completed',
       'matched', 'day_1_written', 'day_2_returned', 'missed_day', 'report_clicked',
       'block_clicked', 'rematch_requested', 'reveal_choice_submitted', 'account_deleted',
-      'crisis_keyword_triggered', 'signup_error', 'email_send_failed'
+      'crisis_keyword_triggered', 'signup_error', 'email_send_failed', 'login'
     ]);
     if (!allowed.has(eventName)) return;
     stmts.insertAnalyticsEvent.run(userId || null, eventName, JSON.stringify(metadata || {}));
@@ -873,13 +966,13 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com", "https://www.gstatic.com", "https://apis.google.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      connectSrc: ["'self'", "https://api.razorpay.com", "https://lumberjack-cx.razorpay.com"],
-      imgSrc: ["'self'", "data:"],
-      frameSrc: ["https://api.razorpay.com", "https://checkout.razorpay.com"],
+      connectSrc: ["'self'", "https://api.razorpay.com", "https://lumberjack-cx.razorpay.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://www.googleapis.com"],
+      imgSrc: ["'self'", "data:", "https://lh3.googleusercontent.com"],
+      frameSrc: ["https://api.razorpay.com", "https://checkout.razorpay.com", "https://accounts.google.com", "https://*.firebaseapp.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"]
     }
@@ -1020,7 +1113,9 @@ registerAuthRoutes(app, {
   stmts,
   sendLoginWelcome,
   normalizeCollegeName,
-  trackEvent
+  trackEvent,
+  firebaseAuth,
+  getFirebaseWebConfig
 });
 
 const apiLimiter = rateLimit({
@@ -1707,6 +1802,121 @@ app.get('/api/partner-wrote-today', apiLimiter, requireAuth, (req, res) => {
 // ─── Email Notification Scheduler Using Node-Cron ─────────────────────────────
 
 // 9pm IST = 15:30 UTC — daily prompt reminder
+const DEFAULT_PUSH_PREFERENCES = {
+  enabled: true,
+  morningReminder: true,
+  eveningReminder: true,
+  dailyReflection: true,
+  streakReminder: true,
+  silentRoomReminder: false
+};
+
+const PUSH_COPY = {
+  morning: 'A small pause can change the day.',
+  daily_reflection: "Today's reflection is open.",
+  evening: 'Your reset is ready.',
+  partner_waiting: 'Your next step is waiting.',
+  daily_prompt_unlocked: "Today's reflection is open.",
+  silent_room: 'Come back for two quiet minutes.',
+  inactive_24: 'Your 21 day journey continues today.',
+  inactive_48: 'A small reset is open when you are ready.'
+};
+
+function parsePushPreferences(raw) {
+  let prefs = {};
+  try { prefs = raw ? JSON.parse(raw) : {}; } catch { prefs = {}; }
+  const merged = { ...DEFAULT_PUSH_PREFERENCES, ...prefs };
+  merged.enabled = merged.enabled !== false;
+  for (const key of ['morningReminder', 'eveningReminder', 'dailyReflection', 'streakReminder', 'silentRoomReminder']) {
+    merged[key] = merged.enabled && merged[key] !== false;
+  }
+  return merged;
+}
+
+function sqliteDateToMs(value) {
+  if (!value) return 0;
+  const date = new Date(String(value).includes('T') ? value : String(value).replace(' ', 'T') + 'Z');
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function recentlySent(row, type, hours) {
+  if (!row || row.push_last_sent_type !== type || !row.push_last_sent_at) return false;
+  const last = sqliteDateToMs(row.push_last_sent_at);
+  return last > 0 && Date.now() - last < hours * 60 * 60 * 1000;
+}
+
+async function sendGentlePush(row, type, body, url = '/app') {
+  if (!vapidKeys || !row || !row.push_subscription || recentlySent(row, type, 6)) return false;
+  let subscription;
+  try {
+    subscription = JSON.parse(row.push_subscription);
+  } catch (e) {
+    stmts.updatePushSub.run(null, row.id);
+    console.warn('Push subscription invalid, cleared for user', row.id);
+    return false;
+  }
+
+  try {
+    await webpush.sendNotification(subscription, JSON.stringify({
+      title: 'Mentally Prepare',
+      body: body || PUSH_COPY[type] || PUSH_COPY.evening,
+      url,
+      tag: `mp-${type}`
+    }));
+    stmts.markPushSent.run(type, row.id);
+    console.log('Push notification sent', { userId: row.id, type });
+    return true;
+  } catch (e) {
+    if (e && (e.statusCode === 404 || e.statusCode === 410)) {
+      stmts.updatePushSub.run(null, row.id);
+      console.warn('Push subscription expired, cleared for user', row.id);
+    } else {
+      console.error('Push notification failed', { userId: row.id, type, reason: e && e.message ? e.message : e });
+    }
+    return false;
+  }
+}
+
+function lastActiveHours(row) {
+  if (!row || !row.last_active_date) return Infinity;
+  const last = new Date(`${row.last_active_date}T00:00:00+05:30`).getTime();
+  if (Number.isNaN(last)) return Infinity;
+  return Math.max(0, (Date.now() - last) / 36e5);
+}
+
+async function sendMorningPushReminders() {
+  const rows = stmts.getAllPushUsers.all();
+  let sent = 0;
+  for (const row of rows) {
+    const prefs = parsePushPreferences(row.push_preferences);
+    if (!prefs.enabled || !prefs.morningReminder) continue;
+    if (await sendGentlePush(row, 'morning', PUSH_COPY.morning)) sent++;
+  }
+  console.log(`  -> Morning push reminders sent: ${sent}`);
+}
+
+async function sendSilentRoomPushReminders() {
+  const rows = stmts.getAllPushUsers.all();
+  let sent = 0;
+  for (const row of rows) {
+    const prefs = parsePushPreferences(row.push_preferences);
+    if (!prefs.enabled || !prefs.silentRoomReminder) continue;
+    if (await sendGentlePush(row, 'silent_room', PUSH_COPY.silent_room, '/app#silent-room')) sent++;
+  }
+  console.log(`  -> Silent Room push reminders sent: ${sent}`);
+}
+
+async function sendInactivePushReminders(hours, type) {
+  const rows = stmts.getAllPushUsers.all();
+  let sent = 0;
+  for (const row of rows) {
+    const prefs = parsePushPreferences(row.push_preferences);
+    if (!prefs.enabled || !prefs.streakReminder || lastActiveHours(row) < hours) continue;
+    if (await sendGentlePush(row, type, PUSH_COPY[type])) sent++;
+  }
+  console.log(`  -> ${hours}h inactive push reminders sent: ${sent}`);
+}
+
 function send9pmReminders() {
   const rows = stmts.getActiveMatchUsers.all();
   for (const row of rows) {
@@ -1720,6 +1930,10 @@ function send9pmReminders() {
       const user = parseUser(stmts.getUserById.get(row.id));
       if (user) {
         sendDailyPromptReminder(user.email, user.name, day).catch(err => console.error('Failed to send daily prompt reminder', err));
+      }
+      const prefs = parsePushPreferences(row.push_preferences);
+      if (prefs.enabled && (prefs.dailyReflection || prefs.eveningReminder)) {
+        sendGentlePush(row, 'daily_reflection', PUSH_COPY.daily_reflection).catch(() => {});
       }
     }
   }
@@ -1745,6 +1959,10 @@ function send10pmReminders() {
       if (user && partner) {
         sendPartnerWroteReminder(user.email, user.name, partner.name, day).catch(err => console.error('Failed to send partner wrote reminder', err));
       }
+      const prefs = parsePushPreferences(row.push_preferences);
+      if (prefs.enabled && prefs.eveningReminder) {
+        sendGentlePush(row, 'partner_waiting', PUSH_COPY.partner_waiting).catch(() => {});
+      }
     }
   }
   console.log('  ✦ 10pm: Sent partner-wrote email reminders');
@@ -1753,11 +1971,23 @@ function send10pmReminders() {
 // Midnight IST = 18:30 UTC — unseal partner entry + note generation
 function sendMidnightUnseals() {
   generateDailyNotesForAll();
+  for (const row of stmts.getAllPushUsers.all()) {
+    const prefs = parsePushPreferences(row.push_preferences);
+    if (prefs.enabled && prefs.dailyReflection) {
+      sendGentlePush(row, 'daily_prompt_unlocked', PUSH_COPY.daily_prompt_unlocked).catch(() => {});
+    }
+  }
   console.log('  ✦ Midnight: Generated daily notes');
 }
 
 // Schedule all notification slots using node-cron
 function scheduleNotifications() {
+  // 8:30 AM IST is 03:00 UTC
+  cron.schedule('0 3 * * *', () => {
+    console.log('Running morning push reminders...');
+    sendMorningPushReminders();
+  });
+
   // 9 PM IST is 15:30 UTC
   cron.schedule('30 15 * * *', () => {
     console.log('Running 9pm Reminders...');
@@ -1776,7 +2006,20 @@ function scheduleNotifications() {
     sendMidnightUnseals();
   });
 
-  console.log('  ✦ Cron schedules loaded for email reminders');
+  // 10:30 PM IST is 17:00 UTC
+  cron.schedule('0 17 * * *', () => {
+    console.log('Running Silent Room push reminders...');
+    sendSilentRoomPushReminders();
+  });
+
+  // 11:00 AM IST is 05:30 UTC
+  cron.schedule('30 5 * * *', () => {
+    console.log('Running inactive push reminders...');
+    sendInactivePushReminders(24, 'inactive_24');
+    sendInactivePushReminders(48, 'inactive_48');
+  });
+
+  console.log('  ✦ Cron schedules loaded for email and push reminders');
 }
 scheduleNotifications();
 

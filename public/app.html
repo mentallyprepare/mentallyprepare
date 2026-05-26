@@ -34,11 +34,16 @@
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png"/>
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
 <meta name="theme-color" content="#0B0614"/>
+<meta name="application-name" content="Mentally Prepare"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Mentally Prepare"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<link rel="manifest" href="/site.webmanifest"/>
+<meta name="msapplication-TileColor" content="#0B0614"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-startup-image" href="/icon-512x512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/app.css?v=verification-fix-1"/>
+<link rel="stylesheet" href="/app.css?v=pwa-push-1"/>
 </head>
 <body>
 
@@ -378,6 +383,7 @@
       </div>
     </div>
     <button class="btn" onclick="login()" style="margin-top:8px;">Open my room</button>
+    <button class="btn-ghost google-auth-btn" onclick="googleLogin('login')" style="margin-top:10px;" type="button"><span class="google-mark">G</span>Continue with Google</button>
     <div style="margin-top:14px;"><a href="#" onclick="go('s-forgot');return false;" style="font-size:12px;color:var(--rose-l);text-decoration:underline;text-underline-offset:3px;">Forgot password?</a></div>
     <button class="btn-ghost" onclick="go('s-splash')" style="margin-top:10px;">← Back</button>
   </div>
@@ -501,6 +507,7 @@
       </div>
       <div class="input-block"><label class="input-label">Email</label><input class="input-field" type="email" id="inp-email" placeholder="you@college.edu"/><div class="field-help">Email is used for login, verification, and password reset.</div></div>
       <div class="input-block"><label class="input-label">Password (min 8 characters)</label><input class="input-field" type="password" id="inp-password" placeholder="Create a password"/></div>
+      <button class="btn-ghost google-auth-btn" onclick="googleLogin('signup')" type="button"><span class="google-mark">G</span>Continue with Google</button>
     </div>
     <div class="slide-text">
       <div class="eyebrow">Almost there</div>
@@ -768,6 +775,8 @@
   </div>
 </footer>
 
-<script src="/app.js?v=verification-fix-1" defer></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js" defer></script>
+<script src="/app.js?v=firebase-google-1" defer></script>
 </body>
 </html>

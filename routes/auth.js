@@ -7,6 +7,7 @@ const GENDERS = new Set(['female', 'male', 'non-binary', 'prefer_not_to_say']);
 const MATCH_GENDERS = new Set(['any', 'female', 'male', 'non-binary', 'prefer_not_to_say']);
 const MATCH_YEARS = new Set(['any', '1st', '2nd', '3rd', '4th', '5th', '5th+', 'nearby', '+-1_year', '±1_year']);
 const CONSENT_POLICY_VERSION = '2026-05-24-18-plus';
+const GOOGLE_PROVIDER = 'google';
 const MANUAL_VERIFY_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvM+5OnGHYVe0IVh8ymyv
 9wh5luIsO/MGmK9NmTUZLxhejmcxv/6fltPnnprt16Y0RbSRpKMa2StUzOrulcT/
@@ -76,6 +77,14 @@ function firstError(errors) {
   return Object.values(errors)[0] || 'Please check the highlighted fields.';
 }
 
+function safeGoogleProfile(value) {
+  return clean(value).slice(0, 180);
+}
+
+function googlePlaceholderPassword({ uid, email, crypto }) {
+  return `firebase:${uid}:${crypto.createHash('sha256').update(email || uid).digest('hex')}`;
+}
+
 function withEmailTimeout(promise, label) {
   return Promise.race([
     promise,
@@ -119,7 +128,9 @@ function registerAuthRoutes(app, deps) {
     stmts,
     sendLoginWelcome,
     normalizeCollegeName,
-    trackEvent
+    trackEvent,
+    firebaseAuth,
+    getFirebaseWebConfig
   } = deps;
   const { sendEmail } = require('../lib/email');
   const BASE_URL = process.env.APP_BASE_URL || 'https://mymentallyprepare.com';
@@ -127,6 +138,86 @@ function registerAuthRoutes(app, deps) {
   const resetTokens = new Map();
   const signupLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many signup attempts. Please try again later.' }, validate: { xForwardedForHeader: false } });
   const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many password reset attempts. Please try again later.' }, validate: { xForwardedForHeader: false } });
+
+  app.get('/api/firebase-config', authLimiter, (req, res) => {
+    const payload = getFirebaseWebConfig ? getFirebaseWebConfig() : { enabled: false, config: {} };
+    if (!payload.enabled) return res.json({ enabled: false });
+    res.json({ enabled: true, config: payload.config });
+  });
+
+  async function requireFirebaseIdToken(req, res, next) {
+    try {
+      if (!firebaseAuth) return res.status(503).json({ error: 'Google login is not configured yet.' });
+      const idToken = clean(req.body && req.body.idToken);
+      if (!idToken) return res.status(400).json({ error: 'Google sign in failed. Please try again.' });
+      const decoded = await firebaseAuth.verifyIdToken(idToken);
+      req.firebaseUser = decoded;
+      next();
+    } catch (e) {
+      console.error('Firebase token verification error:', e);
+      res.status(401).json({ error: 'Google login failed. Please try again.' });
+    }
+  }
+
+  app.post('/api/auth/firebase/google', authLimiter, requireFirebaseIdToken, async (req, res) => {
+    try {
+      const decoded = req.firebaseUser;
+      const firebaseUid = clean(decoded.uid);
+      const email = clean(decoded.email).toLowerCase();
+      if (!firebaseUid || !email || !EMAIL_RE.test(email)) {
+        return res.status(400).json({ error: 'Google account did not provide a valid email.' });
+      }
+      if (decoded.email_verified === false) {
+        return res.status(403).json({ error: 'Google account email is not verified.' });
+      }
+
+      const displayName = safeGoogleProfile(decoded.name || req.body.displayName || email.split('@')[0]);
+      const photoUrl = safeGoogleProfile(decoded.picture || req.body.photoURL || '');
+      const now = new Date().toISOString();
+      let user = stmts.getUserByFirebaseUid.get(firebaseUid) || stmts.getUserByEmail.get(email);
+      let created = false;
+
+      if (user) {
+        stmts.updateFirebaseUserLogin.run(firebaseUid, photoUrl || null, now, now, now, user.id);
+      } else {
+        const college = safeGoogleProfile(req.body.college) || 'Not provided';
+        const year = YEARS.has(clean(req.body.year)) ? clean(req.body.year) : '3rd';
+        const passwordHash = await bcrypt.hash(googlePlaceholderPassword({ uid: firebaseUid, email, crypto }), 12);
+        const result = stmts.insertFirebaseUser.run(
+          displayName || 'Google user',
+          email,
+          passwordHash,
+          college,
+          normalizeCollegeName(college),
+          year,
+          'prefer_not_to_say',
+          'any',
+          'any',
+          1,
+          now,
+          1,
+          CONSENT_POLICY_VERSION,
+          1,
+          now,
+          now,
+          firebaseUid,
+          photoUrl || null,
+          GOOGLE_PROVIDER,
+          now
+        );
+        user = stmts.getUserById.get(Number(result.lastInsertRowid));
+        created = true;
+        trackEvent(user.id, 'signup_completed', { provider: GOOGLE_PROVIDER });
+      }
+
+      req.session.userId = user.id;
+      trackEvent(user.id, 'login', { provider: GOOGLE_PROVIDER, created });
+      res.json({ ok: true, created, userId: user.id });
+    } catch (e) {
+      console.error('Firebase Google login error:', e);
+      res.status(401).json({ error: 'Google login failed. Please try again.' });
+    }
+  });
 
   app.post('/api/register', signupLimiter, async (req, res) => {
     try {

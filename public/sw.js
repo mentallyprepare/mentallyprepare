@@ -1,10 +1,12 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'verification-fix-1';
+const CACHE_NAME = 'pwa-push-1';
 const STATIC_ASSETS = [
+  '/manifest.json',
   '/site.webmanifest',
   '/favicon.ico',
+  '/apple-touch-icon.png',
   '/favicon-48x48.png',
   '/icon-192x192.png',
   '/icon-512x512.png'
@@ -75,14 +77,17 @@ self.addEventListener('message', event => {
 
 // Push notifications
 self.addEventListener('push', event => {
-  const data = event.data ? event.data.json() : {};
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
   const title = data.title || 'Mentally Prepare';
   const options = {
-    body: data.body || 'Your partner wrote something new.',
+    body: data.body || 'Your reset is ready.',
     icon: '/icon-192x192.png',
     badge: '/icon-192x192.png',
-    vibrate: [100, 50, 100],
-    data: { url: data.url || '/' }
+    tag: data.tag || 'mentally-prepare-reminder',
+    renotify: false,
+    vibrate: [80, 40, 80],
+    data: { url: data.url || '/app' }
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });

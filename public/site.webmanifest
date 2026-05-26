@@ -1,9 +1,15 @@
 {
   "name": "Mentally Prepare",
-  "short_name": "Mentally Prepare",
+  "short_name": "Prepare",
+  "id": "/app",
+  "description": "A private 21-day reflection app with gentle daily reminders.",
+  "start_url": "/app?source=pwa",
+  "scope": "/",
   "theme_color": "#0B0614",
   "background_color": "#0B0614",
   "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["health", "lifestyle"],
   "icons": [
     {
       "src": "/icon-192x192.png",

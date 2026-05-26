@@ -78,6 +78,39 @@ function registerAppRoutes(app, deps) {
     return clean.slice(0, 220);
   }
 
+  const defaultPushPreferences = {
+    enabled: true,
+    morningReminder: true,
+    eveningReminder: true,
+    dailyReflection: true,
+    streakReminder: true,
+    silentRoomReminder: false
+  };
+
+  function parsePushPreferences(raw) {
+    let prefs = {};
+    try { prefs = raw ? JSON.parse(raw) : {}; } catch { prefs = {}; }
+    const merged = { ...defaultPushPreferences, ...prefs };
+    merged.enabled = merged.enabled !== false;
+    for (const key of ['morningReminder', 'eveningReminder', 'dailyReflection', 'streakReminder', 'silentRoomReminder']) {
+      merged[key] = merged.enabled && merged[key] !== false;
+    }
+    return merged;
+  }
+
+  function cleanPushPreferences(input) {
+    const raw = input && typeof input === 'object' ? input : {};
+    const enabled = raw.enabled !== false && raw.notificationsOff !== true;
+    return {
+      enabled,
+      morningReminder: enabled && raw.morningReminder !== false,
+      eveningReminder: enabled && raw.eveningReminder !== false,
+      dailyReflection: enabled && raw.dailyReflection !== false,
+      streakReminder: enabled && raw.streakReminder !== false,
+      silentRoomReminder: enabled && raw.silentRoomReminder === true
+    };
+  }
+
   function buildPartnerStatus({ hasPartner, daysSinceActive = null, partnerEntryCount = 0, switchCount = 0 }) {
     const switchesRemaining = Math.max(0, 2 - (switchCount || 0));
     if (!hasPartner) {
@@ -307,7 +340,11 @@ function registerAppRoutes(app, deps) {
         year: user.year,
         emailVerified: !!user.email_verified,
         archetype: user.archetype,
-        scores: user.scores
+        scores: user.scores,
+        profilePhoto: rawUser.profile_photo || null,
+        authProvider: rawUser.auth_provider || 'password',
+        pushPreferences: parsePushPreferences(rawUser.push_preferences),
+        pushSubscribed: !!rawUser.push_subscription
       };
 
       const match = stmts.getMatch.get(userId, userId);
@@ -1026,19 +1063,50 @@ function registerAppRoutes(app, deps) {
 
   app.post('/api/push/subscribe', apiLimiter, requireAuth, (req, res) => {
     try {
-      const { subscription } = req.body;
+      const { subscription, preferences } = req.body || {};
       if (!subscription || !subscription.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
       stmts.updatePushSub.run(JSON.stringify(subscription), req.session.userId);
-      res.json({ ok: true });
+      if (preferences) {
+        stmts.updatePushPrefs.run(JSON.stringify(cleanPushPreferences(preferences)), req.session.userId);
+      }
+      console.log('Push subscription saved', { userId: req.session.userId });
+      res.json({ ok: true, preferences: parsePushPreferences(stmts.getUserById.get(req.session.userId).push_preferences) });
     } catch (e) {
       console.error('Push subscribe error:', e);
       res.status(500).json({ error: 'Failed to save subscription' });
     }
   });
 
+  app.get('/api/push/preferences', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const user = stmts.getUserById.get(req.session.userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      res.json({
+        preferences: parsePushPreferences(user.push_preferences),
+        subscribed: !!user.push_subscription
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to load notification settings' });
+    }
+  });
+
+  app.post('/api/push/preferences', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const preferences = cleanPushPreferences((req.body && req.body.preferences) || req.body || {});
+      stmts.updatePushPrefs.run(JSON.stringify(preferences), req.session.userId);
+      console.log('Push preferences updated', { userId: req.session.userId, enabled: preferences.enabled });
+      res.json({ ok: true, preferences });
+    } catch (e) {
+      console.error('Push preferences update error:', e);
+      res.status(500).json({ error: 'Failed to save notification settings' });
+    }
+  });
+
   app.post('/api/push/unsubscribe', apiLimiter, requireAuth, (req, res) => {
     try {
       stmts.updatePushSub.run(null, req.session.userId);
+      stmts.updatePushPrefs.run(JSON.stringify({ ...defaultPushPreferences, enabled: false }), req.session.userId);
+      console.log('Push unsubscribed', { userId: req.session.userId });
       res.json({ ok: true });
     } catch (e) {
       res.status(500).json({ error: 'Failed to unsubscribe' });
