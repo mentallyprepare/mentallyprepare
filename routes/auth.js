@@ -150,6 +150,13 @@ function registerAuthRoutes(app, deps) {
       if (!verifyFirebaseIdToken) return res.status(503).json({ error: 'Google login is not configured yet.' });
       const idToken = clean(req.body && req.body.idToken);
       if (!idToken) return res.status(400).json({ error: 'Google sign in failed. Please try again.' });
+      if (idToken.split('.').length !== 3) {
+        console.warn('Firebase token verification failed: non-JWT token received', {
+          length: idToken.length,
+          preview: idToken.slice(0, 18)
+        });
+        return res.status(400).json({ error: 'Google login did not return a valid Firebase token. Please try again.' });
+      }
       const decoded = await verifyFirebaseIdToken(idToken);
       req.firebaseUser = decoded;
       next();

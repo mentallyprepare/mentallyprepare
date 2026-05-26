@@ -111,7 +111,11 @@ function getSignupGoogleProfileHints() {
 async function completeFirebaseLogin(firebaseUser, quiet) {
   if (!firebaseUser) return false;
   try {
-    const idToken = await firebaseUser.getIdToken();
+    await firebaseUser.reload().catch(() => {});
+    const idToken = await firebaseUser.getIdToken(true);
+    if (!idToken || idToken.split('.').length !== 3) {
+      throw new Error('Google did not return a Firebase session token. Please try again.');
+    }
     const hints = getSignupGoogleProfileHints();
     await api('POST', '/auth/firebase/google', {
       idToken,

@@ -243,7 +243,7 @@ async function verifyFirebaseIdToken(idToken) {
   const projectId = getFirebaseWebConfig().config.projectId;
   if (!projectId) throw new Error('Firebase project ID is missing');
   const parts = String(idToken || '').split('.');
-  if (parts.length !== 3) throw new Error('Invalid Firebase ID token');
+  if (parts.length !== 3) throw new Error('Invalid Firebase ID token shape');
 
   const [encodedHeader, encodedPayload, encodedSignature] = parts;
   const header = parseJwtPart(encodedHeader);
