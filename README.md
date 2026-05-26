@@ -7,7 +7,7 @@ Anonymous 21-day journaling webapp for college students, built with Node.js, Exp
 - Express
 - better-sqlite3
 - express-session + connect-sqlite3
-- SendGrid
+- Optional SMTP email
 - Razorpay / Stripe
 - Web Push + PWA assets
 

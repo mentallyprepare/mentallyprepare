@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
-const { sendEmail } = require('./lib/sendgrid');
+const { sendEmail } = require('./lib/email');
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 const DATA_DIR = process.env.DATA_DIR
@@ -47,12 +47,7 @@ function sendReminders() {
   const emails = loadReminderEmails();
   if (!emails.length) return;
   emails.forEach(email => {
-    sendEmail({
-      to: email,
-      subject,
-      text,
-      bcc: 'mymentallyprepare.com@mymentallyprepare.com'
-    })
+    sendEmail(email, subject, `<p>${text}</p>`)
       .then(() => {
         console.log('Sent reminder to', email);
       })

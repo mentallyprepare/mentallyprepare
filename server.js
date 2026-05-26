@@ -14,7 +14,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // --- Ensure DB directory exists and is writable (test-volume.js logic) ---
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const path = require('path');
 const fs = require('fs');
@@ -2049,20 +2049,17 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
     }
     stmts.insertReminderSignup.run(emailClean);
 
-    // Send welcome/daily reminder email immediately using SendGrid
-    const { sendEmail } = require('./lib/sendgrid');
+    // Send welcome reminder when an SMTP provider is configured. Signup is saved
+    // either way so reminders never block users.
+    const { sendEmail } = require('./lib/email');
     const subject = 'Mentally Prepare: Daily Reminder';
-    const text = 'Welcome! You are now signed up to receive daily reminders to write your journal entry. Take 5 minutes today to write your first entry!';
-    sendEmail({
-      to: emailClean,
-      subject,
-      text
-    })
+    const html = '<p>Welcome. You are signed up for gentle writing reminders from Mentally Prepare.</p><p>Take two quiet minutes today when you are ready.</p>';
+    sendEmail(emailClean, subject, html)
       .then(() => {
         console.log('Sent welcome reminder to', emailClean);
       })
       .catch((err) => {
-        console.error('Failed to send welcome reminder to', emailClean, err);
+        console.warn('Welcome reminder email skipped:', err.message || err);
       });
 
     res.json({ ok: true });
