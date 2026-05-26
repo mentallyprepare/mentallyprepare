@@ -16,6 +16,7 @@
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.6.2",
     "connect-sqlite3": "^0.9.16",
+    "dotenv": "^17.4.2",
     "express": "^4.21.0",
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",

@@ -14,6 +14,8 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // --- Ensure DB directory exists and is writable (test-volume.js logic) ---
 
+require('dotenv').config();
+
 const path = require('path');
 const fs = require('fs');
 const util = require('util');
