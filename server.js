@@ -189,10 +189,10 @@ try {
     firebaseAuth = admin.auth();
     console.log('Firebase Admin ready');
   } else {
-    console.log('Firebase Admin not configured; using public Firebase token verifier');
+    console.log('Firebase token verifier ready (public certificate mode)');
   }
 } catch (e) {
-  console.warn('Firebase Admin setup failed; using public Firebase token verifier:', e.message);
+  console.warn('Firebase Admin setup failed; falling back to public Firebase token verifier:', e.message);
   firebaseAuth = null;
 }
 
@@ -2010,7 +2010,7 @@ function send9pmReminders() {
       }
     }
   }
-  console.log('  ✦ 9pm: Sent prompt email reminders');
+  console.log('  ✦ 9pm: Queued prompt email and push reminders');
 }
 
 // 10pm IST = 16:30 UTC — conditional "partner wrote" notification
@@ -2038,7 +2038,7 @@ function send10pmReminders() {
       }
     }
   }
-  console.log('  ✦ 10pm: Sent partner-wrote email reminders');
+  console.log('  ✦ 10pm: Queued partner-wrote email and push reminders');
 }
 
 // Midnight IST = 18:30 UTC — unseal partner entry + note generation
