@@ -68,6 +68,7 @@ function firebaseLoginMessage(error) {
     return 'Google login needs mymentallyprepare.com added in Firebase Authorized Domains.';
   }
   if (error.code === 'auth/popup-closed-by-user') return 'Google login was cancelled.';
+  if (error.code === 'auth/network-request-failed') return 'Google login could not reach Firebase. Please refresh and try again.';
   if (error.message) return error.message;
   return 'Google login failed. Please try again.';
 }
