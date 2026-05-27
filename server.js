@@ -198,6 +198,8 @@ try {
 
 function getFirebaseAuthDomain(req) {
   const configured = process.env.FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_WEB_CONFIG.authDomain;
+  if (process.env.FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN !== 'true') return configured;
+
   const host = String(req && req.headers && req.headers.host ? req.headers.host : '').split(':')[0].toLowerCase();
   const sameOriginHosts = new Set([
     'mymentallyprepare.com',
