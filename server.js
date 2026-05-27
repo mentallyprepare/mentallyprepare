@@ -196,10 +196,21 @@ try {
   firebaseAuth = null;
 }
 
-function getFirebaseWebConfig() {
+function getFirebaseAuthDomain(req) {
+  const configured = process.env.FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_WEB_CONFIG.authDomain;
+  const host = String(req && req.headers && req.headers.host ? req.headers.host : '').split(':')[0].toLowerCase();
+  const sameOriginHosts = new Set([
+    'mymentallyprepare.com',
+    'www.mymentallyprepare.com',
+    'mentallyprepare-production.up.railway.app'
+  ]);
+  return sameOriginHosts.has(host) ? host : configured;
+}
+
+function getFirebaseWebConfig(req) {
   const config = {
     apiKey: process.env.FIREBASE_API_KEY || DEFAULT_FIREBASE_WEB_CONFIG.apiKey,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_WEB_CONFIG.authDomain,
+    authDomain: getFirebaseAuthDomain(req),
     projectId: process.env.FIREBASE_PROJECT_ID || DEFAULT_FIREBASE_WEB_CONFIG.projectId,
     appId: process.env.FIREBASE_APP_ID || DEFAULT_FIREBASE_WEB_CONFIG.appId,
     messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_WEB_CONFIG.messagingSenderId,
@@ -1045,7 +1056,7 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       connectSrc: ["'self'", "https://api.razorpay.com", "https://lumberjack-cx.razorpay.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://www.googleapis.com", "https://*.googleapis.com", "https://*.firebaseapp.com"],
       imgSrc: ["'self'", "data:", "https://lh3.googleusercontent.com"],
-      frameSrc: ["https://api.razorpay.com", "https://checkout.razorpay.com", "https://accounts.google.com", "https://*.firebaseapp.com"],
+      frameSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com", "https://accounts.google.com", "https://*.firebaseapp.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"]
     }
@@ -1065,6 +1076,46 @@ if (stripe && process.env.STRIPE_WEBHOOK_SECRET) {
   const { registerStripeWebhook } = require('./routes/payments');
   registerStripeWebhook(app, { stripe, stmts, express });
 }
+
+const FIREBASE_AUTH_HELPER_ORIGIN = 'https://mentally-prepare.firebaseapp.com';
+
+async function proxyFirebaseAuthHelper(req, res) {
+  try {
+    const targetUrl = new URL(req.originalUrl, FIREBASE_AUTH_HELPER_ORIGIN);
+    const headers = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (['host', 'connection', 'content-length', 'accept-encoding'].includes(key.toLowerCase())) continue;
+      headers[key] = value;
+    }
+
+    const init = {
+      method: req.method,
+      headers,
+      redirect: 'manual'
+    };
+
+    if (!['GET', 'HEAD'].includes(req.method.toUpperCase())) {
+      init.body = req;
+      init.duplex = 'half';
+    }
+
+    const upstream = await fetch(targetUrl, init);
+    res.status(upstream.status);
+    upstream.headers.forEach((value, key) => {
+      if (['content-encoding', 'content-length', 'connection', 'transfer-encoding'].includes(key.toLowerCase())) return;
+      res.setHeader(key, value);
+    });
+
+    const body = Buffer.from(await upstream.arrayBuffer());
+    res.send(body);
+  } catch (e) {
+    console.error('Firebase auth helper proxy failed:', e);
+    res.status(502).send('Firebase auth helper unavailable');
+  }
+}
+
+app.all('/__/auth/*', proxyFirebaseAuthHelper);
+app.get('/__/firebase/init.json', proxyFirebaseAuthHelper);
 
 app.use(express.json({ limit: '16kb' }));
 
