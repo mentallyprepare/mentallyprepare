@@ -574,6 +574,37 @@ function registerAppRoutes(app, deps) {
     }
   });
 
+  app.post('/api/profile', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = stmts.getUserById.get(userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (stmts.getMatch.get(userId, userId)) {
+        return res.status(409).json({ error: 'Profile basics are locked after matching starts.' });
+      }
+
+      const name = clean(req.body && req.body.name);
+      const college = clean(req.body && req.body.college);
+      const year = clean(req.body && req.body.year);
+      if (name.length < 2) return res.status(400).json({ error: 'Name must be at least 2 characters.' });
+      if (!isValidCollegeName(college)) return res.status(400).json({ error: 'Please enter your college name.' });
+      if (!YEARS.has(year)) return res.status(400).json({ error: 'Please choose your year.' });
+
+      stmts.updateUserProfile.run(
+        name,
+        college,
+        normalizeCollegeName ? normalizeCollegeName(college) : college.toLowerCase(),
+        year,
+        new Date().toISOString(),
+        userId
+      );
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('Profile update error:', e);
+      res.status(500).json({ error: 'Could not save your profile yet. Please try again.' });
+    }
+  });
+
   app.post('/api/scan', apiLimiter, requireAuth, (req, res) => {
     try {
       const { scores, archetype, answers } = req.body;

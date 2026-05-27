@@ -97,6 +97,12 @@ function logVerification(message, details) {
   else console.log(message);
 }
 
+function authDebugLog(message, details) {
+  if (process.env.AUTH_DEBUG_LOGS !== 'true') return;
+  if (details) console.log(message, details);
+  else console.log(message);
+}
+
 function verifyManualSignature(email, expires, signature) {
   const expiresMs = Number(expires);
   if (!Number.isFinite(expiresMs) || expiresMs < Date.now()) return false;
@@ -158,7 +164,7 @@ function registerAuthRoutes(app, deps) {
         return res.status(400).json({ error: 'Google login did not return a valid Firebase token. Please try again.' });
       }
       const decoded = await verifyFirebaseIdToken(idToken);
-      console.log('Firebase user found', {
+      authDebugLog('Firebase user found', {
         uid: decoded.uid,
         email: decoded.email
       });
@@ -190,7 +196,7 @@ function registerAuthRoutes(app, deps) {
 
       if (user) {
         stmts.updateFirebaseUserLogin.run(firebaseUid, photoUrl || null, now, now, now, user.id);
-        console.log('Backend user created/updated', {
+        authDebugLog('Backend user created/updated', {
           action: 'updated',
           userId: user.id,
           email,
@@ -225,7 +231,7 @@ function registerAuthRoutes(app, deps) {
         user = stmts.getUserById.get(Number(result.lastInsertRowid));
         created = true;
         trackEvent(user.id, 'signup_completed', { provider: GOOGLE_PROVIDER });
-        console.log('Backend user created/updated', {
+        authDebugLog('Backend user created/updated', {
           action: 'created',
           userId: user.id,
           email,
@@ -240,7 +246,7 @@ function registerAuthRoutes(app, deps) {
           console.error('Firebase Google session save failed:', saveErr);
           return res.status(500).json({ error: 'Google login session could not be saved. Please try again.' });
         }
-        console.log('Backend login success', {
+        authDebugLog('Backend login success', {
           userId: user.id,
           email,
           provider: GOOGLE_PROVIDER

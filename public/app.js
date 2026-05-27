@@ -61,6 +61,14 @@ let firebaseExchangeInFlight = false;
 let firebaseExchangePromise = null;
 let firebaseRedirectResultHandled = false;
 const GOOGLE_REDIRECT_CONTEXT_KEY = 'mp-google-login-context';
+const AUTH_DEBUG = new URLSearchParams(location.search).has('authDebug')
+  || (() => { try { return localStorage.getItem('mp-auth-debug') === '1'; } catch { return false; } })();
+
+function authDebug(message, details) {
+  if (!AUTH_DEBUG) return;
+  if (typeof details === 'undefined') console.log(message);
+  else console.log(message, details);
+}
 
 function firebaseLoginMessage(error) {
   if (!error) return 'Google login failed. Please try again.';
@@ -89,7 +97,7 @@ async function initFirebaseAuth() {
     try {
       const redirectResult = await firebaseAuthClient.getRedirectResult();
       firebaseRedirectResultHandled = true;
-      console.log('Redirect result received', { hasUser: !!(redirectResult && redirectResult.user) });
+      authDebug('Redirect result received', { hasUser: !!(redirectResult && redirectResult.user) });
       if (redirectResult && redirectResult.user) {
         await completeFirebaseLogin(redirectResult.user, false, getStoredGoogleRedirectContext());
       }
@@ -112,7 +120,7 @@ function bindFirebaseAuthState(auth) {
   firebaseAuthStateBound = true;
   auth.onAuthStateChanged(async (user) => {
     if (!user) return;
-    console.log('Firebase user found', { uid: user.uid, email: user.email });
+    authDebug('Firebase user found', { uid: user.uid, email: user.email });
     if (!firebaseRedirectResultHandled) return;
     if (state && state.user && state.user.id) return;
     await completeFirebaseLogin(user, true, getStoredGoogleRedirectContext());
@@ -182,7 +190,7 @@ function shouldUseRedirectForGoogle() {
 }
 
 function openAppAfterGoogleLogin() {
-  console.log('Redirecting to /app');
+  authDebug('Redirecting to /app');
   if (location.pathname !== '/app') {
     history.replaceState(null, '', '/app');
   }
@@ -196,7 +204,7 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
   firebaseExchangeInFlight = true;
   firebaseExchangePromise = (async function() {
     try {
-      console.log('Firebase user detected', { uid: firebaseUser.uid, email: firebaseUser.email });
+      authDebug('Firebase user detected', { uid: firebaseUser.uid, email: firebaseUser.email });
       await firebaseUser.reload().catch(() => {});
       const idToken = await firebaseUser.getIdToken(true);
       if (!idToken || idToken.split('.').length !== 3) {
@@ -204,7 +212,7 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
       }
       const storedHints = redirectContext && redirectContext.hints ? redirectContext.hints : {};
       const hints = Object.assign({}, storedHints, getSignupGoogleProfileHints());
-      console.log('ID token sent to backend');
+      authDebug('ID token sent to backend');
       await api('POST', '/auth/firebase/google', {
         idToken,
         displayName: firebaseUser.displayName || '',
@@ -214,7 +222,7 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
         college: hints.college,
         year: hints.year
       });
-      console.log('Backend login success');
+      authDebug('Backend login success');
       const loggedIn = await loadState();
       if (!loggedIn || !state || !state.user || !state.user.id) {
         throw new Error('Backend session was created, but the app could not restore it.');
@@ -247,8 +255,8 @@ async function restoreFirebaseSession() {
 
 async function googleLogin(context) {
   try {
-    console.log('Google login clicked', { context: context || 'login' });
-    console.log('Google auth started', { context: context || 'login' });
+    authDebug('Google login clicked', { context: context || 'login' });
+    authDebug('Google auth started', { context: context || 'login' });
     const auth = await initFirebaseAuth();
     if (!auth) {
       toast('Google login is not configured yet.');
@@ -260,7 +268,7 @@ async function googleLogin(context) {
     provider.addScope('profile');
     saveGoogleRedirectContext(context);
     if (shouldUseRedirectForGoogle()) {
-      console.log('Redirect started');
+      authDebug('Redirect started');
       await auth.signInWithRedirect(provider);
       return;
     }
@@ -270,7 +278,7 @@ async function googleLogin(context) {
       clearStoredGoogleRedirectContext();
     } catch (e) {
       if (e && ['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/popup-closed-by-user'].includes(e.code)) {
-        console.log('Redirect started');
+        authDebug('Redirect started');
         await auth.signInWithRedirect(provider);
         return;
       }
@@ -969,6 +977,56 @@ async function saveGoogleProfileBasics() {
     await loadState();
     toast('Profile saved.');
     routeToScreen();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function renderEditProfile() {
+  if (!state || !state.user) return;
+  const isLocked = !!state.match;
+  const existingYear = state.user.year || '';
+  document.getElementById('s-settings').innerHTML = `
+    <div class="nav"><div class="nav-logo">mentally prepare</div><button class="btn-ghost" style="width:auto;padding:8px 16px;" onclick="renderSettings();go('s-settings')">← Back</button></div>
+    <div style="padding:24px 24px 0;">
+      <div style="font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:8px;">Profile</div>
+      <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;line-height:1.05;margin-bottom:10px;">Your <em style="font-style:italic;color:var(--rose-l);">basics.</em></div>
+      <p style="font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.8;margin-bottom:20px;">${isLocked ? 'College and year are locked after matching starts so your anonymous room stays consistent.' : 'You can edit these before matching starts. College helps us avoid matching you with someone from the same place.'}</p>
+      <div class="input-block"><label class="input-label">Your name</label><input class="input-field" type="text" id="edit-name" value="${escapeHtml(state.user.name || '')}" ${isLocked ? 'disabled' : ''}/></div>
+      <div class="input-block"><label class="input-label">Your college</label><input class="input-field" type="text" id="edit-college" list="college-list" value="${escapeHtml(state.user.college || '')}" ${isLocked ? 'disabled' : ''}/></div>
+      <div class="input-block"><label class="input-label">Your year</label>
+        <div class="year-row" id="edit-year-row">
+          ${['1st','2nd','3rd','4th','5th+'].map(y => `<button class="year-btn ${existingYear === y ? 'on' : ''}" onclick="pickProfileYear(this)" ${isLocked ? 'disabled' : ''}>${y}</button>`).join('')}
+        </div>
+      </div>
+      ${isLocked
+        ? `<button class="btn-ghost" type="button" onclick="renderSettings();go('s-settings')">Back to settings</button>`
+        : `<button class="btn btn-next" onclick="saveProfileEdits()" style="background:linear-gradient(135deg,var(--gold),var(--rose-d));">Save profile</button>`}
+    </div>
+    <div class="spacer"></div>`;
+  go('s-settings');
+}
+
+async function saveProfileEdits() {
+  const nameEl = document.getElementById('edit-name');
+  const collegeEl = document.getElementById('edit-college');
+  const yearEl = document.querySelector('#edit-year-row .year-btn.on');
+  const name = nameEl ? nameEl.value.trim() : '';
+  const college = collegeEl ? collegeEl.value.trim() : '';
+  const year = yearEl ? yearEl.textContent.trim() : '';
+  fieldError('edit-name', '');
+  fieldError('edit-college', '');
+  document.querySelectorAll('#edit-year-row .signup-step-error').forEach(el => el.remove());
+  if (name.length < 2) { fieldError('edit-name', 'Name must be at least 2 characters.'); return; }
+  if (college.length < 3) { fieldError('edit-college', 'Please enter your college name.'); return; }
+  if (!year) { showStepError('#edit-year-row', 'Please choose your year.'); return; }
+
+  try {
+    await api('POST', '/profile', { name, college, year });
+    await loadState();
+    toast('Profile saved.');
+    renderSettings();
+    go('s-settings');
   } catch (e) {
     toast(e.message);
   }
@@ -2348,6 +2406,7 @@ function renderSettings() {
       <div style="font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-s);margin-bottom:12px;">Account</div>
     </div>
     <div class="settings-list">
+      <button class="si" type="button" onclick="renderEditProfile()"><div class="si-ico">&#128100;</div><div class="si-lbl">Edit profile</div><div class="si-arrow">&#8250;</div></button>
       <button class="si" type="button" onclick="logout()"><div class="si-ico">&#128682;</div><div class="si-lbl">Log out</div><div class="si-arrow">&#8250;</div></button>
       <button class="si" type="button" style="border-color:rgba(212,133,154,.15);" onclick="deleteAccount()"><div class="si-ico">&#128465;&#65039;</div><div class="si-lbl" style="color:rgba(212,133,154,.7);">Delete my account</div><div class="si-arrow">&#8250;</div></button>
     </div>

@@ -634,7 +634,7 @@ db.prepare(`
 `).run();
 
 const SERVER_START_MS = Date.now();
-const APP_VERSION = '1.2.2';
+const APP_VERSION = '1.2.3';
 
 function handleLiveness(req, res) {
   try {
@@ -798,6 +798,7 @@ const stmts = {
   updateUserConsent: db.prepare('UPDATE users SET consent_given = ?, consent_withdrawn_at = ? WHERE id = ?'),
   updateUserSwitch: db.prepare('UPDATE users SET switch_count = ? WHERE id = ?'),
   updateUserProfileBasics: db.prepare('UPDATE users SET college = ?, college_normalized = ?, year = ?, updated_at = ? WHERE id = ?'),
+  updateUserProfile: db.prepare('UPDATE users SET name = ?, college = ?, college_normalized = ?, year = ?, updated_at = ? WHERE id = ?'),
   updatePushSub: db.prepare("UPDATE users SET push_subscription = ?, push_subscription_updated_at = datetime('now') WHERE id = ?"),
   updatePushPrefs: db.prepare("UPDATE users SET push_preferences = ?, updated_at = datetime('now') WHERE id = ?"),
   markPushSent: db.prepare("UPDATE users SET push_last_sent_at = datetime('now'), push_last_sent_type = ? WHERE id = ?"),

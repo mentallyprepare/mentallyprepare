@@ -152,6 +152,24 @@ async function main() {
   assertStatus(secondProfileUpdate, 409, '/api/profile/basics second update');
   log('ok  - completed profile basics cannot be overwritten');
 
+  const profileEdit = await request('/api/profile', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: cookie
+    },
+    body: JSON.stringify({ name: 'API Smoke Edited', college: 'Lady Shri Ram College', year: '4th' })
+  });
+  assertStatus(profileEdit, 200, '/api/profile edit before match');
+  if (!profileEdit.data || profileEdit.data.ok !== true) fail('/api/profile did not return ok');
+
+  const editedMe = await request('/api/me', { headers: { Cookie: cookie } });
+  assertStatus(editedMe, 200, '/api/me after profile edit');
+  if (editedMe.data.user.name !== 'API Smoke Edited') fail(`/api/me returned wrong edited name: ${editedMe.data.user.name}`);
+  if (editedMe.data.user.college !== 'Lady Shri Ram College') fail(`/api/me returned wrong edited college: ${editedMe.data.user.college}`);
+  if (editedMe.data.user.year !== '4th') fail(`/api/me returned wrong edited year: ${editedMe.data.user.year}`);
+  log('ok  - profile edit persisted before matching');
+
   log('API smoke check passed.');
 }
 
