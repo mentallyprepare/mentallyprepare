@@ -1050,6 +1050,7 @@ app.use(helmet({
       frameAncestors: ["'none'"]
     }
   },
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   crossOriginEmbedderPolicy: false,
   referrerPolicy: { policy: 'no-referrer' }
 }));

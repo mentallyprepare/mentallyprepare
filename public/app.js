@@ -174,6 +174,10 @@ function saveGoogleRedirectContext(context) {
 }
 
 function shouldUseRedirectForGoogle() {
+  const productionHost = /(^|\.)mymentallyprepare\.com$/i.test(location.hostname)
+    || /mentallyprepare-production\.up\.railway\.app$/i.test(location.hostname);
+  if (productionHost) return true;
+
   const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
   const iosStandalone = window.navigator && window.navigator.standalone;
   const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
@@ -268,14 +272,9 @@ async function googleLogin(context) {
       await completeFirebaseLogin(result.user, false, getStoredGoogleRedirectContext());
       clearStoredGoogleRedirectContext();
     } catch (e) {
-      if (e && ['auth/popup-blocked', 'auth/cancelled-popup-request'].includes(e.code)) {
+      if (e && ['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/popup-closed-by-user'].includes(e.code)) {
         console.log('Redirect started');
         await auth.signInWithRedirect(provider);
-        return;
-      }
-      if (e && e.code === 'auth/popup-closed-by-user') {
-        clearStoredGoogleRedirectContext();
-        toast('Google login was cancelled.');
         return;
       }
       throw e;
