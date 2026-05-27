@@ -158,6 +158,10 @@ function registerAuthRoutes(app, deps) {
         return res.status(400).json({ error: 'Google login did not return a valid Firebase token. Please try again.' });
       }
       const decoded = await verifyFirebaseIdToken(idToken);
+      console.log('Firebase user found', {
+        uid: decoded.uid,
+        email: decoded.email
+      });
       req.firebaseUser = decoded;
       next();
     } catch (e) {
@@ -186,6 +190,12 @@ function registerAuthRoutes(app, deps) {
 
       if (user) {
         stmts.updateFirebaseUserLogin.run(firebaseUid, photoUrl || null, now, now, now, user.id);
+        console.log('Backend user created/updated', {
+          action: 'updated',
+          userId: user.id,
+          email,
+          provider: GOOGLE_PROVIDER
+        });
       } else {
         const college = safeGoogleProfile(req.body.college) || 'Not provided';
         const year = YEARS.has(clean(req.body.year)) ? clean(req.body.year) : '3rd';
@@ -215,6 +225,12 @@ function registerAuthRoutes(app, deps) {
         user = stmts.getUserById.get(Number(result.lastInsertRowid));
         created = true;
         trackEvent(user.id, 'signup_completed', { provider: GOOGLE_PROVIDER });
+        console.log('Backend user created/updated', {
+          action: 'created',
+          userId: user.id,
+          email,
+          provider: GOOGLE_PROVIDER
+        });
       }
 
       req.session.userId = user.id;
