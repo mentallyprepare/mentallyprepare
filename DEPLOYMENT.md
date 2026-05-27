@@ -44,3 +44,4 @@
 3. Add the environment variables
 4. Attach the persistent volume
 5. Deploy and verify `/api/health` and `/api/ready`
+6. Run `npm run smoke:auth -- https://mymentallyprepare.com`
