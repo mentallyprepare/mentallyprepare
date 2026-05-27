@@ -175,10 +175,6 @@ function saveGoogleRedirectContext(context) {
 }
 
 function shouldUseRedirectForGoogle() {
-  const productionHost = /(^|\.)mymentallyprepare\.com$/i.test(location.hostname)
-    || /mentallyprepare-production\.up\.railway\.app$/i.test(location.hostname);
-  if (productionHost) return true;
-
   const standalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
   const iosStandalone = window.navigator && window.navigator.standalone;
   const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
