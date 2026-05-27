@@ -235,7 +235,18 @@ function registerAuthRoutes(app, deps) {
 
       req.session.userId = user.id;
       trackEvent(user.id, 'login', { provider: GOOGLE_PROVIDER, created });
-      res.json({ ok: true, created, userId: user.id });
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('Firebase Google session save failed:', saveErr);
+          return res.status(500).json({ error: 'Google login session could not be saved. Please try again.' });
+        }
+        console.log('Backend login success', {
+          userId: user.id,
+          email,
+          provider: GOOGLE_PROVIDER
+        });
+        res.json({ ok: true, created, userId: user.id });
+      });
     } catch (e) {
       console.error('Firebase Google login error:', e);
       res.status(401).json({ error: 'Google login failed. Please try again.' });

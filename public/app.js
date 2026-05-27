@@ -58,6 +58,8 @@ let firebaseAuthClient = null;
 let firebaseInitPromise = null;
 let firebaseAuthStateBound = false;
 let firebaseExchangeInFlight = false;
+let firebaseExchangePromise = null;
+let firebaseRedirectResultHandled = false;
 const GOOGLE_REDIRECT_CONTEXT_KEY = 'mp-google-login-context';
 
 function firebaseLoginMessage(error) {
@@ -82,19 +84,23 @@ async function initFirebaseAuth() {
     firebaseAuthClient = firebase.auth();
     firebaseAuthClient.useDeviceLanguage();
     await firebaseAuthClient.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-    bindFirebaseAuthState(firebaseAuthClient);
+
     try {
       const redirectResult = await firebaseAuthClient.getRedirectResult();
+      firebaseRedirectResultHandled = true;
       console.log('Redirect result received', { hasUser: !!(redirectResult && redirectResult.user) });
       if (redirectResult && redirectResult.user) {
         await completeFirebaseLogin(redirectResult.user, false, getStoredGoogleRedirectContext());
       }
     } catch (e) {
+      firebaseRedirectResultHandled = true;
       console.warn('Firebase redirect login failed:', e);
       toast(firebaseLoginMessage(e));
     } finally {
       clearStoredGoogleRedirectContext();
     }
+
+    bindFirebaseAuthState(firebaseAuthClient);
     return firebaseAuthClient;
   })();
   return firebaseInitPromise;
@@ -106,8 +112,8 @@ function bindFirebaseAuthState(auth) {
   auth.onAuthStateChanged(async (user) => {
     if (!user) return;
     console.log('Firebase user found', { uid: user.uid, email: user.email });
+    if (!firebaseRedirectResultHandled) return;
     if (state && state.user && state.user.id) return;
-    if (firebaseExchangeInFlight) return;
     await completeFirebaseLogin(user, true, getStoredGoogleRedirectContext());
   }, (error) => {
     console.warn('Firebase auth state failed:', error);
@@ -185,51 +191,62 @@ function openAppAfterGoogleLogin() {
 
 async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
   if (!firebaseUser) return false;
-  if (firebaseExchangeInFlight) return false;
+  if (firebaseExchangePromise) return firebaseExchangePromise;
   firebaseExchangeInFlight = true;
-  try {
-    console.log('Firebase user found', { uid: firebaseUser.uid, email: firebaseUser.email });
-    await firebaseUser.reload().catch(() => {});
-    const idToken = await firebaseUser.getIdToken(true);
-    if (!idToken || idToken.split('.').length !== 3) {
-      throw new Error('Google did not return a Firebase session token. Please try again.');
+  firebaseExchangePromise = (async function() {
+    try {
+      console.log('Firebase user detected', { uid: firebaseUser.uid, email: firebaseUser.email });
+      await firebaseUser.reload().catch(() => {});
+      const idToken = await firebaseUser.getIdToken(true);
+      if (!idToken || idToken.split('.').length !== 3) {
+        throw new Error('Google did not return a Firebase session token. Please try again.');
+      }
+      const storedHints = redirectContext && redirectContext.hints ? redirectContext.hints : {};
+      const hints = Object.assign({}, storedHints, getSignupGoogleProfileHints());
+      console.log('ID token sent to backend');
+      await api('POST', '/auth/firebase/google', {
+        idToken,
+        displayName: firebaseUser.displayName || '',
+        email: firebaseUser.email || '',
+        photoURL: firebaseUser.photoURL || '',
+        name: hints.name || '',
+        college: hints.college,
+        year: hints.year
+      });
+      console.log('Backend login success');
+      const loggedIn = await loadState();
+      if (!loggedIn || !state || !state.user || !state.user.id) {
+        throw new Error('Backend session was created, but the app could not restore it.');
+      }
+      if (!quiet) toast('Signed in with Google.');
+      openAppAfterGoogleLogin();
+      return true;
+    } catch (e) {
+      console.warn('Firebase session exchange failed:', e);
+      if (!quiet) toast(firebaseLoginMessage(e));
+      return false;
+    } finally {
+      firebaseExchangeInFlight = false;
+      firebaseExchangePromise = null;
     }
-    const storedHints = redirectContext && redirectContext.hints ? redirectContext.hints : {};
-    const hints = Object.assign({}, storedHints, getSignupGoogleProfileHints());
-    console.log('ID token sent to backend');
-    await api('POST', '/auth/firebase/google', {
-      idToken,
-      displayName: firebaseUser.displayName || '',
-      email: firebaseUser.email || '',
-      photoURL: firebaseUser.photoURL || '',
-      name: hints.name || '',
-      college: hints.college,
-      year: hints.year
-    });
-    console.log('Backend user created/updated');
-    await loadState();
-    if (!quiet) toast('Signed in with Google.');
-    openAppAfterGoogleLogin();
-    return true;
-  } catch (e) {
-    console.warn('Firebase session exchange failed:', e);
-    if (!quiet) toast(firebaseLoginMessage(e));
-    return false;
-  } finally {
-    firebaseExchangeInFlight = false;
-  }
+  })();
+  return firebaseExchangePromise;
 }
 
 async function restoreFirebaseSession() {
   const auth = await initFirebaseAuth();
   if (!auth) return false;
+  if (state && state.user && state.user.id) return true;
+  if (firebaseExchangePromise) return firebaseExchangePromise;
+  if (auth.currentUser) return completeFirebaseLogin(auth.currentUser, true, getStoredGoogleRedirectContext());
   const user = await waitForFirebaseUser(auth);
   if (!user) return false;
-  return completeFirebaseLogin(user, true);
+  return completeFirebaseLogin(user, true, getStoredGoogleRedirectContext());
 }
 
 async function googleLogin(context) {
   try {
+    console.log('Google login clicked', { context: context || 'login' });
     console.log('Google auth started', { context: context || 'login' });
     const auth = await initFirebaseAuth();
     if (!auth) {
@@ -242,6 +259,7 @@ async function googleLogin(context) {
     provider.addScope('profile');
     saveGoogleRedirectContext(context);
     if (shouldUseRedirectForGoogle()) {
+      console.log('Redirect started');
       await auth.signInWithRedirect(provider);
       return;
     }
@@ -251,6 +269,7 @@ async function googleLogin(context) {
       clearStoredGoogleRedirectContext();
     } catch (e) {
       if (e && ['auth/popup-blocked', 'auth/cancelled-popup-request'].includes(e.code)) {
+        console.log('Redirect started');
         await auth.signInWithRedirect(provider);
         return;
       }
@@ -852,14 +871,9 @@ function bindStaticUi() {
 // ═══════════════════════════════════════
 (async function init() {
   bindStaticUi();
-  await initFirebaseAuth();
-  const loggedIn = await loadState();
+  const firebaseRestored = await restoreFirebaseSession();
+  const loggedIn = firebaseRestored || await loadState();
   if (!loggedIn) {
-    const restored = await restoreFirebaseSession();
-    if (restored) {
-      consumeVerificationQueryNotice();
-      return;
-    }
     if (window.location.pathname.indexOf('/app') === 0) {
       startApp();
       go('s-login');
