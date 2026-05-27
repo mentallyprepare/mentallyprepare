@@ -132,6 +132,17 @@ async function main() {
   if (me.data.user.year !== '2nd') fail(`/api/me returned wrong year: ${me.data.user.year}`);
   log('ok  - profile basics persisted');
 
+  const secondProfileUpdate = await request('/api/profile/basics', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: cookie
+    },
+    body: JSON.stringify({ college: 'Different College', year: '4th' })
+  });
+  assertStatus(secondProfileUpdate, 409, '/api/profile/basics second update');
+  log('ok  - completed profile basics cannot be overwritten');
+
   log('API smoke check passed.');
 }
 

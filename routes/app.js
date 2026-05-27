@@ -38,6 +38,12 @@ function registerAppRoutes(app, deps) {
     return /^d\.?u\.?$/i.test(raw);
   }
 
+  function hasIncompleteProfileBasics(user) {
+    const college = clean(user && user.college).toLowerCase();
+    const year = clean(user && user.year);
+    return !college || college === 'not provided' || !YEARS.has(year);
+  }
+
   function requireDev(req, res, next) {
     if (IS_PROD) return res.status(404).json({ error: 'Not found' });
     next();
@@ -542,6 +548,12 @@ function registerAppRoutes(app, deps) {
       const userId = req.session.userId;
       const user = stmts.getUserById.get(userId);
       if (!user) return res.status(404).json({ error: 'User not found' });
+      if (stmts.getMatch.get(userId, userId)) {
+        return res.status(409).json({ error: 'College and year cannot be changed after matching has started.' });
+      }
+      if (!hasIncompleteProfileBasics(user)) {
+        return res.status(409).json({ error: 'Profile basics are already complete.' });
+      }
 
       const college = clean(req.body && req.body.college);
       const year = clean(req.body && req.body.year);
