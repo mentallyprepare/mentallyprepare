@@ -10,6 +10,7 @@
     "start": "node server.js",
     "start:prod": "NODE_ENV=production node server.js",
     "check:syntax": "node scripts/check-syntax.js",
+    "smoke:api": "node scripts/api-smoke.js",
     "smoke:auth": "node scripts/auth-smoke.js",
     "backup": "node backup.js"
   },

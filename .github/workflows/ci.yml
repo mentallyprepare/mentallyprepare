@@ -28,3 +28,6 @@ jobs:
 
       - name: Check JavaScript syntax
         run: npm run check:syntax
+
+      - name: Run API smoke test
+        run: npm run smoke:api

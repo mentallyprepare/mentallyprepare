@@ -16,6 +16,7 @@ const files = [
   'routes/waitlist.js',
   'public/app.js',
   'public/sw.js',
+  'scripts/api-smoke.js',
   'scripts/auth-smoke.js'
 ];
 
