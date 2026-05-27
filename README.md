@@ -31,6 +31,7 @@ Anonymous 21-day journaling webapp for college students, built with Node.js, Exp
 - Keep `DATA_DIR=/data/db`
 - Do not set `PORT` manually in Railway; Railway provides it automatically
 - Verify `/api/ready` after deploy
+- For Google login on the custom domain, add `https://mymentallyprepare.com/__/auth/handler` to the Google Cloud OAuth client, then set `FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN=true` in Railway.
 
 ## Deployment manifest
 If you deploy from a curated file list, make sure `routes/`, `lib/`, `email-service.js`, and `email-templates.js` are included. See `webapp-files.txt`.

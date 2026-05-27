@@ -621,7 +621,7 @@ db.prepare(`
 `).run();
 
 const SERVER_START_MS = Date.now();
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 
 function handleLiveness(req, res) {
   try {
@@ -657,7 +657,9 @@ function handleReadiness(req, res) {
       timestamp: new Date().toISOString(),
       db: 'sqlite',
       dataDir: DATA_DIR,
-      railwayVolumeMountPath: process.env.RAILWAY_VOLUME_MOUNT_PATH || null
+      railwayVolumeMountPath: process.env.RAILWAY_VOLUME_MOUNT_PATH || null,
+      firebaseAuthDomain: getFirebaseWebConfig(req).config.authDomain,
+      firebaseSameOriginAuthDomain: process.env.FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN === 'true'
     });
   } catch (e) {
     res.status(503).json({ status: 'not_ready', error: e.message });
