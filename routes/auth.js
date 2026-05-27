@@ -145,7 +145,7 @@ function registerAuthRoutes(app, deps) {
   const signupLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many signup attempts. Please try again later.' }, validate: { xForwardedForHeader: false } });
   const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many password reset attempts. Please try again later.' }, validate: { xForwardedForHeader: false } });
 
-  app.get('/api/firebase-config', authLimiter, (req, res) => {
+  app.get('/api/firebase-config', (req, res) => {
     const payload = getFirebaseWebConfig ? getFirebaseWebConfig(req) : { enabled: false, config: {} };
     if (!payload.enabled) return res.json({ enabled: false });
     res.json({ enabled: true, config: payload.config });
