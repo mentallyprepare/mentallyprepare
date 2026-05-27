@@ -917,6 +917,63 @@ function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
 
+function needsGoogleProfileBasics() {
+  if (!state || !state.user) return false;
+  const provider = String(state.user.authProvider || '').toLowerCase();
+  if (provider.indexOf('google') === -1) return false;
+  const college = String(state.user.college || '').trim().toLowerCase();
+  const year = String(state.user.year || '').trim();
+  return !college || college === 'not provided' || !year;
+}
+
+function pickProfileYear(el) {
+  const row = el && el.closest('.year-row');
+  if (!row) return;
+  row.querySelectorAll('.year-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function renderGoogleProfileBasics() {
+  const existingCollege = state && state.user && String(state.user.college || '').trim().toLowerCase() !== 'not provided'
+    ? state.user.college
+    : '';
+  const existingYear = state && state.user ? state.user.year || '' : '';
+  document.getElementById('s-profile').innerHTML = `
+    <div class="nav"><div class="nav-logo">mentally prepare</div></div>
+    <div style="padding:30px 24px 0;">
+      <div style="font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:8px;">One last detail</div>
+      <div style="font-family:'Playfair Display',serif;font-size:30px;font-weight:400;line-height:1.05;margin-bottom:10px;">Complete your <em style="font-style:italic;color:var(--rose-l);">college basics.</em></div>
+      <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;">Google filled your name and email. We only need college and year so matching can avoid your own college.</p>
+      <div class="input-block"><label class="input-label">Your college</label><input class="input-field" type="text" id="profile-college" list="college-list" placeholder="e.g. Miranda House, Delhi" value="${escapeHtml(existingCollege)}"/><div class="field-help">This stays private unless you choose to reveal it later.</div></div>
+      <div class="input-block"><label class="input-label">Your year</label>
+        <div class="year-row" id="profile-year-row">
+          ${['1st','2nd','3rd','4th','5th+'].map(y => `<button class="year-btn ${existingYear === y ? 'on' : ''}" onclick="pickProfileYear(this)">${y}</button>`).join('')}
+        </div>
+      </div>
+      <button class="btn btn-next" onclick="saveGoogleProfileBasics()" style="background:linear-gradient(135deg,var(--gold),var(--rose-d));">Continue</button>
+    </div>`;
+}
+
+async function saveGoogleProfileBasics() {
+  const collegeEl = document.getElementById('profile-college');
+  const yearEl = document.querySelector('#profile-year-row .year-btn.on');
+  const college = collegeEl ? collegeEl.value.trim() : '';
+  const year = yearEl ? yearEl.textContent.trim() : '';
+  fieldError('profile-college', '');
+  document.querySelectorAll('#profile-year-row .signup-step-error').forEach(el => el.remove());
+  if (college.length < 3) { fieldError('profile-college', 'Please enter your college name.'); return; }
+  if (!year) { showStepError('#profile-year-row', 'Please choose your year.'); return; }
+
+  try {
+    await api('POST', '/profile/basics', { college, year });
+    await loadState();
+    toast('Profile saved.');
+    routeToScreen();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
 function continueFromSignupBasics() {
   const name = document.getElementById('inp-name').value.trim();
   const college = document.getElementById('inp-college').value.trim();
@@ -1019,6 +1076,7 @@ async function logout() {
 
 function routeToScreen() {
   if (!state) { go('s-splash'); return; }
+  if (needsGoogleProfileBasics()) { renderGoogleProfileBasics(); go('s-profile'); return; }
   if (!state.user.archetype) { injectVerificationPendingNotice('s-scan-intro'); go('s-scan-intro'); return; }
   if (!state.match) { renderWaiting(); go('s-waiting'); return; }
   if (state.match.day >= 21) { handleRevealFlow(); return; }

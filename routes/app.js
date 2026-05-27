@@ -15,6 +15,7 @@ function registerAppRoutes(app, deps) {
     getAdaptivePrompt,
     getMoodInsights,
     scanForSafety,
+    normalizeCollegeName,
     HELPLINES,
     attemptMatch,
     trackEvent,
@@ -25,6 +26,17 @@ function registerAppRoutes(app, deps) {
     vapidKeys,
     IS_PROD
   } = deps;
+  const YEARS = new Set(['1st', '2nd', '3rd', '4th', '5th', '5th+']);
+
+  function clean(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ');
+  }
+
+  function isValidCollegeName(value) {
+    const raw = clean(value);
+    if (raw.length >= 3) return true;
+    return /^d\.?u\.?$/i.test(raw);
+  }
 
   function requireDev(req, res, next) {
     if (IS_PROD) return res.status(404).json({ error: 'Not found' });
@@ -522,6 +534,31 @@ function registerAppRoutes(app, deps) {
     } catch (e) {
       console.error('State error:', e);
       res.status(500).json({ error: 'Failed to load state' });
+    }
+  });
+
+  app.post('/api/profile/basics', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = stmts.getUserById.get(userId);
+      if (!user) return res.status(404).json({ error: 'User not found' });
+
+      const college = clean(req.body && req.body.college);
+      const year = clean(req.body && req.body.year);
+      if (!isValidCollegeName(college)) return res.status(400).json({ error: 'Please enter your college name.' });
+      if (!YEARS.has(year)) return res.status(400).json({ error: 'Please choose your year.' });
+
+      stmts.updateUserProfileBasics.run(
+        college,
+        normalizeCollegeName ? normalizeCollegeName(college) : college.toLowerCase(),
+        year,
+        new Date().toISOString(),
+        userId
+      );
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('Profile basics update error:', e);
+      res.status(500).json({ error: 'Could not save your profile yet. Please try again.' });
     }
   });
 
