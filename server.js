@@ -250,7 +250,20 @@ async function getFirebasePublicCerts() {
   return firebaseCertCache.certs;
 }
 
+function getTestFirebaseTokenPayload(idToken) {
+  if (process.env.NODE_ENV !== 'test') return null;
+  if (!process.env.FIREBASE_TEST_ID_TOKEN || idToken !== process.env.FIREBASE_TEST_ID_TOKEN) return null;
+  if (!process.env.FIREBASE_TEST_ID_TOKEN_PAYLOAD) throw new Error('Firebase test token payload missing');
+  const payload = JSON.parse(process.env.FIREBASE_TEST_ID_TOKEN_PAYLOAD);
+  if (!payload.uid && payload.sub) payload.uid = payload.sub;
+  if (!payload.uid) throw new Error('Firebase test token payload missing uid');
+  return payload;
+}
+
 async function verifyFirebaseIdToken(idToken) {
+  const testPayload = getTestFirebaseTokenPayload(idToken);
+  if (testPayload) return testPayload;
+
   if (firebaseAuth) return firebaseAuth.verifyIdToken(idToken);
 
   const projectId = getFirebaseWebConfig().config.projectId;

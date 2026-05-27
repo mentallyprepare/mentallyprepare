@@ -8,6 +8,14 @@ const { spawn } = require('child_process');
 const rootDir = path.resolve(__dirname, '..');
 const port = Number(process.env.SMOKE_PORT) || 18000 + Math.floor(Math.random() * 1000);
 const baseUrl = `http://127.0.0.1:${port}`;
+const firebaseTestToken = 'api-smoke.firebase.token';
+const firebaseTestPayload = {
+  uid: `api-smoke-firebase-${Date.now()}`,
+  email: `api-smoke-google-${Date.now()}@example.com`,
+  email_verified: true,
+  name: 'API Smoke Google',
+  picture: 'https://example.com/profile.png'
+};
 
 let server = null;
 let dataDir = null;
@@ -71,7 +79,9 @@ async function main() {
       PORT: String(port),
       DATA_DIR: dataDir,
       NODE_ENV: 'test',
-      SESSION_SECRET: 'api-smoke-session-secret'
+      SESSION_SECRET: 'api-smoke-session-secret',
+      FIREBASE_TEST_ID_TOKEN: firebaseTestToken,
+      FIREBASE_TEST_ID_TOKEN_PAYLOAD: JSON.stringify(firebaseTestPayload)
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -90,29 +100,28 @@ async function main() {
   assertStatus(ready, 200, '/api/ready');
   if (!ready.data || ready.data.status !== 'ready') fail('/api/ready did not return ready');
 
-  const email = `api-smoke-${Date.now()}@example.com`;
-  const register = await request('/api/register', {
+  const googleLogin = await request('/api/auth/firebase/google', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name: 'API Smoke',
-      college: 'Not provided',
-      email,
-      password: 'api-smoke-password',
-      year: '3rd',
-      gender: 'prefer_not_to_say',
-      matchGenderPref: 'any',
-      matchYearPref: 'any',
-      consentGiven: true,
-      ageConfirmed: true
+      idToken: firebaseTestToken
     })
   });
-  assertStatus(register, 200, '/api/register');
-  if (!register.data || register.data.ok !== true) fail('/api/register did not return ok');
+  assertStatus(googleLogin, 200, '/api/auth/firebase/google');
+  if (!googleLogin.data || googleLogin.data.ok !== true) fail('/api/auth/firebase/google did not return ok');
+  if (googleLogin.data.created !== true) fail('/api/auth/firebase/google did not create a user');
 
-  const cookie = cookieFrom(register.response);
-  if (!cookie) fail('/api/register did not set a session cookie');
-  log('ok  - registration returned a session cookie');
+  const cookie = cookieFrom(googleLogin.response);
+  if (!cookie) fail('/api/auth/firebase/google did not set a session cookie');
+  log('ok  - Google Firebase exchange returned a session cookie');
+
+  const googleMe = await request('/api/me', { headers: { Cookie: cookie } });
+  assertStatus(googleMe, 200, '/api/me after Google login');
+  if (!googleMe.data || !googleMe.data.user) fail('/api/me after Google login did not return a user');
+  if (googleMe.data.user.email !== firebaseTestPayload.email) fail(`/api/me returned wrong Google email: ${googleMe.data.user.email}`);
+  if (!String(googleMe.data.user.authProvider || '').includes('google')) fail('/api/me did not mark the user as Google-authenticated');
+  if (googleMe.data.user.college !== 'Not provided') fail(`/api/me returned unexpected initial college: ${googleMe.data.user.college}`);
+  log('ok  - Google session restored through /api/me');
 
   const profile = await request('/api/profile/basics', {
     method: 'POST',
