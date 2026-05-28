@@ -1,4 +1,5 @@
 const path = require('path');
+const crypto = require('crypto');
 
 function registerAdminRoutes(app, deps) {
   const {
@@ -179,7 +180,6 @@ function registerAdminRoutes(app, deps) {
       if (!user) return res.status(404).json({ error: 'User not found' });
       if (user.email_verified) return res.json({ ok: true, alreadyVerified: true });
 
-      const crypto = require('crypto');
       const token = crypto.randomBytes(32).toString('hex');
       stmts.updateVerificationToken.run(token, new Date().toISOString(), user.id);
       res.json({

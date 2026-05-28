@@ -299,6 +299,7 @@ async function callOpenAIModeration(content) {
   });
   if (!res.ok) throw new Error(`OpenAI API returned ${res.status}`);
   const data = await res.json();
+  if (!data.results?.[0]) throw new Error('OpenAI moderation returned empty results');
   const c = data.results[0].categories;
   if (c.hate || c.harassment || c.sexual || c['self-harm/instructions'] || c.violence) {
     return { blocked: true };

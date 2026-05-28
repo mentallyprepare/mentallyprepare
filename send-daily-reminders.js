@@ -43,19 +43,17 @@ function loadReminderEmails() {
     .filter(Boolean);
 }
 
-function sendReminders() {
+async function sendReminders() {
   const emails = loadReminderEmails();
   if (!emails.length) return;
-  emails.forEach(email => {
-    sendEmail(email, subject, `<p>${text}</p>`)
-      .then(() => {
-        console.log('Sent reminder to', email);
-      })
-      .catch((err) => {
-        console.error('Failed to send to', email, err);
-      });
-  });
+  await Promise.all(
+    emails.map(email =>
+      sendEmail(email, subject, `<p>${text}</p>`)
+        .then(() => { console.log('Sent reminder to', email); })
+        .catch(err => { console.error('Failed to send to', email, err); })
+    )
+  );
 }
 
 // Run this script once per day (e.g., via cron)
-sendReminders();
+sendReminders().catch(err => { console.error('sendReminders failed:', err); process.exit(1); });
