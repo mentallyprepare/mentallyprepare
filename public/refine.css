@@ -1,0 +1,141 @@
+/* ============================================================
+   Mentally Prepare — refine.css
+   An OVERRIDE layer. Link it AFTER app.css:
+     <link rel="stylesheet" href="/app.css">
+     <link rel="stylesheet" href="/refine.css">
+   It changes ZERO colors. Your palette (rose/gold/purple/cyan/
+   ink/bg/card) is untouched. It only fixes the 4 things that
+   make the UI read as "AI-generated":
+     1. font soup + italics everywhere   -> 2 fonts, upright
+     2. identical bordered card on all   -> flatten, vary
+     3. centered everything              -> left-align content
+     4. uniform pills + random radii     -> one radius system
+   Comment out any block you disagree with.
+   ============================================================ */
+
+:root {
+  /* ONE radius system instead of 12/14/16/18/20/24 scattered */
+  --rx-sm: 12px;   /* inputs, chips */
+  --rx:    16px;   /* cards */
+  --rx-lg: 22px;   /* overlays, hero cards */
+  --btn-rx: 14px;  /* buttons are NOT full pills anymore */
+}
+
+/* ---------- 1. KILL THE FONT SOUP -------------------------------
+   Keep Instrument Serif for display, Manrope for everything else.
+   Retire Playfair, Lora, DM Sans. Make serif UPRIGHT (not italic)
+   so it reads as intentional typography, not a mood-board template.
+   Italic is reserved for true emphasis only (.is-quote).        */
+
+.about-card-title, .about-stat-n, .builder-name, .nav-logo, .splash-logo,
+.splash-h, .slide-h, .arch-mini-name, .match-name, .prompt-text, .safety-h,
+.safety-hl-num, .rev-name {
+  font-family: var(--font-display) !important; /* Instrument Serif */
+  font-style: normal !important;
+  letter-spacing: -.01em;
+}
+
+/* body / supporting copy: Manrope, upright, not italic */
+.about-card-p, .splash-p, .slide-p, .mini-card-text, .jp-text, .entry-txt,
+.edc-partner-text, .writing-tip-text, .safety-p, textarea,
+.edc-prompt, .edc-comment-input textarea {
+  font-family: var(--font-body) !important;
+  font-style: normal !important;
+}
+
+/* the journaling textarea: serif is nice here, but upright + bigger */
+textarea {
+  font-family: var(--font-display) !important;
+  font-style: normal !important;
+  font-size: 16px !important;
+  line-height: 1.85 !important;
+}
+
+/* opt-in italic emphasis when you actually want it */
+.is-quote { font-style: italic; }
+
+
+/* ---------- 2. FLATTEN THE BOXES --------------------------------
+   Remove the universal top-hairline ::before that makes every
+   card look stamped from one mold. Make display/content cards
+   borderless so they breathe on the cosmic bg. Keep a border
+   ONLY on things you can tap (entries, partner cards, inputs).   */
+
+.card::before, .about-card::before, .about-stat::before, .mini-card::before,
+.jp-card::before, .entry::before, .partner-card-p::before, .partner-wait::before,
+.entry-detail-card::before { display: none !important; }
+
+/* non-interactive surfaces: drop the box, keep the content */
+.card, .about-card, .mini-card, .jp-card {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* a soft hairline BELOW content instead of a box around it */
+.about-card, .mini-card, .jp-card {
+  border-bottom: 1px solid var(--line) !important;
+  border-radius: 0 !important;
+}
+
+/* interactive cards keep a subtle vessel, but quieter + unified radius */
+.entry, .partner-card-p, .partner-wait, .match-box, .partner-card, .perm-item {
+  border-radius: var(--rx) !important;
+  background: rgba(248,242,255,.025) !important;
+}
+
+.entry-detail-card, .safety-card { border-radius: var(--rx-lg) !important; }
+
+
+/* ---------- 3. STOP CENTERING EVERYTHING ------------------------
+   Center is for hero/splash/reveal moments only. Functional and
+   reading screens go left-aligned with a comfortable measure.    */
+
+.slide-p, .mini-card-text, .about-card-p {
+  text-align: left !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  max-width: 60ch !important;
+}
+
+.sec-ey, .input-label, .eyebrow { justify-content: flex-start !important; }
+.eyebrow { text-align: left !important; }
+.prompt-text { text-align: left !important; }
+
+/* splash + onboarding intro stay centered (intentional drama) — leave as-is */
+
+
+/* ---------- 4. BUTTON HIERARCHY (less pill, more intent) --------
+   Primary button: confident, slightly squared, keeps your rose→
+   purple gradient. Secondary/utility buttons: smaller radius, no
+   shouty full-pill, clear visual demotion.                       */
+
+.btn {
+  border-radius: var(--btn-rx) !important;
+  letter-spacing: .02em !important;
+  font-weight: 600 !important;
+  padding: 15px !important;
+}
+
+.btn-ghost, .btn-back {
+  border-radius: var(--btn-rx) !important;
+  background: transparent !important;
+}
+
+/* tiny utility chips: keep rounded but make them clearly secondary */
+.report-btn, .switch-banner-btn { border-radius: var(--rx-sm) !important; }
+
+/* the day pill + dots are identity elements — leave those pill-shaped */
+
+/* inputs share the one radius too */
+.input-field, .year-btn, .pref-btn { border-radius: var(--rx-sm) !important; }
+
+
+/* ---------- 5. RHYTHM POLISH (optional but high-impact) ---------
+   A touch more vertical breathing between stacked cards so the UI
+   feels composed rather than evenly-packed (an AI tell).         */
+
+.entry + .entry { margin-top: 12px !important; }
+.prompt-text { line-height: 1.5 !important; }
