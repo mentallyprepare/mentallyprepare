@@ -15,7 +15,9 @@
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=Caveat:wght@400;700&display=swap" rel="stylesheet"/><style>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=Caveat:wght@400;700&display=swap" rel="stylesheet"/>
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.96/build/spline-viewer.js"></script>
+<style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#08050f;--bg2:#0f0a1d;--ink:#fbf5ff;--muted:rgba(251,245,255,.68);--soft:rgba(251,245,255,.42);
@@ -135,9 +137,9 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   .nav{padding:0 18px}.brand-logo{width:38px;height:38px}.nav-links,.nav-cta{display:none}.menu-btn{display:block}.mobile-menu.open{display:flex}.mobile-menu{position:fixed;top:70px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--line);padding:12px 18px;flex-direction:column}.mobile-menu a{padding:14px 0;color:var(--muted);font-size:13px}
   .hero{padding-top:98px;padding-bottom:50px;text-align:center;min-height:auto}.hero-grid,.ritual-grid,.silent-grid{grid-template-columns:1fr;gap:30px}.hero-kicker,.hero-actions{margin-left:auto;margin-right:auto;justify-content:center}.hero-sub{margin-left:auto;margin-right:auto}.artifact-wrap{min-height:330px;margin-top:-6px}.phone{width:250px;min-height:440px}.reveal-pill{right:22px;bottom:40px}.ritual-grid{padding:26px 22px;border-radius:22px}.ritual-intro{position:static;text-align:left}.timeline{padding-left:26px}.safety-row{grid-template-columns:1fr 1fr;gap:10px}.room-threshold{grid-template-columns:1fr;gap:0;min-height:260px;margin-top:24px}.threshold-copy{padding:26px 22px 0}.threshold-doodle{height:158px}.threshold-note.one{left:22px;right:auto;top:18px}.threshold-note.two{right:18px;top:42px}.threshold-orbit{right:18%;top:44px}.threshold-moon{right:10px;bottom:8px;width:70px;height:70px}.field-poster{min-height:760px;padding-top:46px;align-items:end}.day-note{max-width:210px}.day-note.one{left:3%;top:132px}.day-note.two{right:3%;top:292px}.day-note.three{display:none}.field-head{padding-top:0}.field-head .headline{font-size:clamp(50px,12vw,78px)}.field:nth-child(1),.field:nth-child(2),.field:nth-child(3){transform:none;margin-top:0}.ql-3{margin-left:5%}.section{padding:82px 20px}.headline{font-size:clamp(38px,10vw,52px)}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}
 }
-.artifact-wrap{position:relative!important;min-height:520px!important}
-@media(max-width:900px){.artifact-wrap{min-height:360px!important}}
-@media(max-width:520px){.artifact-wrap{min-height:270px!important}}
+spline-viewer{display:block;width:100%;height:560px;background:transparent}
+@media(max-width:900px){spline-viewer{height:380px}}
+@media(max-width:520px){spline-viewer{height:280px}}
 @media(max-width:520px){
   .hero h1{font-size:42px}.hero-sub{font-size:13.5px;line-height:1.75;margin-top:18px;margin-bottom:22px}.hero-kicker{font-size:9px;margin-bottom:18px}.phone{width:232px;min-height:414px}.journal{padding:17px 15px}.journal-prompt{font-size:22px}.journal-line{font-size:12px}.status-note{font-size:11px}.artifact-wrap{min-height:270px;margin-top:-16px;overflow:hidden}.reveal-pill{display:none}.section{padding:74px 20px}#ritual{padding-bottom:44px}.silent{padding-top:54px}.moment{padding-bottom:24px}.moment h3{font-size:25px}.moment p{font-size:13px;line-height:1.75}.safety-row{grid-template-columns:1fr}.safety-item{padding:16px 16px}.room-threshold{min-height:238px;border-radius:18px}.threshold-copy p{font-size:25px}.threshold-note{width:154px;font-size:10px}.threshold-note.two{display:none}.threshold-orbit{width:170px;height:78px;right:8%;top:54px}.field-poster{min-height:700px;padding-top:22px;align-items:end}.field-poster::before{width:250px;height:250px;top:116px}.field-poster::after{top:230px;opacity:.45}.field-star{top:228px}.field-ray{top:168px;height:132px}.day-note{max-width:150px}.day-note small{font-size:23px;margin-bottom:8px}.day-note p{font-size:14px;line-height:1.38}.day-note.one{left:0;top:92px}.day-note.two{right:0;top:254px}.day-note.three{display:none}.script-ghost{display:none}.field-head{margin-top:auto;padding-top:0}.field-head .label{margin-bottom:12px}.field-head .headline{font-size:42px;line-height:.98}.field-head .copy{font-size:13px;line-height:1.75}.field-divider{margin:20px auto 22px}.field{padding:24px 20px}.wall{padding:22px 18px}.line p{font-size:19px}.quote-track{gap:34px}.micro{font-size:10px}
 }
@@ -168,13 +170,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
         <p class="micro reveal">Currently free during early access. Anonymous. Takes 3 minutes. No public profile.</p>
       </div>
       <div class="artifact-wrap reveal" aria-label="Space Dreamscape 3D">
-        <iframe
-          src="https://my.spline.design/spacedreamscape-8lfNSGsX9XTgWqd5jdhFuWqj/"
-          frameborder="0"
-          allow="autoplay; fullscreen"
-          scrolling="no"
-          style="width:100%;height:100%;position:absolute;inset:0;border:0;">
-        </iframe>
+        <spline-viewer url="https://prod.spline.design/lwJp18japsfNKDNc/scene.splinecode"></spline-viewer>
       </div>
     </div>
   </section>
