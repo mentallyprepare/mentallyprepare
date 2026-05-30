@@ -103,7 +103,11 @@ async function initFirebaseAuth() {
       }
     } catch (e) {
       firebaseRedirectResultHandled = true;
-      console.warn('Firebase redirect login failed:', e);
+      console.error('[GoogleAuth] Firebase redirect login failed:', {
+        code: e && e.code,
+        message: e && e.message,
+        error: e
+      });
       toast(firebaseLoginMessage(e));
     } finally {
       clearStoredGoogleRedirectContext();
@@ -231,7 +235,11 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
       openAppAfterGoogleLogin();
       return true;
     } catch (e) {
-      console.warn('Firebase session exchange failed:', e);
+      console.error('[GoogleAuth] Firebase session exchange failed:', {
+        code: e && e.code,
+        message: e && e.message,
+        error: e
+      });
       if (!quiet) toast(firebaseLoginMessage(e));
       return false;
     } finally {
@@ -285,7 +293,11 @@ async function googleLogin(context) {
       throw e;
     }
   } catch (e) {
-    console.warn('Google login error:', e);
+    console.error('[GoogleAuth] Google login error:', {
+      code: e && e.code,
+      message: e && e.message,
+      error: e
+    });
     toast(firebaseLoginMessage(e));
   }
 }
