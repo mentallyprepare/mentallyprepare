@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=Caveat:wght@400;700&display=swap" rel="stylesheet"/>
-<script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.96/build/spline-viewer.js"></script>
+<script type="module" src="https://unpkg.com/@splinetool/viewer@0.9.490/build/spline-viewer.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -289,11 +289,6 @@ spline-viewer{display:block;width:100%;height:560px;background:transparent}
   var btn=document.getElementById('menuBtn'),menu=document.getElementById('mobileMenu');
   btn.addEventListener('click',function(){var open=menu.classList.toggle('open');btn.setAttribute('aria-expanded',open?'true':'false');btn.textContent=open?'x':'☰';});
   menu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){menu.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.textContent='☰';});});
-  // Trigger resize so spline-viewer initialises its canvas to full container dimensions
-  window.addEventListener('load',function(){
-    setTimeout(function(){window.dispatchEvent(new Event('resize'));},400);
-    setTimeout(function(){window.dispatchEvent(new Event('resize'));},1200);
-  });
 })();
 </script>
 </body>
