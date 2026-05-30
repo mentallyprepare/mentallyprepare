@@ -20,7 +20,8 @@ function registerAdminRoutes(app, deps) {
     deleteUserDataTx,
     deleteMatchData,
     sendWaitlistAccepted,
-    attemptMatch
+    attemptMatch,
+    broadcastPush
   } = deps;
 
   const appLink = process.env.APP_BASE_URL || 'https://mymentallyprepare.com/app';
@@ -530,6 +531,21 @@ function registerAdminRoutes(app, deps) {
     } catch (e) {
       console.error('Invite error:', e);
       res.status(500).json({ error: 'Failed to send invite' });
+    }
+  });
+
+  // Admin broadcast — push a message to every saved subscription
+  app.post('/api/push/send-all', authLimiter, requireAdmin, async (req, res) => {
+    try {
+      const message = String(req.body.message || '').trim();
+      if (!message) return res.status(400).json({ error: 'Message is required' });
+      if (typeof broadcastPush !== 'function') return res.status(503).json({ error: 'Push not configured' });
+      const result = await broadcastPush(message);
+      if (!result.ok) return res.status(503).json({ error: result.error || 'Push not configured' });
+      res.json({ ok: true, sent: result.sent, failed: result.failed, total: result.total });
+    } catch (e) {
+      console.error('Broadcast push error:', e);
+      res.status(500).json({ error: 'Failed to send broadcast' });
     }
   });
 

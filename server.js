@@ -2062,6 +2062,44 @@ async function sendInactivePushReminders(hours, type) {
   console.log(`  -> ${hours}h inactive push reminders sent: ${sent}`);
 }
 
+// Admin broadcast — send a message to every saved push subscription.
+// Mirrors sendGentlePush's dead-subscription cleanup (invalid JSON + 404/410).
+async function broadcastPush(message) {
+  if (!vapidKeys) return { ok: false, error: 'Push not configured', sent: 0, failed: 0, total: 0 };
+  const rows = stmts.getAllPushUsers.all();
+  let sent = 0;
+  let failed = 0;
+  for (const row of rows) {
+    let subscription;
+    try {
+      subscription = JSON.parse(row.push_subscription);
+    } catch (e) {
+      stmts.updatePushSub.run(null, row.id);
+      console.warn('Push subscription invalid, cleared for user', row.id);
+      failed++;
+      continue;
+    }
+    try {
+      await webpush.sendNotification(subscription, JSON.stringify({
+        title: 'Mentally Prepare',
+        body: message,
+        url: '/app',
+        tag: 'mp-broadcast'
+      }));
+      sent++;
+    } catch (e) {
+      if (e && (e.statusCode === 404 || e.statusCode === 410)) {
+        stmts.updatePushSub.run(null, row.id);
+        console.warn('Push subscription expired, cleared for user', row.id);
+      } else {
+        console.error('Broadcast push failed', { userId: row.id, reason: e && e.message ? e.message : e });
+      }
+      failed++;
+    }
+  }
+  return { ok: true, sent, failed, total: rows.length };
+}
+
 function send9pmReminders() {
   const rows = stmts.getActiveMatchUsers.all();
   for (const row of rows) {
@@ -2087,6 +2125,13 @@ function send9pmReminders() {
 
 // 10pm IST = 16:30 UTC — conditional "partner wrote" notification
 function send10pmReminders() {
+  // Rotate copy per night so the nudge never feels mechanical.
+  const tenPmCopy = [
+    "your person wrote today. you haven't. entries seal at midnight.",
+    "they showed up today. the page is still blank on your side.",
+    "it's 10pm. your match is waiting to be read."
+  ];
+  const body = tenPmCopy[Math.floor(Math.random() * tenPmCopy.length)];
   const rows = stmts.getActiveMatchUsers.all();
   for (const row of rows) {
     const day = getMatchDay(row.started_at);
@@ -2106,7 +2151,7 @@ function send10pmReminders() {
       }
       const prefs = parsePushPreferences(row.push_preferences);
       if (prefs.enabled && prefs.eveningReminder) {
-        sendGentlePush(row, 'partner_waiting', PUSH_COPY.partner_waiting).catch(() => {});
+        sendGentlePush(row, 'partner_waiting', body).catch(() => {});
       }
     }
   }
@@ -2306,7 +2351,8 @@ registerAdminRoutes(app, {
   deleteUserDataTx,
   deleteMatchData,
   sendWaitlistAccepted,
-  attemptMatch
+  attemptMatch,
+  broadcastPush
 });
 
 registerWaitlistRoutes(app, {
