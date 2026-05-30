@@ -66,7 +66,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .pulse{width:6px;height:6px;border-radius:50%;background:var(--rose2);animation:breathe 2.8s ease-in-out infinite}
 .hero h1{max-width:730px;color:#fff;text-shadow:0 0 44px rgba(235,180,194,.12)}.hero-sub{max-width:560px;margin:26px 0 32px;color:rgba(251,245,255,.78)}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.micro{margin-top:14px;color:var(--soft);font-size:11px}
-.artifact-wrap{position:relative;min-height:590px;display:grid;place-items:center}
+.artifact-wrap{position:relative;min-height:560px;display:block;overflow:hidden}
 .artifact-glow{position:absolute;width:390px;height:390px;border-radius:50%;background:radial-gradient(circle,rgba(212,133,154,.18),rgba(123,94,167,.12) 44%,transparent 70%);filter:blur(10px)}
 .phone{position:relative;width:310px;min-height:560px;border:1px solid rgba(251,245,255,.16);border-radius:38px;background:linear-gradient(180deg,#17102b,#0b0817 58%,#07050f);box-shadow:0 42px 100px rgba(0,0,0,.45),inset 0 0 0 8px rgba(0,0,0,.24);overflow:hidden;animation:drift 7s ease-in-out infinite}
 .phone::before{content:'';position:absolute;top:0;left:50%;width:116px;height:24px;transform:translateX(-50%);background:#05040b;border-radius:0 0 16px 16px;z-index:3}
@@ -289,6 +289,11 @@ spline-viewer{display:block;width:100%;height:560px;background:transparent}
   var btn=document.getElementById('menuBtn'),menu=document.getElementById('mobileMenu');
   btn.addEventListener('click',function(){var open=menu.classList.toggle('open');btn.setAttribute('aria-expanded',open?'true':'false');btn.textContent=open?'x':'☰';});
   menu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){menu.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.textContent='☰';});});
+  // Trigger resize so spline-viewer initialises its canvas to full container dimensions
+  window.addEventListener('load',function(){
+    setTimeout(function(){window.dispatchEvent(new Event('resize'));},400);
+    setTimeout(function(){window.dispatchEvent(new Event('resize'));},1200);
+  });
 })();
 </script>
 </body>
