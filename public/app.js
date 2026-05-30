@@ -3264,11 +3264,14 @@ async function subscribeToPush() {
       credentials: 'same-origin',
       body: JSON.stringify({ subscription: sub, preferences: getPushPreferences() })
     });
-    if (!save.ok) throw new Error('save_failed');
+    if (!save.ok) {
+      const errBody = await save.text().catch(() => '');
+      throw new Error('save_failed: HTTP ' + save.status + ' ' + errBody);
+    }
     if (state && state.user) state.user.pushSubscribed = true;
     return true;
   } catch (e) {
-    console.warn('Push subscribe failed:', e);
+    console.error('[Push] subscribeToPush failed:', { name: e && e.name, message: e && e.message, error: e });
     toast('We could not turn on notifications. Please try again.');
     return false;
   }
