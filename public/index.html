@@ -51,7 +51,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .section{position:relative;padding:112px 24px}.inner{width:min(1120px,100%);margin:0 auto}.narrow{width:min(720px,100%);margin:0 auto}
 #ritual{padding-bottom:70px}
 .label{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
-.label::before{content:'';width:26px;height:1px;background:currentColor;opacity:.65}
+.label.rule::before{content:'';width:26px;height:1px;background:currentColor;opacity:.65}
+.label.dot::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85}
 .headline{font-family:var(--display);font-size:clamp(36px,6vw,76px);font-weight:400;line-height:.96;letter-spacing:0;color:var(--ink);text-shadow:0 0 34px rgba(251,245,255,.06)}
 .headline em,.serif-em{font-style:italic;color:var(--rose2);font-weight:400}
 .copy{color:var(--muted);font-size:clamp(14px,1.4vw,17px);line-height:1.9}
@@ -177,7 +178,6 @@ spline-viewer{display:block;width:100%;height:560px;background:transparent}
 
   <section class="section confession" id="recognition">
     <div class="founder-note reveal">
-      <div class="label">Why this exists</div>
       <p class="note-body">The most intense parts of us are often private. Not because we are broken. Because being fully seen asks for a kind of courage most days do not give us.</p>
       <p class="copy" style="margin-top:24px">Mentally Prepare is a small experiment for that courage: one honest note, one unknown person, one quiet day at a time.</p>
       <div class="signature">Built by Anushka Kumar - for students who are tired of performing fine.</div>
@@ -194,7 +194,7 @@ spline-viewer{display:block;width:100%;height:560px;background:transparent}
   <section class="section" id="ritual">
     <div class="inner ritual-grid">
       <div class="ritual-intro reveal">
-        <div class="label">The experiment</div>
+        <div class="label rule">The experiment</div>
         <h2 class="headline">Four quiet parts. <em>Twenty-one days.</em></h2>
         <p class="copy" style="margin-top:22px">No feed. No likes. No performance. The product is deliberately small so the writing can stay real.</p>
       </div>
@@ -230,7 +230,7 @@ spline-viewer{display:block;width:100%;height:560px;background:transparent}
   <section class="section silent" id="silent-room">
     <div class="inner silent-grid">
       <div class="reveal">
-        <div class="label">Silent Room</div>
+        <div class="label dot">Silent Room</div>
         <h2 class="headline">No replies. <em>Just witnessed.</em></h2>
         <p class="copy" style="margin-top:22px">A quiet wall for one anonymous line. It disappears in 7 days. Nobody can fix it, rate it, or turn it into advice.</p>
         <div style="margin-top:28px"><a class="btn secondary" href="/app">Enter the Silent Room</a></div>
@@ -271,7 +271,6 @@ spline-viewer{display:block;width:100%;height:560px;background:transparent}
 
   <section class="section final" id="cta">
     <div class="narrow reveal">
-      <div class="label" style="justify-content:center">Tonight</div>
       <h2 class="headline">Write one honest thing tonight.</h2>
       <p class="copy">Worst case, you spend 3 minutes being real with yourself. Best case, someone understands.</p>
       <a class="btn" href="/app">Begin tonight</a>
