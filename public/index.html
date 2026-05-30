@@ -68,8 +68,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .hero h1{max-width:730px;color:#fff;text-shadow:0 0 44px rgba(235,180,194,.12)}.hero-sub{max-width:560px;margin:26px 0 32px;color:rgba(251,245,255,.78)}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.micro{margin-top:14px;color:var(--soft);font-size:11px}
 .artifact-wrap{position:relative;min-height:560px;display:block;overflow:hidden}
-.artifact-wrap::before{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;background:radial-gradient(circle at 58% 44%,rgba(212,133,154,.22),rgba(123,94,167,.14) 42%,transparent 68%);filter:blur(8px)}
-.artifact-wrap::after{content:'';position:absolute;left:50%;top:45%;width:210px;height:210px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 38% 30%,#f4dceb 0 6%,#d4859a 24%,#7b5ea7 58%,#241734 100%);box-shadow:0 0 80px rgba(176,159,204,.38),inset -16px -22px 46px rgba(6,3,12,.55);z-index:0;pointer-events:none;animation:drift 8s ease-in-out infinite}
+.orb-scene{position:absolute;inset:0;z-index:0;pointer-events:none}
+.orb-glow{position:absolute;left:55%;top:50%;width:460px;height:460px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(212,133,154,.2),rgba(123,94,167,.12) 46%,transparent 70%);filter:blur(16px)}
+.orb-planet{position:absolute;left:55%;top:50%;width:248px;height:248px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 33% 27%,#fdeef4 0 4%,#f0adc6 15%,#c77fa3 38%,#7256a0 68%,#241734 100%);box-shadow:inset -28px -32px 60px rgba(6,3,12,.62),inset 18px 20px 40px rgba(255,222,238,.18),0 0 100px rgba(176,159,204,.26)}
+.orb-ring{position:absolute;left:55%;top:50%;width:420px;height:120px;transform:translate(-50%,-50%) rotate(-19deg);border-radius:50%;border:2px solid rgba(235,180,194,.32);box-shadow:0 0 26px rgba(235,180,194,.1),inset 0 0 30px rgba(235,180,194,.06)}
+.orb-moon{position:absolute;left:30%;top:29%;width:30px;height:30px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 36% 32%,#f1e7f5 0 12%,#b09fcc 55%,#4f3c70 100%);box-shadow:0 0 20px rgba(176,159,204,.34)}
 .artifact-wrap spline-viewer{position:relative;z-index:1}
 .artifact-glow{position:absolute;width:390px;height:390px;border-radius:50%;background:radial-gradient(circle,rgba(212,133,154,.18),rgba(123,94,167,.12) 44%,transparent 70%);filter:blur(10px)}
 .phone{position:relative;width:310px;min-height:560px;border:1px solid rgba(251,245,255,.16);border-radius:38px;background:linear-gradient(180deg,#17102b,#0b0817 58%,#07050f);box-shadow:0 42px 100px rgba(0,0,0,.45),inset 0 0 0 8px rgba(0,0,0,.24);overflow:hidden;animation:drift 7s ease-in-out infinite}
@@ -174,6 +177,12 @@ spline-viewer{display:block;width:100%;height:560px;background:transparent}
         <p class="micro reveal">Currently free during early access. Anonymous. Takes 3 minutes. No public profile.</p>
       </div>
       <div class="artifact-wrap reveal" aria-label="Space Dreamscape 3D">
+        <div class="orb-scene" aria-hidden="true">
+          <span class="orb-glow"></span>
+          <span class="orb-planet"></span>
+          <span class="orb-ring"></span>
+          <span class="orb-moon"></span>
+        </div>
         <spline-viewer url="https://prod.spline.design/lwJp18japsfNKDNc/scene.splinecode"></spline-viewer>
       </div>
     </div>
