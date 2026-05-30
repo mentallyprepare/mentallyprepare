@@ -58,7 +58,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .btn.secondary{background:transparent;color:var(--muted);border-color:var(--line2);box-shadow:none}.btn:hover{transform:translateY(-1px)}
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .75s ease,transform .75s ease}.reveal.visible{opacity:1;transform:translateY(0)}
 
-.hero{min-height:100vh;padding:118px 24px 78px;display:flex;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 72% 50%,rgba(60,30,120,.32),transparent 60%),radial-gradient(circle at 50% 50%,#08041a 0%,#02010a 92%)}
+.hero{min-height:100vh;padding:118px 24px 78px;display:flex;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 72% 50%,rgba(220,180,240,.18),transparent 65%),radial-gradient(circle at 50% 50%,#2a1850 0%,#180830 100%)}
 .hero::after{content:'';position:absolute;left:-20%;right:-20%;bottom:-180px;height:320px;border-radius:50% 50% 0 0;background:linear-gradient(180deg,rgba(217,199,255,.14),rgba(123,94,167,.06));pointer-events:none}
 .hero-grid{width:min(1180px,100%);margin:0 auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(330px,.82fr);gap:68px;align-items:center}
 .hero-kicker{display:inline-flex;align-items:center;gap:10px;width:max-content;padding:8px 14px;border:1px solid rgba(235,180,194,.34);border-radius:999px;background:rgba(212,133,154,.1);color:#f3c6d1;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:24px}
@@ -345,10 +345,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     ctx.save();
     ctx.translate(cx,cy);ctx.rotate(tilt);
     var grad=ctx.createLinearGradient(-rx,0,rx,0);
-    grad.addColorStop(0,'rgba(255,200,230,0.22)');
-    grad.addColorStop(0.5,'rgba(255,225,245,0.85)');
-    grad.addColorStop(1,'rgba(255,200,230,0.22)');
-    ctx.lineWidth=7;ctx.strokeStyle='rgba(255,200,230,0.07)';
+    grad.addColorStop(0,'rgba(255,220,240,0.35)');
+    grad.addColorStop(0.5,'rgba(255,240,250,0.95)');
+    grad.addColorStop(1,'rgba(255,220,240,0.35)');
+    ctx.lineWidth=8;ctx.strokeStyle='rgba(255,210,235,0.12)';
     ctx.beginPath();
     if(half==='back')ctx.ellipse(0,0,rx,ry,0,Math.PI,Math.PI*2);
     else ctx.ellipse(0,0,rx,ry,0,0,Math.PI);
@@ -371,11 +371,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     ctx.globalAlpha=1;
     ctx.clearRect(0,0,w,h);
 
-    // Nebula glow — subtle, blends with deep space
+    // Soft pastel cosmic glow
     var neb=ctx.createRadialGradient(px,py,0,px,py,pr*3.4);
-    neb.addColorStop(0,'rgba(120,60,180,0.14)');
-    neb.addColorStop(0.30,'rgba(90,40,150,0.07)');
-    neb.addColorStop(0.65,'rgba(40,15,90,0.02)');
+    neb.addColorStop(0,'rgba(255,200,235,0.18)');
+    neb.addColorStop(0.35,'rgba(200,150,230,0.10)');
+    neb.addColorStop(0.7,'rgba(140,100,200,0.03)');
     neb.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=neb;ctx.fillRect(0,0,w,h);
 
@@ -394,10 +394,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     // Ring back-half
     drawRing(px,py,pr,'back');
 
-    // Atmospheric halo — soft rim glow, not a bloom blob
-    var halo=ctx.createRadialGradient(px,py,pr*0.92,px,py,pr*1.45);
-    halo.addColorStop(0,'rgba(180,120,220,0.22)');
-    halo.addColorStop(0.45,'rgba(130,70,180,0.08)');
+    // Soft pastel halo — gentle glow, blends in
+    var halo=ctx.createRadialGradient(px,py,pr*0.95,px,py,pr*1.35);
+    halo.addColorStop(0,'rgba(255,210,235,0.32)');
+    halo.addColorStop(0.5,'rgba(220,170,230,0.12)');
     halo.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=halo;ctx.fillRect(0,0,w,h);
 
@@ -406,24 +406,23 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     var hx=px+pr*(-0.32+0.18*Math.sin(drift));
     var hy=py+pr*(-0.34+0.05*Math.cos(drift*0.7));
     var planet=ctx.createRadialGradient(hx,hy,0,px,py,pr);
-    planet.addColorStop(0,'#fff0fa');
-    planet.addColorStop(0.10,'#ffc8e2');
-    planet.addColorStop(0.24,'#e890bc');
-    planet.addColorStop(0.40,'#a85aa0');
-    planet.addColorStop(0.54,'#5a2880');
-    planet.addColorStop(0.66,'#321660');
-    planet.addColorStop(0.82,'#1a0a38');
-    planet.addColorStop(1,'#08031c');
+    planet.addColorStop(0,'#ffffff');
+    planet.addColorStop(0.10,'#ffe5f0');
+    planet.addColorStop(0.30,'#ffb4d8');
+    planet.addColorStop(0.55,'#e878c0');
+    planet.addColorStop(0.78,'#a058b8');
+    planet.addColorStop(0.95,'#5e2a88');
+    planet.addColorStop(1,'#3a1a60');
     ctx.fillStyle=planet;
     ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();
 
-    // Hard shadow rim on the dark side (clipped to planet)
+    // Gentle shading on the lower-right (no hard terminator)
     ctx.save();
     ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.clip();
-    var sh=ctx.createRadialGradient(px+pr*0.6,py+pr*0.3,0,px+pr*0.4,py+pr*0.2,pr*1.15);
-    sh.addColorStop(0,'rgba(4,1,12,0.28)');
-    sh.addColorStop(0.5,'rgba(4,1,12,0.12)');
-    sh.addColorStop(1,'rgba(4,1,12,0)');
+    var sh=ctx.createRadialGradient(px+pr*0.65,py+pr*0.4,0,px+pr*0.5,py+pr*0.3,pr*1.1);
+    sh.addColorStop(0,'rgba(40,15,80,0.18)');
+    sh.addColorStop(0.6,'rgba(40,15,80,0.06)');
+    sh.addColorStop(1,'rgba(40,15,80,0)');
     ctx.fillStyle=sh;ctx.fillRect(px-pr,py-pr,pr*2,pr*2);
     ctx.restore();
 
