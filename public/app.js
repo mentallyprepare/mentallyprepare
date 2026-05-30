@@ -1371,7 +1371,6 @@ async function submitScan() {
     if (verificationPending && message) toast(message, 4200);
     renderResult(matched);
     go('s-result');
-    maybeShowNotificationNudge('after_onboarding');
   } catch (e) { toast(e.message); }
 }
 
@@ -3343,25 +3342,39 @@ function renderNotificationPermissionModal(source) {
   const modal = document.createElement('div');
   modal.id = 'notification-permission-modal';
   modal.className = 'mp-modal notification-modal show';
-  modal.innerHTML = `
-    <div class="mp-modal-card notification-card" role="dialog" aria-modal="true" aria-labelledby="notif-title">
-      <button class="mp-modal-close" type="button" aria-label="Close" onclick="closeNotificationModal()">x</button>
-      <div class="notification-icon">MP</div>
-      <div class="notification-kicker">Gentle reminders</div>
-      <h2 id="notif-title">Let Mentally Prepare remind you softly.</h2>
-      <p>We only send private, simple prompts. No diagnosis, pressure, or sensitive lock screen copy.</p>
-      <div class="notification-preview">Your reset is ready.</div>
-      <div class="notification-pref-list">
-        ${notificationPrefToggleHtml('morningReminder', 'Morning reminder', prefs.morningReminder)}
-        ${notificationPrefToggleHtml('eveningReminder', 'Evening reminder', prefs.eveningReminder)}
-        ${notificationPrefToggleHtml('dailyReflection', 'Daily reflection reminder', prefs.dailyReflection)}
-        ${notificationPrefToggleHtml('streakReminder', 'Streak reminder', prefs.streakReminder)}
-        ${notificationPrefToggleHtml('silentRoomReminder', 'Silent Room reminder', prefs.silentRoomReminder)}
-      </div>
-      <button class="btn" type="button" onclick="enableNotificationsFromModal()">Allow gentle reminders</button>
-      <button class="btn-ghost" type="button" onclick="closeNotificationModal()">Maybe later</button>
-      <div class="notification-note" id="notification-modal-status"></div>
-    </div>`;
+  // Soft single-button variant for the first-entry nudge.
+  if (source === 'after_reflection') {
+    modal.innerHTML = `
+      <div class="mp-modal-card notification-card" role="dialog" aria-modal="true" aria-labelledby="notif-title">
+        <button class="mp-modal-close" type="button" aria-label="Close" onclick="closeNotificationModal()">x</button>
+        <div class="notification-icon">MP</div>
+        <h2 id="notif-title">want to know when your match writes back?</h2>
+        <p>One quiet reminder when they show up. Nothing else.</p>
+        <button class="btn" type="button" onclick="enableNotificationsFromModal()">Enable notifications</button>
+        <button class="btn-ghost" type="button" onclick="closeNotificationModal()">Maybe later</button>
+        <div class="notification-note" id="notification-modal-status"></div>
+      </div>`;
+  } else {
+    modal.innerHTML = `
+      <div class="mp-modal-card notification-card" role="dialog" aria-modal="true" aria-labelledby="notif-title">
+        <button class="mp-modal-close" type="button" aria-label="Close" onclick="closeNotificationModal()">x</button>
+        <div class="notification-icon">MP</div>
+        <div class="notification-kicker">Gentle reminders</div>
+        <h2 id="notif-title">Let Mentally Prepare remind you softly.</h2>
+        <p>We only send private, simple prompts. No diagnosis, pressure, or sensitive lock screen copy.</p>
+        <div class="notification-preview">Your reset is ready.</div>
+        <div class="notification-pref-list">
+          ${notificationPrefToggleHtml('morningReminder', 'Morning reminder', prefs.morningReminder)}
+          ${notificationPrefToggleHtml('eveningReminder', 'Evening reminder', prefs.eveningReminder)}
+          ${notificationPrefToggleHtml('dailyReflection', 'Daily reflection reminder', prefs.dailyReflection)}
+          ${notificationPrefToggleHtml('streakReminder', 'Streak reminder', prefs.streakReminder)}
+          ${notificationPrefToggleHtml('silentRoomReminder', 'Silent Room reminder', prefs.silentRoomReminder)}
+        </div>
+        <button class="btn" type="button" onclick="enableNotificationsFromModal()">Allow gentle reminders</button>
+        <button class="btn-ghost" type="button" onclick="closeNotificationModal()">Maybe later</button>
+        <div class="notification-note" id="notification-modal-status"></div>
+      </div>`;
+  }
   document.body.appendChild(modal);
   localStorage.setItem('mp-notification-nudged', source || 'manual');
 }
@@ -3411,6 +3424,11 @@ async function enableNotificationsFromModal() {
 function maybeShowNotificationNudge(source) {
   if (!state || !state.user || localStorage.getItem('mp-notification-nudged')) return;
   if (!('Notification' in window) || Notification.permission !== 'default') return;
+  // Only fire after the very first entry — gate by state.entries length.
+  if (source === 'after_reflection') {
+    const entryCount = (state.entries && state.entries.length) || 0;
+    if (entryCount > 1) return;
+  }
   setTimeout(function() { renderNotificationPermissionModal(source || 'after_reflection'); }, 900);
 }
 
