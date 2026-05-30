@@ -52,7 +52,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .label.rule::before{content:'';width:26px;height:1px;background:currentColor;opacity:.65}
 .label.dot::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85}
 .headline{font-family:var(--display);font-size:clamp(36px,6vw,76px);font-weight:400;line-height:.96;letter-spacing:0;color:var(--ink);text-shadow:0 0 34px rgba(251,245,255,.06)}
-.headline em,.serif-em{font-style:italic;color:var(--rose2);font-weight:400}
+.headline em,.serif-em{font-style:italic;background:linear-gradient(135deg,var(--rose2),var(--gold),var(--rose2));background-size:200% auto;animation:shine 4s linear infinite;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;display:inline-block;padding-right:0.05em}
+@keyframes shine{to{background-position:200% center}}
 .copy{color:var(--muted);font-size:clamp(14px,1.4vw,17px);line-height:1.9}
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 24px;border-radius:999px;border:1px solid rgba(235,180,194,.42);background:linear-gradient(135deg,#b7657b,#765996);color:#fff;font-size:13px;font-weight:800;letter-spacing:.02em;box-shadow:0 14px 42px rgba(155,79,102,.34)}
 .btn.secondary{background:transparent;color:var(--muted);border-color:var(--line2);box-shadow:none}.btn:hover{transform:translateY(-1px)}
@@ -140,6 +141,19 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 @media(max-width:520px){
   .hero h1{font-size:42px}.hero-sub{font-size:13.5px;line-height:1.75;margin-top:18px;margin-bottom:22px}.hero-kicker{font-size:9px;margin-bottom:18px}.phone{width:232px;min-height:414px}.journal{padding:17px 15px}.journal-prompt{font-size:22px}.journal-line{font-size:12px}.status-note{font-size:11px}.artifact-wrap{min-height:270px;margin-top:-16px;overflow:hidden}.reveal-pill{display:none}.section{padding:74px 20px}#ritual{padding-bottom:44px}.silent{padding-top:54px}.moment{padding-bottom:24px}.moment h3{font-size:25px}.moment p{font-size:13px;line-height:1.75}.safety-row{grid-template-columns:1fr}.safety-item{padding:16px 16px}.room-threshold{min-height:238px;border-radius:18px}.threshold-copy p{font-size:25px}.threshold-note{width:154px;font-size:10px}.threshold-note.two{display:none}.threshold-orbit{width:170px;height:78px;right:8%;top:54px}.field-poster{min-height:700px;padding-top:22px;align-items:end}.field-poster::before{width:250px;height:250px;top:116px}.field-poster::after{top:230px;opacity:.45}.field-star{top:228px}.field-ray{top:168px;height:132px}.day-note{max-width:150px}.day-note small{font-size:23px;margin-bottom:8px}.day-note p{font-size:14px;line-height:1.38}.day-note.one{left:0;top:92px}.day-note.two{right:0;top:254px}.day-note.three{display:none}.script-ghost{display:none}.field-head{margin-top:auto;padding-top:0}.field-head .label{margin-bottom:12px}.field-head .headline{font-size:42px;line-height:.98}.field-head .copy{font-size:13px;line-height:1.75}.field-divider{margin:20px auto 22px}.field{padding:24px 20px}.wall{padding:22px 18px}.line p{font-size:19px}.quote-track{gap:34px}.micro{font-size:10px}
 }
+.hero{perspective:1500px}
+.hero-grid{transform-style:preserve-3d;animation:hero-scene-wobble 18s ease-in-out infinite;will-change:transform}
+@keyframes hero-scene-wobble{
+  0%,100%{transform:rotateX(5deg) rotateY(-8deg) translateZ(0)}
+  33%{transform:rotateX(-4deg) rotateY(12deg) translateZ(40px)}
+  66%{transform:rotateX(-8deg) rotateY(-6deg) translateZ(15px)}
+}
+.hero-grid > div:first-child{transform-style:preserve-3d;transform:translateZ(60px)}
+.hero-grid > div:first-child .headline{transform:translateZ(50px);filter:drop-shadow(0 2px 0 #5e38a0) drop-shadow(0 6px 0 #3a2264) drop-shadow(0 15px 30px rgba(0,0,0,0.7));display:block}
+.hero-grid > div:first-child .hero-sub{transform:translateZ(35px);display:block}
+.hero-grid > div:first-child .hero-actions{transform:translateZ(45px)}
+.artifact-wrap{transform:translateZ(100px);transform-style:preserve-3d}
+@media(max-width:900px){ .hero-grid{animation:none;transform:none} .hero-grid > div:first-child, .hero-grid > div:first-child .headline, .artifact-wrap{transform:none;filter:none} }
 </style>
 </head>
 <body>
