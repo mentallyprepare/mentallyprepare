@@ -59,7 +59,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .btn.secondary{background:transparent;color:var(--muted);border-color:var(--line2);box-shadow:none}.btn:hover{transform:translateY(-1px)}
 .reveal{opacity:0;transform:translateY(22px);transition:opacity .75s ease,transform .75s ease}.reveal.visible{opacity:1;transform:translateY(0)}
 
-.hero{min-height:100vh;padding:118px 24px 78px;display:flex;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 72% 50%,rgba(220,180,240,.18),transparent 65%),radial-gradient(circle at 50% 50%,#2a1850 0%,#180830 100%)}
+.hero{min-height:100vh;padding:118px 24px 78px;display:flex;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 72% 50%,rgba(120,50,180,.22),transparent 62%),radial-gradient(circle at 50% 50%,#0c0420 0%,#020108 95%)}
 .hero::after{content:'';position:absolute;left:-20%;right:-20%;bottom:-180px;height:320px;border-radius:50% 50% 0 0;background:linear-gradient(180deg,rgba(217,199,255,.14),rgba(123,94,167,.06));pointer-events:none}
 .hero-grid{width:min(1180px,100%);margin:0 auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(330px,.82fr);gap:68px;align-items:center}
 .hero-kicker{display:inline-flex;align-items:center;gap:10px;width:max-content;padding:8px 14px;border:1px solid rgba(235,180,194,.34);border-radius:999px;background:rgba(212,133,154,.1);color:#f3c6d1;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:24px}
@@ -307,7 +307,80 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   var particles=[];
   var rafId=null;
   var startT=performance.now();
-  var COUNT=220;
+  var COUNT=400;
+
+  // --- Value-noise / fBM for organic surface texture ---
+  function hash2(x,y){
+    var s=Math.sin(x*127.1+y*311.7)*43758.5453;
+    return s-Math.floor(s);
+  }
+  function vnoise(x,y){
+    var xi=Math.floor(x), yi=Math.floor(y);
+    var xf=x-xi, yf=y-yi;
+    var u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
+    var a=hash2(xi,yi), b=hash2(xi+1,yi);
+    var c=hash2(xi,yi+1), d=hash2(xi+1,yi+1);
+    var ab=a+(b-a)*u, cd=c+(d-c)*u;
+    return ab+(cd-ab)*v;
+  }
+  function fbm(x,y){
+    var n=0, amp=0.5, freq=1;
+    for(var i=0;i<4;i++){ n+=vnoise(x*freq,y*freq)*amp; amp*=0.5; freq*=2; }
+    return n;
+  }
+  // Palette stops: deep purple -> magenta -> dusty rose -> pale pink-white
+  var PAL=[
+    [0.00, 45, 10, 78],
+    [0.32,192, 24,106],
+    [0.62,232,112,154],
+    [1.00,245,198,216]
+  ];
+  function paletteColor(t){
+    t=t<0?0:t>1?1:t;
+    for(var i=1;i<PAL.length;i++){
+      if(t<=PAL[i][0]){
+        var p=PAL[i-1], q=PAL[i];
+        var k=(t-p[0])/(q[0]-p[0]);
+        return [
+          (p[1]+(q[1]-p[1])*k)|0,
+          (p[2]+(q[2]-p[2])*k)|0,
+          (p[3]+(q[3]-p[3])*k)|0
+        ];
+      }
+    }
+    return [PAL[3][1],PAL[3][2],PAL[3][3]];
+  }
+
+  // --- Offscreen noise texture (built once per resize) ---
+  var tex=document.createElement('canvas');
+  var texCtx=tex.getContext('2d');
+  var lastTexR=0;
+  function buildTexture(targetR){
+    var TW=320, TH=200;
+    tex.width=TW; tex.height=TH;
+    var img=texCtx.createImageData(TW,TH);
+    var d=img.data;
+    for(var y=0;y<TH;y++){
+      for(var x=0;x<TW;x++){
+        // Domain-warp for swirls
+        var nx=x/34, ny=y/30;
+        var wx=fbm(nx*0.6+11,ny*0.6+19)*2-1;
+        var wy=fbm(nx*0.6+71,ny*0.6+53)*2-1;
+        var n=fbm(nx+wx*1.1, ny+wy*0.9);
+        // Soft band emphasis (slightly anisotropic = gas-giant bands)
+        var b=0.5+0.5*Math.sin(ny*1.4+wx*0.6)*0.18;
+        var v=n*0.85+b*0.15;
+        // Boost contrast
+        v=(v-0.30)*1.55;
+        v=v<0?0:v>1?1:v;
+        var c=paletteColor(v);
+        var idx=(y*TW+x)*4;
+        d[idx]=c[0]; d[idx+1]=c[1]; d[idx+2]=c[2]; d[idx+3]=255;
+      }
+    }
+    texCtx.putImageData(img,0,0);
+    lastTexR=targetR;
+  }
 
   function resize(){
     var r=canvas.getBoundingClientRect();
@@ -316,6 +389,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
     canvas.style.width=w+'px';canvas.style.height=h+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
+    var pr=Math.min(w,h)*0.28;
+    if(Math.abs(pr-lastTexR)>4 || lastTexR===0) buildTexture(pr);
     initParticles();
   }
 
@@ -325,33 +400,40 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     for(var i=0;i<COUNT;i++){
       var ang=Math.random()*Math.PI*2;
       var dr=Math.random();
-      var dist=pr*0.85+Math.pow(dr,1.7)*Math.max(w,h)*0.7;
+      // Cluster near planet; quadratic falloff outward
+      var dist=pr*0.95+Math.pow(dr,2.1)*Math.max(w,h)*0.75;
       var x=px+Math.cos(ang)*dist;
       var y=py+Math.sin(ang)*dist;
       var sr=Math.random();
-      var size=sr<0.72?1:sr<0.93?2:3;
-      var warm=Math.random()<0.5;
+      // Sizes: 0.5 / 1 / 1.5 / 2 — most tiny, a few bright
+      var sz = sr<0.50 ? 0.5 : sr<0.83 ? 1 : sr<0.96 ? 1.5 : 2;
+      var warm=Math.random()<0.55;
       particles.push({
         x:x,y:y,
-        vx:(Math.random()-0.5)*0.06,
-        vy:(Math.random()-0.5)*0.05,
-        size:size,
-        color:warm?'255,217,235':'220,232,255',
-        ts:0.5+Math.random()*1.4,
+        vx:(Math.random()-0.5)*0.045,
+        vy:(Math.random()-0.5)*0.035,
+        size:sz,
+        color:warm?'255,212,232':'215,225,255',
+        ts:0.4+Math.random()*1.6,
         tp:Math.random()*Math.PI*2,
-        ba:0.35+Math.random()*0.55,
+        ba:0.3+Math.random()*0.6,
         front:Math.random()<0.5
       });
     }
   }
 
   function drawParticle(p,t){
-    var tw=reduced?1:(0.55+0.45*Math.sin(t*p.ts+p.tp));
+    var tw=reduced?1:(0.5+0.5*Math.sin(t*p.ts+p.tp));
     var a=p.ba*tw;
-    if(a<=0) return;
+    if(a<=0.02) return;
     ctx.fillStyle='rgba('+p.color+','+a.toFixed(3)+')';
-    if(p.size===1){ctx.fillRect(p.x,p.y,1,1);}
-    else{ctx.beginPath();ctx.arc(p.x,p.y,p.size*0.5,0,Math.PI*2);ctx.fill();}
+    if(p.size<=1){
+      ctx.fillRect(p.x,p.y,p.size,p.size);
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.size*0.5,0,Math.PI*2);
+      ctx.fill();
+    }
   }
 
   function drawRing(cx,cy,pr,half){
@@ -359,10 +441,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     ctx.save();
     ctx.translate(cx,cy);ctx.rotate(tilt);
     var grad=ctx.createLinearGradient(-rx,0,rx,0);
-    grad.addColorStop(0,'rgba(255,220,240,0.35)');
-    grad.addColorStop(0.5,'rgba(255,240,250,0.95)');
-    grad.addColorStop(1,'rgba(255,220,240,0.35)');
-    ctx.lineWidth=8;ctx.strokeStyle='rgba(255,210,235,0.12)';
+    grad.addColorStop(0,'rgba(255,220,240,0.32)');
+    grad.addColorStop(0.5,'rgba(255,240,250,0.92)');
+    grad.addColorStop(1,'rgba(255,220,240,0.32)');
+    ctx.lineWidth=8;ctx.strokeStyle='rgba(255,210,235,0.10)';
     ctx.beginPath();
     if(half==='back')ctx.ellipse(0,0,rx,ry,0,Math.PI,Math.PI*2);
     else ctx.ellipse(0,0,rx,ry,0,0,Math.PI);
@@ -371,6 +453,111 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     ctx.beginPath();
     if(half==='back')ctx.ellipse(0,0,rx,ry,0,Math.PI,Math.PI*2);
     else ctx.ellipse(0,0,rx,ry,0,0,Math.PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlanet(cx,cy,pr,t){
+    // Outer atmosphere halo — 40px out beyond sphere edge, warm pink-purple
+    var haloR=pr+44;
+    var halo=ctx.createRadialGradient(cx,cy,pr*0.96,cx,cy,haloR);
+    halo.addColorStop(0,'rgba(255,180,220,0.42)');
+    halo.addColorStop(0.45,'rgba(220,130,210,0.18)');
+    halo.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=halo;
+    ctx.fillRect(cx-haloR,cy-haloR,haloR*2,haloR*2);
+
+    // Subtle drift offset for the texture (slow rotation feel)
+    var driftPx = (t * 6) | 0; // ~6 px/sec horizontal scroll
+    var TW=tex.width, TH=tex.height;
+    var planetD=pr*2;
+    // Map planet to a window of the texture, then scroll it
+    var srcW=TW*0.55;  // sample portion of texture
+    var srcX=(driftPx % TW + TW) % TW;
+
+    // --- Clip to sphere & paint textured surface ---
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx,cy,pr,0,Math.PI*2);
+    ctx.clip();
+
+    // Draw the noise texture as the planet body. Two draws for seamless scroll.
+    // We stretch a TW-wide source slice across the planet circle's bbox.
+    var destX=cx-pr;
+    var destY=cy-pr;
+    // First slice
+    var s1w=Math.min(srcW, TW-srcX);
+    var d1w=planetD * (s1w/srcW);
+    ctx.drawImage(tex, srcX,0, s1w,TH, destX,destY, d1w,planetD);
+    // Wrap-around slice (if needed)
+    if(s1w<srcW){
+      var s2w=srcW-s1w;
+      var d2w=planetD * (s2w/srcW);
+      ctx.drawImage(tex, 0,0, s2w,TH, destX+d1w,destY, d2w,planetD);
+    }
+
+    // Slight band overlay using a second texture sample (adds depth, breaks any uniformity)
+    ctx.globalAlpha=0.35;
+    var srcX2=( (driftPx*0.6+TW*0.4) % TW + TW) % TW;
+    var s3w=Math.min(srcW, TW-srcX2);
+    var d3w=planetD * (s3w/srcW);
+    ctx.drawImage(tex, srcX2,0, s3w,TH, destX,destY+pr*0.05, d3w,planetD);
+    if(s3w<srcW){
+      var s4w=srcW-s3w;
+      var d4w=planetD*(s4w/srcW);
+      ctx.drawImage(tex, 0,0, s4w,TH, destX+d3w,destY+pr*0.05, d4w,planetD);
+    }
+    ctx.globalAlpha=1;
+
+    // --- Diffuse shading (multiply): brightens lit side, near-black on shadow side ---
+    var diffuse=ctx.createRadialGradient(
+      cx-pr*0.32, cy-pr*0.40, 0,
+      cx+pr*0.45, cy+pr*0.40, pr*1.7
+    );
+    diffuse.addColorStop(0.00,'rgba(255,250,252,1)');
+    diffuse.addColorStop(0.18,'rgba(252,228,238,1)');
+    diffuse.addColorStop(0.42,'rgba(180,128,200,1)');
+    diffuse.addColorStop(0.70,'rgba(60,22,80,1)');
+    diffuse.addColorStop(0.92,'rgba(12,4,28,1)');
+    diffuse.addColorStop(1.00,'rgba(3,1,8,1)');
+    ctx.globalCompositeOperation='multiply';
+    ctx.fillStyle=diffuse;
+    ctx.fillRect(cx-pr,cy-pr,pr*2,pr*2);
+
+    // --- Specular highlight: sharp white-pink dot, top-left, ~17% radius ---
+    var specR=pr*0.17;
+    var specCx=cx-pr*0.36;
+    var specCy=cy-pr*0.42;
+    var spec=ctx.createRadialGradient(specCx,specCy,0,specCx,specCy,specR);
+    spec.addColorStop(0.00,'rgba(255,250,252,1.0)');
+    spec.addColorStop(0.35,'rgba(255,220,240,0.55)');
+    spec.addColorStop(0.70,'rgba(255,190,225,0.15)');
+    spec.addColorStop(1.00,'rgba(255,180,220,0)');
+    ctx.globalCompositeOperation='lighter';
+    ctx.fillStyle=spec;
+    ctx.fillRect(cx-pr,cy-pr,pr*2,pr*2);
+
+    ctx.globalCompositeOperation='source-over';
+    ctx.restore();
+
+    // --- Rim light: thin cool purple glow on the dark edge (lower-right) ---
+    ctx.save();
+    // Soft outer rim
+    ctx.lineWidth=5;
+    ctx.strokeStyle='rgba(160,110,230,0.10)';
+    ctx.beginPath();
+    ctx.arc(cx,cy,pr+0.5,Math.PI*0.05,Math.PI*0.95);
+    ctx.stroke();
+    // Sharp inner rim
+    ctx.lineWidth=1.5;
+    var rim=ctx.createLinearGradient(cx-pr,cy-pr,cx+pr,cy+pr);
+    rim.addColorStop(0,'rgba(180,130,230,0)');
+    rim.addColorStop(0.55,'rgba(180,130,230,0)');
+    rim.addColorStop(0.78,'rgba(200,150,240,0.65)');
+    rim.addColorStop(1,'rgba(225,180,250,0.85)');
+    ctx.strokeStyle=rim;
+    ctx.beginPath();
+    ctx.arc(cx,cy,pr-0.3,0,Math.PI*2);
     ctx.stroke();
     ctx.restore();
   }
@@ -385,11 +572,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     ctx.globalAlpha=1;
     ctx.clearRect(0,0,w,h);
 
-    // Soft pastel cosmic glow
+    // Background cosmic dust glow (very soft, blends)
     var neb=ctx.createRadialGradient(px,py,0,px,py,pr*3.4);
-    neb.addColorStop(0,'rgba(255,200,235,0.18)');
-    neb.addColorStop(0.35,'rgba(200,150,230,0.10)');
-    neb.addColorStop(0.7,'rgba(140,100,200,0.03)');
+    neb.addColorStop(0,'rgba(190,110,210,0.18)');
+    neb.addColorStop(0.35,'rgba(140,70,180,0.08)');
+    neb.addColorStop(0.7,'rgba(80,30,130,0.02)');
     neb.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=neb;ctx.fillRect(0,0,w,h);
 
@@ -402,43 +589,14 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
       }
     }
 
-    // Back particles
+    // Back-half particles (behind planet)
     for(var i=0;i<particles.length;i++){if(!particles[i].front)drawParticle(particles[i],t);}
 
     // Ring back-half
     drawRing(px,py,pr,'back');
 
-    // Soft pastel halo — gentle glow, blends in
-    var halo=ctx.createRadialGradient(px,py,pr*0.95,px,py,pr*1.35);
-    halo.addColorStop(0,'rgba(255,210,235,0.32)');
-    halo.addColorStop(0.5,'rgba(220,170,230,0.12)');
-    halo.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=halo;ctx.fillRect(0,0,w,h);
-
-    // Planet with drifting highlight (20s rotation illusion)
-    var drift=(t/20)*Math.PI*2;
-    var hx=px+pr*(-0.32+0.18*Math.sin(drift));
-    var hy=py+pr*(-0.34+0.05*Math.cos(drift*0.7));
-    var planet=ctx.createRadialGradient(hx,hy,0,px,py,pr);
-    planet.addColorStop(0,'#ffffff');
-    planet.addColorStop(0.10,'#ffe5f0');
-    planet.addColorStop(0.30,'#ffb4d8');
-    planet.addColorStop(0.55,'#e878c0');
-    planet.addColorStop(0.78,'#a058b8');
-    planet.addColorStop(0.95,'#5e2a88');
-    planet.addColorStop(1,'#3a1a60');
-    ctx.fillStyle=planet;
-    ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.fill();
-
-    // Gentle shading on the lower-right (no hard terminator)
-    ctx.save();
-    ctx.beginPath();ctx.arc(px,py,pr,0,Math.PI*2);ctx.clip();
-    var sh=ctx.createRadialGradient(px+pr*0.65,py+pr*0.4,0,px+pr*0.5,py+pr*0.3,pr*1.1);
-    sh.addColorStop(0,'rgba(40,15,80,0.18)');
-    sh.addColorStop(0.6,'rgba(40,15,80,0.06)');
-    sh.addColorStop(1,'rgba(40,15,80,0)');
-    ctx.fillStyle=sh;ctx.fillRect(px-pr,py-pr,pr*2,pr*2);
-    ctx.restore();
+    // Planet — textured sphere with proper lighting, halo, rim
+    drawPlanet(px,py,pr,t);
 
     // Ring front-half
     drawRing(px,py,pr,'front');
@@ -450,7 +608,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     var my=py+Math.sin(ma)*mor*0.42;
     var mr=Math.max(7,pr*0.085);
     var mglow=ctx.createRadialGradient(mx,my,0,mx,my,mr*2.5);
-    mglow.addColorStop(0,'rgba(255,235,250,0.35)');
+    mglow.addColorStop(0,'rgba(255,235,250,0.32)');
     mglow.addColorStop(1,'rgba(255,235,250,0)');
     ctx.fillStyle=mglow;
     ctx.beginPath();ctx.arc(mx,my,mr*2.5,0,Math.PI*2);ctx.fill();
@@ -462,7 +620,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     ctx.fillStyle=m;
     ctx.beginPath();ctx.arc(mx,my,mr,0,Math.PI*2);ctx.fill();
 
-    // Front particles
+    // Front-half particles (in front of planet)
     for(var i=0;i<particles.length;i++){if(particles[i].front)drawParticle(particles[i],t);}
     ctx.globalAlpha=1;
 
