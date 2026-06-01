@@ -422,6 +422,8 @@ function registerAppRoutes(app, deps) {
       const match = stmts.getMatch.get(userId, userId);
       const myEntries = db.prepare('SELECT day, prompt, text, mood, created_at FROM entries WHERE user_id = ?').all(userId)
         .map((e) => ({ day: e.day, prompt: e.prompt, text: e.text, mood: e.mood, written_at: e.created_at }));
+      const myWaitingEntries = db.prepare('SELECT day, prompt, text, mood, created_at, updated_at FROM waiting_entries WHERE user_id = ?').all(userId)
+        .map((e) => ({ day: e.day, prompt: e.prompt, text: e.text, mood: e.mood, written_at: e.created_at, updated_at: e.updated_at }));
       const myReveals = db.prepare('SELECT match_id, choice, created_at FROM reveals WHERE user_id = ?').all(userId)
         .map((r) => ({ match_id: r.match_id, choice: r.choice, decided_at: r.created_at }));
       const myComments = db.prepare('SELECT day, text, created_at FROM comments WHERE user_id = ?').all(userId)
@@ -447,6 +449,7 @@ function registerAppRoutes(app, deps) {
         },
         match: match ? { status: 'active', dayCount: getMatchDay(match.started_at) } : null,
         journal_entries: myEntries,
+        waiting_entries: myWaitingEntries,
         comments: myComments,
         reveal_choices: myReveals
       };

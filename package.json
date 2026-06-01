@@ -10,7 +10,8 @@
     "start": "node server.js",
     "start:prod": "NODE_ENV=production node server.js",
     "backup": "node backup.js",
-    "check": "node --check server.js && node --check routes/*.js"
+    "check": "node --check server.js && node --check routes/*.js",
+    "test": "node test/smoke.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

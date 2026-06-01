@@ -20,3 +20,15 @@ backups/
 # Old server backups
 server.js.bak
 server-old.js
+
+# Test artifacts
+test/*.db
+test/*.db-wal
+test/*.db-shm
+
+# Session DB
+mentally-prepare-sessions.db
+
+# Secrets
+sendgrid.env
+*.env.local

@@ -17,7 +17,7 @@ process.on('unhandledRejection', (reason, promise) => {
 const path = require('path');
 const fs = require('fs');
 const IS_PROD = process.env.NODE_ENV === 'production';
-const DB_PATH = IS_PROD ? '/data/db/mentally-prepare.db' : path.join(__dirname, 'mentally-prepare.db');
+const DB_PATH = process.env.DB_PATH || (IS_PROD ? '/data/db/mentally-prepare.db' : path.join(__dirname, 'mentally-prepare.db'));
 const dbDir = IS_PROD ? '/data/db' : __dirname;
 console.log('Checking directory:', dbDir);
 try {

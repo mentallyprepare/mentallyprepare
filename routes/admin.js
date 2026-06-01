@@ -191,6 +191,7 @@ function registerAdminRoutes(app, deps) {
         users: db.prepare('SELECT id, name, email, college, year, archetype, consent_given, created_at, last_active_date FROM users ORDER BY id').all(),
         matches: db.prepare('SELECT * FROM matches ORDER BY id').all(),
         entries: db.prepare('SELECT * FROM entries ORDER BY id').all(),
+        waiting_entries: db.prepare('SELECT * FROM waiting_entries ORDER BY id').all(),
         reveals: db.prepare('SELECT * FROM reveals ORDER BY id').all(),
         comments: db.prepare('SELECT * FROM comments ORDER BY id').all(),
         reports: db.prepare('SELECT * FROM reports ORDER BY id').all(),
