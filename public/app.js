@@ -746,18 +746,27 @@ async function installAppPrompt() {
 
 function verificationPendingHtml() {
   if (!state || !state.user || state.user.emailVerified) return '';
+  if (sessionStorage.getItem('verify-banner-dismissed')) return '';
   return `
-    <div style="margin:0 0 16px;padding:14px 16px;border:1px solid rgba(224,197,143,.24);border-radius:16px;background:rgba(224,197,143,.07);text-align:left;">
-      <div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">Verification pending</div>
-      <div style="font-family:'Lora',serif;font-style:italic;font-size:12.5px;color:var(--ink-m);line-height:1.7;">You can continue now. Please verify your email when it arrives so matching can start smoothly.</div>
+    <div id="verify-banner" style="margin:0 0 16px;padding:14px 16px;border:1px solid rgba(224,197,143,.24);border-radius:16px;background:rgba(224,197,143,.07);text-align:left;position:relative;">
+      <button onclick="dismissVerifyBanner()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:var(--ink-m);font-size:18px;cursor:pointer;padding:4px 8px;line-height:1;" aria-label="Dismiss">&times;</button>
+      <div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">Verify when you get a chance</div>
+      <div style="font-family:'Lora',serif;font-style:italic;font-size:12.5px;color:var(--ink-m);line-height:1.7;">Check your inbox for a verification link. Everything works without it.</div>
       <button class="btn-ghost" style="margin-top:10px" onclick="resendVerification()">Resend verification email</button>
       <div id="verification-status" class="field-error" style="min-height:18px;margin-top:8px;"></div>
     </div>`;
 }
 
+function dismissVerifyBanner() {
+  sessionStorage.setItem('verify-banner-dismissed', '1');
+  var banners = document.querySelectorAll('#verify-banner, #verification-pending-inline');
+  banners.forEach(function(el) { el.remove(); });
+}
+
 function injectVerificationPendingNotice(screenId) {
   const el = document.getElementById(screenId);
   if (!el || !state || !state.user || state.user.emailVerified || el.querySelector('#verification-pending-inline')) return;
+  if (sessionStorage.getItem('verify-banner-dismissed')) return;
   el.insertAdjacentHTML('afterbegin', `<div id="verification-pending-inline" style="padding:16px 20px 0;">${verificationPendingHtml()}</div>`);
 }
 
@@ -1110,8 +1119,7 @@ async function register() {
     if (state && state.user && !state.user.emailVerified) {
       document.getElementById('landing').style.display = 'none';
       document.getElementById('app-area').style.display = 'block';
-      toast('You can continue while verification is pending.', 3600);
-      injectVerificationPendingNotice('s-scan-intro');
+      toast('Account created. Verify your email when you get a chance.', 3600);
       go('s-scan-intro');
       return;
     }
@@ -1224,13 +1232,14 @@ function renderEmailVerification() {
   el.innerHTML = `
     <div class="nav"><div class="nav-logo">mentally prepare</div></div>
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
-      <div style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.8;margin-bottom:14px;">Verify email</div>
-      <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;line-height:1;margin-bottom:16px;">Check your<br/><em style="font-style:italic;color:var(--rose-l);">inbox</em></h1>
-      <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;max-width:360px;">We sent a verification link to ${escapeHtml(email)}. You can continue now while verification is pending.</p>
-      <button class="btn" onclick="resendVerification()">Resend verification email</button>
-      <div id="verification-status" class="field-error" style="min-height:18px;margin-top:12px;text-align:center;"></div>
-      <button class="btn-ghost" style="margin-top:12px" onclick="loadState().then(routeToScreen)">I've verified</button>
-      <button class="btn-ghost" style="margin-top:12px" onclick="routeToScreen()">Continue for now</button>
+      <div style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.8;margin-bottom:14px;">You're in</div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;line-height:1;margin-bottom:16px;">Welcome to<br/><em style="font-style:italic;color:var(--rose-l);">Mentally Prepare</em></h1>
+      <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;max-width:360px;">We sent a verification link to ${escapeHtml(email)}. Verify when you get a chance — everything works without it.</p>
+      <button class="btn" onclick="routeToScreen()">Continue to your scan</button>
+      <div style="margin-top:16px;">
+        <button class="btn-ghost" onclick="resendVerification()">Resend verification email</button>
+        <div id="verification-status" class="field-error" style="min-height:18px;margin-top:8px;text-align:center;"></div>
+      </div>
     </div>`;
 }
 
@@ -1366,9 +1375,8 @@ async function submitScan() {
   if (scanAnswers.some(v => v === null)) { toast('Please answer every scan question before continuing.'); return; }
   calculateScoresLocal();
   try {
-    const { matched, verificationPending, message } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype, answers: scanAnswers });
+    const { matched } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype, answers: scanAnswers });
     await loadState();
-    if (verificationPending && message) toast(message, 4200);
     renderResult(matched);
     go('s-result');
   } catch (e) { toast(e.message); }

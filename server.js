@@ -838,7 +838,6 @@ const stmts = {
   findCandidates: db.prepare(`
     SELECT * FROM users
     WHERE archetype = ?
-      AND email_verified = 1
       AND COALESCE(college_normalized, LOWER(college)) != ?
       AND id != ?
       AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
@@ -1497,19 +1496,17 @@ const complementary = {
 function attemptMatch(userId) {
   const user = parseUser(stmts.getUserById.get(userId));
   if (!user || !user.archetype) return null;
-  if (!user.email_verified) return null;
   const targetType = complementary[user.archetype];
   if (!targetType) return null;
   const userCollegeKey = user.college_normalized || normalizeCollegeName(user.college);
 
   let candidates = stmts.findCandidates.all(targetType, userCollegeKey, userId).map(parseUser);
 
-  // Fallback if no complementary candidate is available: keep email verification and different-college rules hard.
+  // Fallback if no complementary candidate is available: keep different-college rule hard.
   if (candidates.length === 0) {
     const fallbackStmt = db.prepare(`
       SELECT * FROM users
       WHERE archetype IS NOT NULL
-        AND email_verified = 1
         AND COALESCE(college_normalized, LOWER(college)) != ?
         AND id != ?
         AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
@@ -1550,7 +1547,6 @@ function attemptMatch(userId) {
       SELECT * FROM users
       WHERE COALESCE(college_normalized, LOWER(college)) != ?
         AND id != ?
-        AND email_verified = 1
         AND archetype IS NOT NULL
         AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
     `).all(userCollegeKey, userId).map(parseUser);
@@ -2307,7 +2303,7 @@ function getAdminStats() {
     SELECT u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at
     FROM users u
     LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
-    WHERE m.id IS NULL AND u.archetype IS NOT NULL AND u.email_verified = 1
+    WHERE m.id IS NULL AND u.archetype IS NOT NULL
     ORDER BY u.created_at ASC
   `).all().map(user => ({
     ...user,

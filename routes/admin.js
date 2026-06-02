@@ -437,7 +437,7 @@ function registerAdminRoutes(app, deps) {
       if (!userA || !userB) return res.status(404).json({ error: 'Both users must exist' });
       if (userA.id === userB.id) return res.status(400).json({ error: 'Choose two different users' });
       if (!userA.archetype || !userB.archetype) return res.status(400).json({ error: 'Both users must complete the scan first' });
-      if (!userA.email_verified || !userB.email_verified) return res.status(400).json({ error: 'Both users must verify email before matching' });
+      // Email verification no longer required for matching
       // Admins can bypass college and archetype rules in a manual force match
       // if (userA.college.trim().toLowerCase() === userB.college.trim().toLowerCase()) {
       //   return res.status(400).json({ error: 'Users must be from different colleges' });
@@ -479,7 +479,7 @@ function registerAdminRoutes(app, deps) {
       const waiting = db.prepare(`
         SELECT u.id FROM users u
         LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
-        WHERE m.id IS NULL AND u.archetype IS NOT NULL AND u.email_verified = 1
+        WHERE m.id IS NULL AND u.archetype IS NOT NULL
         ORDER BY u.created_at ASC
       `).all();
 
