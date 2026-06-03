@@ -146,6 +146,7 @@ const registerWaitingEntryRoute = require('./routes/waiting-entry');
 const { registerTonightsQuestionRoutes } = require('./routes/tonights-question');
 const { registerPaymentRoutes } = require('./routes/payments');
 const { registerSilentRoutes, registerSilentAdminRoutes } = require('./routes/silent');
+const { registerWallRoutes } = require('./routes/wall');
 // ---------------------------------------------------------------
 const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
@@ -632,6 +633,71 @@ db.prepare(`
     PRIMARY KEY (line_id, user_id)
   )
 `).run();
+
+// ─── Anonymous Wall Schema ───
+if (process.env.WALL_ENABLED === 'true') {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS wall_questions (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      prompt     TEXT NOT NULL,
+      active     INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS wall_posts (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id  INTEGER NOT NULL REFERENCES wall_questions(id),
+      user_id      INTEGER NOT NULL REFERENCES users(id),
+      content      TEXT NOT NULL,
+      match_opt_in INTEGER NOT NULL DEFAULT 1,
+      is_seed      INTEGER NOT NULL DEFAULT 0,
+      flagged      INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      expire_at    TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS wall_reactions (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_id    INTEGER NOT NULL REFERENCES wall_posts(id),
+      user_id    INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (post_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS wall_match_requests (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_id      INTEGER NOT NULL REFERENCES wall_posts(id),
+      reactor_id   INTEGER NOT NULL,
+      poster_id    INTEGER NOT NULL,
+      status       TEXT NOT NULL DEFAULT 'pending',
+      support_line TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (post_id, reactor_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS wall_chat_messages (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      match_id   INTEGER NOT NULL REFERENCES matches(id),
+      sender_id  INTEGER NOT NULL REFERENCES users(id),
+      content    TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_wall_posts_question ON wall_posts(question_id, expire_at);
+  `);
+
+  // Wall-specific columns on matches
+  ensureColumn('matches', 'wall_origin', 'INTEGER DEFAULT 0');
+  ensureColumn('matches', 'wall_expires_at', 'TEXT');
+
+  // Seed a default question if none exists
+  const wallQCount = db.prepare('SELECT COUNT(*) as count FROM wall_questions').get();
+  if (wallQCount.count === 0) {
+    db.prepare('INSERT INTO wall_questions (prompt, active) VALUES (?, 1)').run(
+      'What are you carrying that no one knows about?'
+    );
+  }
+}
 
 const SERVER_START_MS = Date.now();
 const APP_VERSION = '1.2.3';
@@ -1816,6 +1882,18 @@ registerSilentAdminRoutes(app, {
   requireAdmin,
   db
 });
+
+// ─── Anonymous Wall Routes ───────────────────────────────────
+if (process.env.WALL_ENABLED === 'true') {
+  registerWallRoutes(app, {
+    apiLimiter,
+    requireAuth,
+    db,
+    scanForSafety,
+    HELPLINES,
+    trackEvent
+  });
+}
 
 // ─── Daily Note Generation ───────────────────────────────────
 const { getNote } = require('./lib/note-library');

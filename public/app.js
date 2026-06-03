@@ -2784,8 +2784,8 @@ function renderTabs(active) {
 function renderTQTabs(active) {
   var tabs = [
     { id:'today', ico:'T', lbl:'Today', fn:'renderWaiting();go(\'s-waiting\')' },
+    { id:'wall', ico:'W', lbl:'Wall', fn:'renderWall()' },
     { id:'silent', ico:'S', lbl:'Silent Room', fn:'showSilentFeed()' },
-    { id:'journey', ico:'J', lbl:'Journey', fn:'renderWaiting();go(\'s-waiting\')' },
     { id:'profile', ico:'P', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' }
   ];
   return '<div class="tabs app-bottom-tabs">' + tabs.map(function(t) {
@@ -4111,6 +4111,211 @@ async function submitSilentLine() {
     btn.textContent = 'Release';
     toast(e.message || 'Something did not load. Try once more.');
   }
+}
+
+// ═══════════════════════════════════════
+// ANONYMOUS WALL
+// ═══════════════════════════════════════
+
+var wallData = null;
+var wallComposerOpen = false;
+
+function wallRelativeTime(dateStr) {
+  var diff = Date.now() - new Date(dateStr + 'Z').getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  return Math.floor(hrs / 24) + 'd ago';
+}
+
+function wallCountdown() {
+  var now = new Date();
+  var istOffset = 5.5 * 60 * 60 * 1000;
+  var istNow = new Date(now.getTime() + istOffset);
+  var istMidnight = new Date(istNow);
+  istMidnight.setHours(24, 0, 0, 0);
+  var msLeft = istMidnight.getTime() - istNow.getTime();
+  var hrsLeft = Math.floor(msLeft / 3600000);
+  var minsLeft = Math.floor((msLeft % 3600000) / 60000);
+  return hrsLeft + 'h ' + minsLeft + 'm until the next question';
+}
+
+async function renderWall() {
+  var el = document.getElementById('s-wall');
+  if (!el) return;
+
+  el.innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.4);">Loading the wall...</div>';
+  go('s-wall');
+
+  try {
+    wallData = await api('GET', '/wall/feed');
+  } catch (e) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:rgba(255,255,255,.4);">Could not load the wall right now.</div>' + renderTabs('wall');
+    return;
+  }
+
+  var q = wallData.question;
+  var posts = wallData.posts || [];
+  var hasPosted = posts.some(function(p) { return p.is_mine; });
+
+  var composerHTML = '';
+  if (!hasPosted) {
+    if (!wallComposerOpen) {
+      composerHTML = '<button class="wall-open-composer" onclick="wallOpenComposer()">Share what you\'re carrying tonight...</button>';
+    } else {
+      composerHTML = '<form class="wall-composer" onsubmit="wallSubmitPost(event);return false;">' +
+        '<textarea id="wallDraft" placeholder="Say it here. No one sees your name." maxlength="500" oninput="wallUpdateCount()"></textarea>' +
+        '<div class="wall-composer-footer">' +
+          '<span id="wallCharCount">0/500</span>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<button type="button" class="btn-ghost" style="min-height:36px;padding:8px 14px;" onclick="wallCloseComposer()">Cancel</button>' +
+            '<button type="submit" class="btn-primary" id="wallSubmitBtn" style="min-height:36px;padding:8px 14px;" disabled>Post anonymously</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="wallError" style="display:none;" class="wall-error"></div>' +
+      '</form>';
+    }
+  }
+
+  var feedHTML = '';
+  if (posts.length === 0) {
+    feedHTML = '<div class="wall-empty">The wall is quiet tonight.<br><em>Be the first to share.</em></div>';
+  } else {
+    feedHTML = posts.map(function(post) {
+      var timeStr = wallRelativeTime(post.created_at);
+      var reactBtn = '';
+      if (!post.is_mine) {
+        var cls = post.reacted ? 'wall-react-btn reacted' : 'wall-react-btn';
+        var dis = post.reacted ? ' disabled' : '';
+        var label = post.me_too_count > 0
+          ? "You're one of " + post.me_too_count + " who've been here"
+          : "I've felt this too";
+        reactBtn = '<button class="' + cls + '" onclick="wallReact(' + post.id + ', this)"' + dis + '>' + label + '</button>';
+      } else if (post.me_too_count > 0) {
+        var word = post.me_too_count === 1 ? 'person has' : 'people have';
+        reactBtn = '<span class="wall-solidarity">' + post.me_too_count + ' ' + word + ' been here too</span>';
+      }
+      return '<div class="wall-card">' +
+        '<p class="wall-card-text">' + escapeHtml(post.content) + '</p>' +
+        '<div class="wall-card-footer">' +
+          '<time>' + timeStr + '</time>' +
+          reactBtn +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  el.innerHTML =
+    '<div class="wall-header">' +
+      '<div class="wall-eyebrow">Tonight\'s Question</div>' +
+      '<div class="wall-question">' + escapeHtml(q ? q.prompt : 'No question tonight') + '</div>' +
+      '<div class="wall-countdown">' + wallCountdown() + '</div>' +
+      '<button class="wall-support-link" onclick="wallShowCrisis()">Need to talk to someone now?</button>' +
+    '</div>' +
+    composerHTML +
+    '<div class="wall-feed">' + feedHTML + '</div>' +
+    renderTabs('wall');
+}
+
+function wallOpenComposer() {
+  wallComposerOpen = true;
+  renderWall();
+}
+
+function wallCloseComposer() {
+  wallComposerOpen = false;
+  renderWall();
+}
+
+function wallUpdateCount() {
+  var draft = document.getElementById('wallDraft');
+  var count = document.getElementById('wallCharCount');
+  var btn = document.getElementById('wallSubmitBtn');
+  if (!draft) return;
+  var len = draft.value.trim().length;
+  if (count) count.textContent = draft.value.length + '/500';
+  if (btn) btn.disabled = len === 0;
+}
+
+async function wallSubmitPost(event) {
+  if (event) event.preventDefault();
+  var draft = document.getElementById('wallDraft');
+  var errEl = document.getElementById('wallError');
+  var btn = document.getElementById('wallSubmitBtn');
+  if (!draft || !draft.value.trim()) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
+  if (errEl) errEl.style.display = 'none';
+
+  try {
+    var data = await api('POST', '/wall/post', { content: draft.value.trim(), match_opt_in: false });
+    if (data.crisis) {
+      wallShowCrisis(data.message, true);
+      return;
+    }
+    wallComposerOpen = false;
+    renderWall();
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Post anonymously'; }
+  }
+}
+
+async function wallReact(postId, btn) {
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  try {
+    var data = await api('POST', '/wall/react', { post_id: postId });
+    btn.classList.add('reacted');
+    btn.textContent = "You're one of " + data.me_too_count + " who've been here";
+  } catch (e) {
+    btn.disabled = false;
+  }
+}
+
+function wallShowCrisis(message, held) {
+  var el = document.getElementById('s-wall-crisis');
+  if (!el) return;
+
+  var headingText = held
+    ? "What you wrote sounds like it comes from a really heavy place. We didn't post it publicly — not as a penalty, but because we want to make sure you're okay first."
+    : '';
+  var crisisMsg = message || "If things feel like too much right now, you don't have to sit with it alone. These people are here, any time:";
+
+  el.innerHTML =
+    '<div class="wall-crisis-wrap">' +
+      '<div class="wall-eyebrow">Support</div>' +
+      '<div class="wall-crisis-title">You\'re not alone</div>' +
+      (headingText ? '<p class="wall-crisis-held">' + headingText + '</p>' : '') +
+      '<p class="wall-crisis-msg">' + escapeHtml(crisisMsg) + '</p>' +
+      '<div class="wall-crisis-helplines">' +
+        '<div class="wall-crisis-helpline primary">' +
+          '<strong>Tele MANAS (Govt. of India)</strong>' +
+          '<span class="wall-crisis-number">14416</span>' +
+          '<span class="wall-crisis-alt">or 1800-89-14416</span>' +
+          '<span class="wall-crisis-hours">24×7 · 20 languages</span>' +
+        '</div>' +
+        '<div class="wall-crisis-helpline">' +
+          '<strong>Vandrevala Foundation</strong>' +
+          '<span class="wall-crisis-number">1860-266-2345</span>' +
+          '<span class="wall-crisis-hours">24×7</span>' +
+        '</div>' +
+        '<div class="wall-crisis-helpline">' +
+          '<strong>AASRA</strong>' +
+          '<span class="wall-crisis-number">+91 98204 66726</span>' +
+          '<span class="wall-crisis-hours">24×7</span>' +
+        '</div>' +
+        '<div class="wall-crisis-helpline">' +
+          '<strong>iCall (TISS)</strong>' +
+          '<span class="wall-crisis-number">022-2552 1111</span>' +
+          '<span class="wall-crisis-hours">Mon–Sat, 8am–10pm</span>' +
+        '</div>' +
+      '</div>' +
+      '<button class="btn-ghost" style="margin-top:16px;" onclick="renderWall()">Back to the wall</button>' +
+    '</div>';
+  go('s-wall-crisis');
 }
 
 function showSilentMine() {

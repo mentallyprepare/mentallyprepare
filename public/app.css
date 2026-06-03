@@ -1924,3 +1924,48 @@ body.app-active #app-area .tabs.app-bottom-tabs {
   font-family:Arial,sans-serif;
   flex:none;
 }
+
+/* ── Anonymous Wall ── */
+.wall-header{padding:28px 24px 0;display:grid;gap:6px;}
+.wall-eyebrow{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rose);opacity:.7;}
+.wall-question{font-family:'Playfair Display',serif;font-size:26px;font-weight:400;line-height:1.1;color:#fff;}
+.wall-countdown{font-size:12px;color:rgba(248,242,255,.35);margin-top:2px;}
+.wall-support-link{background:none;border:0;color:rgba(248,242,255,.5);font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px 0;text-align:left;margin-top:4px;}
+.wall-support-link:hover{color:var(--rose);}
+
+.wall-open-composer{display:block;width:calc(100% - 48px);margin:16px 24px 0;background:rgba(248,242,255,.04);border:1px solid rgba(248,242,255,.08);border-radius:14px;color:rgba(248,242,255,.35);font-size:14px;text-align:left;padding:14px 16px;cursor:pointer;}
+.wall-open-composer:hover{border-color:rgba(248,242,255,.15);}
+
+.wall-composer{margin:16px 24px 0;background:rgba(248,242,255,.04);border:1px solid rgba(248,242,255,.1);border-radius:14px;padding:14px;}
+.wall-composer textarea{width:100%;min-height:120px;background:transparent;border:0;color:#fff;font-size:15px;line-height:1.7;resize:vertical;outline:none;font-family:'Playfair Display',serif;}
+.wall-composer textarea::placeholder{color:rgba(248,242,255,.3);}
+.wall-composer-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+.wall-composer-footer span{font-size:11px;color:rgba(248,242,255,.3);}
+.wall-error{background:rgba(212,133,154,.12);border:1px solid rgba(212,133,154,.25);border-radius:10px;color:var(--rose);font-size:13px;padding:10px 12px;margin-top:8px;}
+
+.wall-feed{padding:16px 24px 100px;display:grid;gap:10px;}
+.wall-empty{text-align:center;color:rgba(248,242,255,.35);padding:32px 0;font-size:14px;line-height:1.7;}
+.wall-empty em{font-style:italic;opacity:.7;}
+
+.wall-card{background:rgba(248,242,255,.04);border:1px solid rgba(248,242,255,.07);border-radius:14px;padding:14px 16px;display:grid;gap:10px;}
+.wall-card-text{color:rgba(248,242,255,.85);font-size:14.5px;line-height:1.7;white-space:pre-wrap;}
+.wall-card-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.wall-card-footer time{color:rgba(248,242,255,.3);font-size:11px;font-weight:700;flex-shrink:0;}
+
+.wall-react-btn{background:rgba(248,242,255,.06);border:1px solid rgba(248,242,255,.1);border-radius:999px;color:rgba(248,242,255,.55);font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;white-space:nowrap;}
+.wall-react-btn:hover:not(:disabled){background:rgba(248,242,255,.1);border-color:rgba(248,242,255,.18);}
+.wall-react-btn.reacted{background:rgba(212,133,154,.1);border-color:rgba(212,133,154,.25);color:var(--rose);cursor:default;}
+.wall-solidarity{color:var(--rose);opacity:.65;font-size:12px;font-weight:700;}
+
+/* Wall Crisis Screen */
+.wall-crisis-wrap{padding:28px 24px 100px;max-width:480px;}
+.wall-crisis-title{font-family:'Playfair Display',serif;font-size:28px;font-weight:400;line-height:1.1;color:#fff;margin:8px 0 16px;}
+.wall-crisis-held{color:rgba(248,242,255,.65);font-size:14px;line-height:1.7;margin-bottom:16px;}
+.wall-crisis-msg{color:rgba(248,242,255,.55);font-size:14.5px;line-height:1.65;margin-bottom:20px;}
+.wall-crisis-helplines{display:grid;gap:10px;}
+.wall-crisis-helpline{background:rgba(248,242,255,.04);border:1px solid rgba(248,242,255,.08);border-radius:14px;padding:14px;display:grid;gap:3px;}
+.wall-crisis-helpline.primary{border-color:rgba(248,242,255,.15);background:rgba(248,242,255,.06);}
+.wall-crisis-helpline strong{color:#fff;font-size:13.5px;}
+.wall-crisis-number{color:var(--rose);font-size:17px;font-weight:800;}
+.wall-crisis-alt{color:rgba(248,242,255,.4);font-size:12px;}
+.wall-crisis-hours{color:rgba(248,242,255,.35);font-size:11.5px;}
