@@ -141,7 +141,6 @@ function registerAuthRoutes(app, deps) {
   const { sendEmail } = require('../lib/email');
   const BASE_URL = process.env.APP_BASE_URL || 'https://mymentallyprepare.com';
 
-  const resetTokens = new Map();
   const signupLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 8, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many signup attempts. Please try again later.' }, validate: { xForwardedForHeader: false } });
   const passwordResetLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many password reset attempts. Please try again later.' }, validate: { xForwardedForHeader: false } });
 
@@ -439,8 +438,9 @@ function registerAuthRoutes(app, deps) {
       const user = stmts.getUserByEmail.get(email);
       if (!user) return res.json({ ok: true, message: 'If that email exists, a reset link has been sent.' });
 
+      stmts.deleteExpiredPasswordResetTokens.run(Date.now());
       const token = crypto.randomBytes(32).toString('hex');
-      resetTokens.set(token, { userId: user.id, expires: Date.now() + 15 * 60 * 1000 });
+      stmts.insertPasswordResetToken.run(token, user.id, Date.now() + 15 * 60 * 1000, Date.now());
       const resetLink = `${BASE_URL.replace(/\/$/, '')}/app?screen=s-reset&code=${token}`;
       const emailHtml = `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333;">
@@ -466,18 +466,17 @@ function registerAuthRoutes(app, deps) {
       if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required' });
       if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
 
-      const entry = resetTokens.get(token);
-      if (!entry || entry.expires < Date.now()) {
-        if (token) resetTokens.delete(token);
+      const entry = stmts.getValidPasswordResetToken.get(token, Date.now());
+      if (!entry) {
         return res.status(400).json({ error: 'Invalid or expired reset token' });
       }
 
-      const user = stmts.getUserById.get(entry.userId);
+      const user = stmts.getUserById.get(entry.user_id);
       if (!user) return res.status(400).json({ error: 'User not found' });
 
       const hash = await bcrypt.hash(newPassword, 12);
       stmts.updateUserPassword.run(hash, user.id);
-      resetTokens.delete(token);
+      stmts.markPasswordResetTokenUsed.run(Date.now(), token);
       res.json({ ok: true });
     } catch (e) {
       console.error('Reset password error:', e);

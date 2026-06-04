@@ -370,6 +370,14 @@ db.exec(`
     updated_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS reveals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL REFERENCES matches(id),
@@ -859,6 +867,11 @@ const stmts = {
   updateUserScan: db.prepare('UPDATE users SET archetype = ?, scores = ? WHERE id = ?'),
   updateUserActivity: db.prepare('UPDATE users SET last_active_date = ? WHERE id = ?'),
   updateUserPassword: db.prepare('UPDATE users SET password = ? WHERE id = ?'),
+  insertPasswordResetToken: db.prepare('INSERT INTO password_reset_tokens (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)'),
+  getValidPasswordResetToken: db.prepare('SELECT * FROM password_reset_tokens WHERE token = ? AND used_at IS NULL AND expires_at > ?'),
+  markPasswordResetTokenUsed: db.prepare('UPDATE password_reset_tokens SET used_at = ? WHERE token = ?'),
+  deleteExpiredPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE expires_at <= ?'),
+  deleteUserPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?'),
   verifyUserEmail: db.prepare('UPDATE users SET email_verified = 1, email_verified_at = ?, email_verification_token = NULL WHERE id = ?'),
   updateVerificationToken: db.prepare('UPDATE users SET email_verification_token = ?, email_verification_sent_at = ? WHERE id = ?'),
   updateUserConsent: db.prepare('UPDATE users SET consent_given = ?, consent_withdrawn_at = ? WHERE id = ?'),
@@ -1753,6 +1766,7 @@ const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
   );
   stmts.deleteUserEntries.run(userId);
   stmts.deleteUserWaitingEntries.run(userId);
+  try { stmts.deleteUserPasswordResetTokens.run(userId); } catch {}
   stmts.deleteUserReveals.run(userId);
   stmts.deleteUserComments.run(userId);
   stmts.deleteUserReports.run(userId);
