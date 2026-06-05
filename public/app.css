@@ -1351,8 +1351,8 @@ textarea,#journal-draft,#tq-draft,.silent-textarea{font-family:var(--font-displa
 .writing-tip-ico{display:none}
 .sealed-card,.entry{margin-left:24px;margin-right:24px}
 .tabs{background:rgba(8,5,15,.94);border-top-color:rgba(248,242,255,.09)}
-.tab-ico{font-size:0}.tab-ico::before{content:'✦';font-size:15px;color:var(--rose-l)}
-.tab-lbl{font-size:9px;letter-spacing:.12em}
+.tab-ico::before{content:none}
+.tab-lbl{font-size:10px;letter-spacing:.08em}
 .silent-line-block{border-bottom:1px solid rgba(248,242,255,.07);padding:38px 28px}
 .silent-line-text{font-size:clamp(24px,7vw,38px)!important;line-height:1.22!important;color:rgba(248,242,255,.86)}
 .silent-textarea{font-size:clamp(30px,9vw,46px)!important}

@@ -1715,17 +1715,6 @@ function renderTQSealed(data) {
   }, 15000);
 }
 
-function renderTQTabs(active) {
-  var tabs = [
-    { id:'tonight', ico:'✍️', lbl:'Tonight', fn:'renderWaiting();go(\'s-waiting\')' },
-    { id:'silent',  ico:'✦',  lbl:'Room',    fn:'showSilentFeed()' },
-    { id:'profile', ico:'🌑', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' }
-  ];
-  return '<div class="tabs">' + tabs.map(function(t) {
-    return '<button class="tab' + (t.id === active ? ' on' : '') + '" type="button" onclick="' + t.fn + '" aria-pressed="' + (t.id === active ? 'true' : 'false') + '"><div class="tab-ico">' + t.ico + '</div><div class="tab-lbl">' + t.lbl + '</div></button>';
-  }).join('') + '</div>';
-}
-
 async function devSetup() {
   try {
     await api('POST', '/dev/setup');
@@ -1839,7 +1828,6 @@ function renderJournal() {
         <div class="write-date">${dayNames[today.getDay()]}, ${today.getDate()} ${monthNames[today.getMonth()]} · Day ${day}</div>
         <textarea id="journal-draft" placeholder="${state.specialDay && state.specialDay.type === 'unsent_letter' ? 'Dear stranger, one thing I can say is...' : 'Write one small thing tonight...'}">${escapeHtml(draft)}</textarea>
         <div class="write-ft"><div class="ww" id="ww">${wordCount(draft)} words</div><div id="word-milestone"></div></div>
-        <button class="btn-ghost" id="journalReportBtn" type="button" style="margin-top:8px;font-size:12px;float:right;">Report something unsafe</button>
       </div>
     </div>
 
@@ -1856,8 +1844,6 @@ function renderJournal() {
   });
   const journalDraft = document.getElementById('journal-draft');
   if (journalDraft) journalDraft.addEventListener('input', function() { updateWordCount(journalDraft); });
-  const journalReportBtn = document.getElementById('journalReportBtn');
-  if (journalReportBtn) journalReportBtn.addEventListener('click', function() { reportEntry(); });
   const sealEntryBtn = document.getElementById('sealEntryBtn');
   if (sealEntryBtn) sealEntryBtn.addEventListener('click', sealEntry);
   const saveDraftBtn = document.getElementById('saveDraftBtn');
@@ -2001,9 +1987,9 @@ function renderSealed() {
     ? (ps.unsealMessage || 'Nothing has to be solved right now.')
     : 'You showed up today. That matters.';
   const partnerLine = ps.hasPartner
-    ? (ps.partnerHasWrittenToday ? 'Partner wrote today: yes' : 'Partner wrote today: no')
+    ? (ps.partnerHasWrittenToday ? "They wrote tonight." : "They haven't written yet. You can write first, they'll get it at midnight.")
     : 'Waiting for match';
-  const nextLine = ps.nextUnsealAt ? ('Next note opens at: ' + formatUnsealAt(ps.nextUnsealAt)) : 'Come back tomorrow for the next small step';
+  const nextLine = ps.nextUnsealAt ? ("Their next note unseals at " + formatUnsealAt(ps.nextUnsealAt)) : "Come back tomorrow for the next small step";
 
   document.getElementById('s-sealed').innerHTML = `
     <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
@@ -2056,31 +2042,6 @@ function renderSealed() {
       buildUnsealingSlot(prevDayEntry, currentDay - 1, state.match.partner.archetype);
     }
   }
-}
-
-function renderPast() {
-  if (!state || !state.match) return;
-  const day = state.match.day;
-  const partnerMap = {};
-  (state.partnerEntries || []).forEach(e => { partnerMap[e.day] = true; });
-
-  document.getElementById('s-past').innerHTML = `
-    <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
-    <div class="past-header">
-      <div class="eyebrow" style="margin-bottom:8px;">Your entries</div>
-      <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:400;line-height:1;">${state.entries.length} nights.<br/><em style="font-style:italic;color:var(--rose-l);">${state.entries.length} honest things.</em></div>
-    </div>
-    <div class="past-list">
-      ${state.entries.map((e,i) => `<button class="entry reveal-on-scroll" type="button" onclick="showEntryDetail(${i})">
-        <div class="entry-top"><div class="entry-day">Day ${e.day} · ${e.mood}</div>${partnerMap[e.day] ? '<div class="entry-both">✓ both wrote</div>' : ''}</div>
-        <div class="entry-txt">${escapeHtml(e.text)}</div>
-        ${i===0 ? '<div class="entry-hl">✦ Most recent entry</div>' : ''}
-      </button>`).join('')}
-    </div>
-    ${state.entries.length ? `<div style="padding:16px 24px 0;"><button class="export-btn" onclick="exportEntries()"><span>📄</span> Export all entries as text</button></div>` : ''}
-    <div style="height:32px;"></div>
-    ${renderTabs('entries')}`;
-  initScrollReveal('#s-past');
 }
 
 function formatEntryDate(dateStr) {
@@ -2458,9 +2419,9 @@ function partnerStatusHtml(ps, compact) {
   const copy = ps.friendlyMessage || ps.unsealMessage || 'You can keep writing while the room settles.';
   const visibleCount = ps.partnerEntriesVisible || 0;
   const totalCount = ps.partnerTotalEntries || ps.partnerEntryCount || 0;
-  const meta = ps.hasPartner ? `${visibleCount} opened of ${totalCount} note${totalCount === 1 ? '' : 's'}` : 'waiting room';
-  const wroteToday = ps.hasPartner ? `<span>Partner wrote today: ${ps.partnerHasWrittenToday ? 'yes' : 'no'}</span>` : '';
-  const nextOpen = ps.nextUnsealAt ? `<span>Next opens: ${escapeHtml(formatUnsealAt(ps.nextUnsealAt))}</span>` : '<span>Opens after midnight IST</span>';
+  const meta = ps.hasPartner ? (totalCount === 0 ? 'Your first notes open after midnight' : `${visibleCount} of ${totalCount} note${totalCount === 1 ? '' : 's'} unsealed`) : 'waiting room';
+  const wroteToday = ps.hasPartner ? `<span>${ps.partnerHasWrittenToday ? 'They wrote tonight.' : "They haven't written yet. You can write first, they'll get it at midnight."}</span>` : '';
+  const nextOpen = ps.nextUnsealAt ? `<span>Their next note unseals at ${escapeHtml(formatUnsealAt(ps.nextUnsealAt))}</span>` : '<span>Unseals after midnight IST</span>';
   const switchActions = ps.canSwitch ? `
     <div class="partner-status-actions">
       <button class="prompt-small-btn ghost" type="button" data-keep-waiting>Keep waiting</button>
@@ -2474,7 +2435,7 @@ function partnerStatusHtml(ps, compact) {
       <span>${escapeHtml(meta)}</span>
       ${wroteToday}
       ${nextOpen}
-      <span>${ps.switchesRemaining || 0} quiet switch${ps.switchesRemaining === 1 ? '' : 'es'} left</span>
+      <span title="You can quietly switch to a new anonymous partner without them knowing.">${ps.switchesRemaining || 0} quiet rematch${ps.switchesRemaining === 1 ? "" : "es"} left</span>
     </div>
     ${switchActions}
   </div>`;
@@ -2766,21 +2727,6 @@ function renderAbout() {
 // ═══════════════════════════════════════
 // UTILITIES
 // ═══════════════════════════════════════
-function renderTabs(active) {
-  // Use different tabs for waiting vs matched users
-  if (!state || !state.match) return renderTQTabs(active);
-  const tabs = [
-    { id:'tonight', ico:'✍️', lbl:'Tonight', fn:'goToJournal()' },
-    { id:'entries', ico:'🌙', lbl:'Entries', fn:'renderPast();go(\'s-past\')' },
-    { id:'silent',  ico:'✦',  lbl:'Room',    fn:'showSilentFeed()' },
-    { id:'partner', ico:'🔒', lbl:'Partner', fn:'renderSealed();go(\'s-sealed\')' },
-    { id:'profile', ico:'🌑', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' },
-  ];
-  return `<div class="tabs">${tabs.map(t =>
-    `<button class="tab${t.id===active?' on':''}" type="button" onclick="${t.fn}" aria-pressed="${t.id===active?'true':'false'}"><div class="tab-ico">${t.ico}</div><div class="tab-lbl">${t.lbl}</div></button>`
-  ).join('')}</div>`;
-}
-
 function renderTQTabs(active) {
   var tabs = [
     { id:'today', ico:'T', lbl:'Today', fn:'renderWaiting();go(\'s-waiting\')' },
@@ -3286,27 +3232,6 @@ function urlBase64ToUint8Array(base64String) {
 }
 // NOTIFICATIONS
 // ═══════════════════════════════════════
-function toggleNotifications() {
-  if (!('Notification' in window)) { toast('Notifications not supported in this browser'); return; }
-  if (Notification.permission === 'granted') {
-    if ('serviceWorker' in navigator) subscribeToPush();
-    toast('Notifications are already enabled ✓');
-    return;
-  }
-  if (Notification.permission === 'denied') {
-    toast('Notifications blocked — enable them in browser settings');
-    return;
-  }
-  Notification.requestPermission().then(function(result) {
-    if (result === 'granted') {
-      if ('serviceWorker' in navigator) subscribeToPush();
-      toast('Notifications enabled! ✦');
-    } else {
-      toast('Notifications were declined');
-    }
-    renderSettings();
-  });
-}
 
 // ═══════════════════════════════════════
 // PRIVACY — Data Download & Account Delete
