@@ -495,7 +495,7 @@ let scanIndex = 0;
 let scanAnswers = Array(questions.length).fill(null);
 let localScores = {};
 let localArchetype = '';
-let currentMood = '🌓';
+let currentMood = null;
 let matchPollTimer = null;
 let countdownTimer = null;
 let selectedPrompt = null;
@@ -1927,6 +1927,7 @@ async function sealEntry() {
   const area = document.getElementById('journal-draft');
   const text = area ? area.value.trim() : '';
   if (!text) { toast('A few words are enough before sealing.'); return; }
+  if (!currentMood) { toast('Pick a mood before sealing — even a rough one.'); return; }
   let piiConfirmed = false;
   if (detectClientPii(text)) {
     piiConfirmed = confirm('This may reveal who you are. Please remove personal details to keep this space anonymous. Continue only if you understand the risk.');
@@ -1936,7 +1937,7 @@ async function sealEntry() {
   try {
     const result = await api('POST', '/entry', { text, mood: currentMood, selectedPrompt: selectedPrompt || null, piiConfirmed });
     sessionStorage.removeItem('mp-draft');
-    currentMood = '🌓';
+    currentMood = null;
     await loadState();
 
     // Safety check
