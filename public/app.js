@@ -1749,6 +1749,14 @@ function renderJournal() {
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const today = new Date();
 
+  // Reveal countdown + partner archetype, surfaced at top of Today
+  const nightsLeft = 21 - day;
+  const revealHeaderHTML = `
+    <div class="reveal-strip">
+      ${matchArch ? `<div class="reveal-partner">Your partner: <span>${matchArch.emoji} ${escapeHtml(matchArch.name)}</span></div>` : ''}
+      <div class="reveal-count">${nightsLeft > 0 ? `${nightsLeft} night${nightsLeft === 1 ? '' : 's'} until the reveal.` : 'Tonight is the reveal.'}</div>
+    </div>`;
+
   // Special day banner
   let specialDayHTML = '';
   if (state.specialDay) {
@@ -1789,6 +1797,7 @@ function renderJournal() {
   document.getElementById('s-journal').innerHTML = `
     <div class="nav"><div class="nav-logo">mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
     <div style="padding:16px 24px 0;"><div class="greeting">${getGreeting(state.user.name)}</div></div>
+    ${revealHeaderHTML}
     ${specialDayHTML}
     ${nudgesHTML}
     ${partnerInactiveCard}
