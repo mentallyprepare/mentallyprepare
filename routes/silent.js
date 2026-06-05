@@ -39,11 +39,11 @@ function registerSilentRoutes(app, deps) {
       LIMIT ?
     `),
 
-    // Presence: distinct writers today
+    // Presence: distinct writers today (IST day boundary)
     getPresenceCount: db.prepare(`
       SELECT COUNT(DISTINCT user_id) as c FROM silent_lines
       WHERE status = 'approved'
-        AND created_at >= datetime('now', 'start of day')
+        AND created_at >= datetime('now', '+5 hours', '+30 minutes', 'start of day', '-5 hours', '-30 minutes')
         AND deleted_at IS NULL
     `),
 
