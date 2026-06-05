@@ -1134,7 +1134,8 @@ function trackEvent(userId, eventName, metadata = {}) {
       'signup_started', 'signup_completed', 'email_verified', 'scan_started', 'scan_completed',
       'matched', 'day_1_written', 'day_2_returned', 'missed_day', 'report_clicked',
       'block_clicked', 'rematch_requested', 'reveal_choice_submitted', 'account_deleted',
-      'crisis_keyword_triggered', 'signup_error', 'email_send_failed', 'login'
+      'crisis_keyword_triggered', 'signup_error', 'email_send_failed', 'login',
+      'day_written', 'mutual_reveal'
     ]);
     if (!allowed.has(eventName)) return;
     stmts.insertAnalyticsEvent.run(userId || null, eventName, JSON.stringify(metadata || {}));

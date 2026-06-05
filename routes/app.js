@@ -669,6 +669,7 @@ function registerAppRoutes(app, deps) {
       const prompt = cleanSelectedPrompt(selectedPrompt) || prompts[(day - 1) % prompts.length];
       if (trackEvent && day === 1) trackEvent(userId, 'day_1_written', { day });
       if (trackEvent && day === 2) trackEvent(userId, 'day_2_returned', { day });
+      if (trackEvent) trackEvent(userId, 'day_written', { day });
       stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
 
       res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: safety.crisis ? HELPLINES : null } });
@@ -877,6 +878,14 @@ function registerAppRoutes(app, deps) {
       if (existing) return res.status(409).json({ error: 'Reveal choice is already locked.' });
       stmts.insertRevealChoice.run(match.id, userId, choice, new Date().toISOString());
       if (trackEvent) trackEvent(userId, 'reveal_choice_submitted', { choice });
+      const REVEAL_YES = ['first_name', 'name_college', 'contact_details'];
+      if (trackEvent && REVEAL_YES.includes(choice)) {
+        const partnerId = getPartnerId(match, userId);
+        const partnerReveal = stmts.getReveal.get(match.id, partnerId);
+        if (partnerReveal && REVEAL_YES.includes(partnerReveal.choice)) {
+          trackEvent(userId, 'mutual_reveal', { matchId: match.id });
+        }
+      }
       res.json({ ok: true });
     } catch (e) {
       console.error('Reveal error:', e);
