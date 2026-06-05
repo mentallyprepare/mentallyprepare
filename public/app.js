@@ -3809,10 +3809,15 @@ async function showSilentFeed() {
   // Load presence count
   api('GET', '/silent/presence').then(function(d) {
     var el = document.getElementById('silentPresenceText');
-    if (el) el.textContent = (d.count || 0) + ' people have written here tonight';
+    if (el) {
+      var n = d.count || 0;
+      el.textContent = n === 0
+        ? 'Quiet here so far. Add the first line of the day.'
+        : n + (n === 1 ? ' person has' : ' people have') + ' written here today';
+    }
   }).catch(function() {
     var el = document.getElementById('silentPresenceText');
-    if (el) el.textContent = 'A few people here tonight';
+    if (el) el.textContent = 'Add a line to the room.';
   });
 
   // Load rate limit state from mine endpoint
