@@ -90,6 +90,17 @@ function getDataDirCandidates(preferredDir) {
 }
 
 function initializeDatabase(preferredDir) {
+  // Allow explicit DB_PATH override (e.g. for test isolation)
+  if (process.env.DB_PATH) {
+    const explicitPath = process.env.DB_PATH;
+    const explicitDir = path.dirname(explicitPath);
+    if (!fs.existsSync(explicitDir)) fs.mkdirSync(explicitDir, { recursive: true });
+    const db = new Database(explicitPath);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
+    console.log('Using explicit DB_PATH:', explicitPath);
+    return { DATA_DIR: explicitDir, DB_PATH: explicitPath, db };
+  }
   let lastError = null;
   const candidates = getDataDirCandidates(preferredDir);
   for (const candidate of candidates) {
@@ -2347,8 +2358,16 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
 
 function requireAdmin(req, res, next) {
   const adminPassword = process.env.ADMIN_PASSWORD;
-  const pw = req.headers['x-admin-password'] || req.headers['x-admin-key'] || req.query.key;
-  if (!adminPassword || !pw || pw !== adminPassword) {
+  const rawHeader = req.headers['x-admin-password'] || req.headers['x-admin-key'];
+  const supplied = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+  if (!adminPassword || typeof supplied !== 'string' || !supplied) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  // Timing-safe comparison: hash both to fixed-length buffers so timingSafeEqual
+  // never throws on length mismatch.
+  const expectedHash = crypto.createHash('sha256').update(String(adminPassword)).digest();
+  const suppliedHash = crypto.createHash('sha256').update(supplied).digest();
+  if (!crypto.timingSafeEqual(expectedHash, suppliedHash)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
