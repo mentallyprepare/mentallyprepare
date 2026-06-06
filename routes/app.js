@@ -626,15 +626,11 @@ function registerAppRoutes(app, deps) {
       if (existingMatch) return res.status(400).json({ error: 'Cannot retake scan after matching' });
 
       stmts.updateUserScan.run(archetype, JSON.stringify(scores), userId);
-      const matchId = user.email_verified ? attemptMatch(userId) : null;
+      const matchId = attemptMatch(userId);
       if (trackEvent) trackEvent(userId, 'scan_completed', { archetype });
       res.json({
         ok: true,
-        matched: !!matchId,
-        verificationPending: !user.email_verified,
-        message: user.email_verified
-          ? undefined
-          : 'Verification pending. You can write while we wait, and matching will start after your email is verified.'
+        matched: !!matchId
       });
     } catch (e) {
       console.error('Scan error:', e);
@@ -684,7 +680,7 @@ function registerAppRoutes(app, deps) {
       const userId = req.session.userId;
       const user = stmts.getUserById.get(userId);
       let match = stmts.getMatch.get(userId, userId);
-      if (!match && user.email_verified && user.archetype) {
+      if (!match && user.archetype) {
         attemptMatch(userId);
         match = stmts.getMatch.get(userId, userId);
       }
@@ -810,7 +806,7 @@ function registerAppRoutes(app, deps) {
       const { day, reason, category } = req.body;
       if (!reason || !reason.trim()) return res.status(400).json({ error: 'Reason required' });
       let match = stmts.getMatch.get(userId, userId);
-      if (!match && user.email_verified && user.archetype) {
+      if (!match && user.archetype) {
         attemptMatch(userId);
         match = stmts.getMatch.get(userId, userId);
       }
