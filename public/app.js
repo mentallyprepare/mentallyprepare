@@ -790,11 +790,7 @@ function typingDots() { return '<div class="typing-dots"><span></span><span></sp
 // VIEW SWITCHING
 // ═══════════════════════════════════════
 function startApp() {
-  const landing = document.getElementById('landing');
-  const appArea = document.getElementById('app-area');
-  if (landing) landing.style.display = 'none';
-  if (appArea) appArea.style.display = 'block';
-  document.body.classList.add('app-active');
+  showAppShell();
   document.getElementById('navCta').textContent = '← Back to Home';
   document.getElementById('navCta').onclick = function() { showLanding(); };
   // Close mobile menu if open
@@ -807,7 +803,25 @@ function startApp() {
   setTimeout(showInstallPromptIfUseful, 900);
 }
 
-function showLanding() {
+function showAppShell() {
+  const landing = document.getElementById('landing');
+  const appArea = document.getElementById('app-area');
+  const active = document.querySelector('.screen.active');
+  if (landing) landing.style.display = 'none';
+  if (appArea) appArea.style.display = 'block';
+  document.body.classList.add('app-active');
+  setMotionMode(modeForScreen(active && active.id));
+}
+
+function getLandingTargetFromHash(hash) {
+  const value = String(hash || window.location.hash || '').replace(/^#/, '');
+  if (!value) return '';
+  if (value === 'how' || value === 'l-archetypes' || value === 'l-stories' || value === 'l-problem') return value;
+  if (value === 'stories') return 'l-stories';
+  return '';
+}
+
+function showLanding(targetId) {
   const landing = document.getElementById('landing');
   const appArea = document.getElementById('app-area');
   if (landing) landing.style.display = '';
@@ -817,17 +831,28 @@ function showLanding() {
   document.getElementById('navCta').textContent = 'Begin tonight';
   document.getElementById('navCta').onclick = function() { startApp(); };
   window.scrollTo(0, 0);
+  if (targetId) {
+    setTimeout(function() {
+      var el = document.getElementById(targetId);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }, 80);
+  }
 }
 
 function navTo(id) {
-  showLanding();
-  setTimeout(function() {
-    var el = document.getElementById(id)
-      || (id === 'l-stories' ? document.getElementById('stories') : null);
-    if (el) el.scrollIntoView({ behavior: 'smooth' });
-  }, 100);
-  document.querySelector('.site-nav-links').classList.remove('open');
-  document.getElementById('siteMenuBtn').setAttribute('aria-expanded', 'false');
+  showLanding(getLandingTargetFromHash('#' + id) || id);
+  if (history && history.replaceState) history.replaceState(null, '', '/app#' + id);
+  const navLinks = document.querySelector('.site-nav-links');
+  const menuBtn = document.getElementById('siteMenuBtn');
+  if (navLinks) navLinks.classList.remove('open');
+  if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
+}
+
+function handleLandingHash() {
+  const target = getLandingTargetFromHash();
+  if (!target) return false;
+  showLanding(target);
+  return true;
 }
 
 function bindStaticUi() {
@@ -870,6 +895,25 @@ function bindStaticUi() {
     });
   });
 
+  document.addEventListener('click', function(e) {
+    const tab = e.target.closest && e.target.closest('[data-app-tab]');
+    if (!tab) return;
+    e.preventDefault();
+    navigateAppTab(tab.getAttribute('data-app-tab'));
+  });
+
+  document.querySelectorAll('.site-footer-links a[href^="/app#"]').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      const target = getLandingTargetFromHash(link.hash);
+      if (!target) return;
+      e.preventDefault();
+      history.pushState(null, '', link.getAttribute('href'));
+      showLanding(target);
+    });
+  });
+
+  window.addEventListener('hashchange', handleLandingHash);
+
   document.querySelectorAll('.perm-toggle').forEach(function(toggle) {
     toggle.addEventListener('click', function() {
       togglePerm(toggle);
@@ -898,6 +942,10 @@ function bindStaticUi() {
   bindStaticUi();
   const firebaseRestored = await restoreFirebaseSession();
   const loggedIn = firebaseRestored || await loadState();
+  if (window.location.pathname.indexOf('/app') === 0 && handleLandingHash()) {
+    consumeVerificationQueryNotice();
+    return;
+  }
   if (!loggedIn) {
     if (window.location.pathname.indexOf('/app') === 0) {
       startApp();
@@ -953,6 +1001,15 @@ function needsGoogleProfileBasics() {
   const college = String(state.user.college || '').trim().toLowerCase();
   const year = String(state.user.year || '').trim();
   return !college || college === 'not provided' || !year;
+}
+
+function hasCompletedScan(user) {
+  if (!user || !archetypes[user.archetype]) return false;
+  const scores = user.scores || {};
+  return ['openness', 'awareness', 'guard', 'reciprocity'].every(function(key) {
+    const value = Number(scores[key]);
+    return Number.isFinite(value) && value >= 0 && value <= 100;
+  });
 }
 
 function pickProfileYear(el) {
@@ -1109,16 +1166,14 @@ async function register() {
     const result = await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven, ageConfirmed: ageChecked });
     await loadState();
     // Make sure app area is visible
-    document.getElementById('landing').style.display = 'none';
-    document.getElementById('app-area').style.display = 'block';
+    showAppShell();
     toast(result.message || 'Account created. You can continue now.', 3600);
     injectVerificationPendingNotice('s-scan-intro');
     go('s-scan-intro');
   } catch (e) {
     await loadState().catch(() => {});
     if (state && state.user && !state.user.emailVerified) {
-      document.getElementById('landing').style.display = 'none';
-      document.getElementById('app-area').style.display = 'block';
+      showAppShell();
       toast('Account created. Verify your email when you get a chance.', 3600);
       go('s-scan-intro');
       return;
@@ -1136,8 +1191,7 @@ async function login() {
     await api('POST', '/login', { email, password });
     await loadState();
     // Make sure app area is visible
-    document.getElementById('landing').style.display = 'none';
-    document.getElementById('app-area').style.display = 'block';
+    showAppShell();
     toast('Welcome back! ✦');
     routeToScreen();
   } catch (e) { toast(e.message); }
@@ -1155,7 +1209,7 @@ async function logout() {
 function routeToScreen() {
   if (!state) { go('s-splash'); return; }
   if (needsGoogleProfileBasics()) { renderGoogleProfileBasics(); go('s-profile'); return; }
-  if (!state.user.archetype) { injectVerificationPendingNotice('s-scan-intro'); go('s-scan-intro'); return; }
+  if (!hasCompletedScan(state.user)) { injectVerificationPendingNotice('s-scan-intro'); go('s-scan-intro'); return; }
   if (!state.match) { renderWaiting(); go('s-waiting'); return; }
   if (state.match.day >= 21) { handleRevealFlow(); return; }
   const todayDone = state.entries.find(e => e.day === state.match.day);
@@ -1472,7 +1526,11 @@ function renderWaiting() {
 }
 
 function renderTonightsQuestion(data) {
-  if (!state || !state.user || !state.user.archetype) return;
+  if (!state || !state.user || !hasCompletedScan(state.user)) {
+    injectVerificationPendingNotice('s-scan-intro');
+    go('s-scan-intro');
+    return;
+  }
   const arch = archetypes[state.user.archetype];
   const d = data || {};
   const prompt = d.prompt || prompts[0];
@@ -1917,11 +1975,23 @@ function updateWordCount(el) {
 
 function wordCount(str) { return str && str.trim() ? str.trim().split(/\s+/).length : 0; }
 
+function clientPiiFlags(text) {
+  const value = String(text || '');
+  const flags = [];
+  if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(value)) flags.push('email');
+  if (/(?:\+91[- ]?)?(?:[6-9][0-9]{9})/.test(value)) flags.push('phone_or_whatsapp');
+  if (/\b(?:instagram|telegram|whatsapp|snapchat|linkedin|t\.me|wa\.me|https?:\/\/|www\.|@[a-z0-9_.]{3,})/i.test(value)) flags.push('social_or_link');
+  if (/\b(?:hostel|room|flat|block|sector|department|batch)\b/i.test(value)) flags.push('location_or_batch');
+  return flags;
+}
+
 function detectClientPii(text) {
-  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(text)
-    || /(?:\+91[- ]?)?(?:[6-9][0-9]{9})/.test(text)
-    || /\b(?:instagram|telegram|whatsapp|snapchat|linkedin|t\.me|wa\.me|https?:\/\/|www\.|@[a-z0-9_.]{3,})/i.test(text)
-    || /\b(?:hostel|room|flat|block|sector|department|batch)\b/i.test(text);
+  if (typeof clientPiiFlags === 'function') return clientPiiFlags(text).length > 0;
+  const value = String(text || '');
+  return /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(value)
+    || /(?:\+91[- ]?)?(?:[6-9][0-9]{9})/.test(value)
+    || /\b(?:instagram|telegram|whatsapp|snapchat|linkedin|t\.me|wa\.me|https?:\/\/|www\.|@[a-z0-9_.]{3,})/i.test(value)
+    || /\b(?:hostel|room|flat|block|sector|department|batch)\b/i.test(value);
 }
 
 function saveDraft() {
@@ -2746,14 +2816,14 @@ function renderAbout() {
 // ═══════════════════════════════════════
 function renderTQTabs(active) {
   var tabs = [
-    { id:'today', ico:'T', lbl:'Today', fn:'renderWaiting();go(\'s-waiting\')' },
-    { id:'wall', ico:'W', lbl:'Wall', fn:'renderWall()' },
-    { id:'silent', ico:'S', lbl:'Silent Room', fn:'showSilentFeed()' },
-    { id:'profile', ico:'P', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' }
+    { id:'today', ico:'T', lbl:'Today' },
+    { id:'wall', ico:'W', lbl:'Wall' },
+    { id:'silent', ico:'S', lbl:'Silent Room' },
+    { id:'profile', ico:'P', lbl:'Profile' }
   ];
   return '<div class="tabs app-bottom-tabs">' + tabs.map(function(t) {
     var isOn = t.id === active || (active === 'tonight' && t.id === 'today') || (active === 'entries' && t.id === 'journey');
-    return '<button class="tab' + (isOn ? ' on' : '') + '" type="button" onclick="' + t.fn + '" aria-pressed="' + (isOn ? 'true' : 'false') + '"><div class="tab-ico">' + t.ico + '</div><div class="tab-lbl">' + t.lbl + '</div></button>';
+    return '<button class="tab' + (isOn ? ' on' : '') + '" type="button" data-app-tab="' + t.id + '" aria-pressed="' + (isOn ? 'true' : 'false') + '"><div class="tab-ico">' + t.ico + '</div><div class="tab-lbl">' + t.lbl + '</div></button>';
   }).join('') + '</div>';
 }
 
@@ -2761,14 +2831,40 @@ function renderTabs(active) {
   const normalized = active === 'tonight' || active === 'partner' ? 'today' : (active === 'entries' ? 'journey' : active);
   if (!state || !state.match) return renderTQTabs(normalized);
   const tabs = [
-    { id:'today', ico:'T', lbl:'Today', fn:'goToJournal()' },
-    { id:'silent', ico:'S', lbl:'Silent Room', fn:'showSilentFeed()' },
-    { id:'journey', ico:'J', lbl:'Journey', fn:'renderPast();go(\'s-past\')' },
-    { id:'profile', ico:'P', lbl:'Profile', fn:'renderProfile();go(\'s-profile\')' }
+    { id:'today', ico:'T', lbl:'Today' },
+    { id:'silent', ico:'S', lbl:'Silent Room' },
+    { id:'journey', ico:'J', lbl:'Journey' },
+    { id:'profile', ico:'P', lbl:'Profile' }
   ];
   return `<div class="tabs app-bottom-tabs">${tabs.map(t =>
-    `<button class="tab${t.id===normalized?' on':''}" type="button" onclick="${t.fn}" aria-pressed="${t.id===normalized?'true':'false'}"><div class="tab-ico">${t.ico}</div><div class="tab-lbl">${t.lbl}</div></button>`
+    `<button class="tab${t.id===normalized?' on':''}" type="button" data-app-tab="${t.id}" aria-pressed="${t.id===normalized?'true':'false'}"><div class="tab-ico">${t.ico}</div><div class="tab-lbl">${t.lbl}</div></button>`
   ).join('')}</div>`;
+}
+
+function navigateAppTab(tab) {
+  if (tab === 'today') {
+    if (state && state.match) goToJournal();
+    else { renderWaiting(); go('s-waiting'); }
+    return;
+  }
+  if (tab === 'silent') {
+    showSilentFeed();
+    return;
+  }
+  if (tab === 'journey') {
+    if (!state || !state.match) { renderWaiting(); go('s-waiting'); return; }
+    renderPast();
+    go('s-past');
+    return;
+  }
+  if (tab === 'wall') {
+    renderWall();
+    return;
+  }
+  if (tab === 'profile') {
+    renderProfile();
+    go('s-profile');
+  }
 }
 
 function getGreeting(name) {
