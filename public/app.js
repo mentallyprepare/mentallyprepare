@@ -645,7 +645,7 @@ initCosmicMotion = function() {};
 afterRenderMotion = function() {};
 enhanceDepthCards = function() {};
 bindFocusMode = function() {};
-bindDepthHover = function() {};
+var bindDepthHover = function() {};
 initCosmicMotion();
 
 // ═══════════════════════════════════════
