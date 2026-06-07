@@ -1647,8 +1647,7 @@ async function sealTonightsEntry() {
 
   try {
     var piiConfirmed = false;
-    var pii = clientPiiFlags(text);
-    if (pii.length) {
+    if (detectClientPii(text)) {
       piiConfirmed = confirm('This may reveal who you are. Please remove personal details to keep this space anonymous. Continue only if you understand the risk.');
       if (!piiConfirmed) return;
     }
