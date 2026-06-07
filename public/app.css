@@ -783,6 +783,7 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .site-footer-links a{font-size:12px;color:var(--ink-s);transition:color .3s}
 .site-footer-links a:hover{color:var(--ink)}
 .site-footer-copy{font-size:11px;color:var(--ink-s)}
+body.app-active .site-footer{display:none}
 
 /* ── Cursor Glow ── */
 .cursor-glow{position:fixed;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(212,133,154,.05),transparent 70%);pointer-events:none;z-index:0;transform:translate(-50%,-50%);transition:opacity .3s;will-change:left,top}
@@ -1638,8 +1639,9 @@ body.app-active #app-area .tabs.app-bottom-tabs {
   bottom:0;
   left:50%;
   transform:translateX(-50%)!important;
-  z-index:120;
+  z-index:180;
   border-radius:18px 18px 0 0;
+  pointer-events:auto;
 }
 
 #app-area .app-bottom-tabs .tab {
