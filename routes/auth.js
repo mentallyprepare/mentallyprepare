@@ -8,6 +8,7 @@ const MATCH_GENDERS = new Set(['any', 'female', 'male', 'non-binary', 'prefer_no
 const MATCH_YEARS = new Set(['any', '1st', '2nd', '3rd', '4th', '5th', '5th+', 'nearby', '+-1_year', '±1_year']);
 const CONSENT_POLICY_VERSION = '2026-05-24-18-plus';
 const GOOGLE_PROVIDER = 'google';
+const RESET_CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const MANUAL_VERIFY_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvM+5OnGHYVe0IVh8ymyv
 9wh5luIsO/MGmK9NmTUZLxhejmcxv/6fltPnnprt16Y0RbSRpKMa2StUzOrulcT/
@@ -95,6 +96,19 @@ function withEmailTimeout(promise, label) {
 function logVerification(message, details) {
   if (details) console.log(message, details);
   else console.log(message);
+}
+
+function generateResetCode(crypto) {
+  let code = '';
+  for (let i = 0; i < 6; i += 1) {
+    code += RESET_CODE_ALPHABET[crypto.randomInt(0, RESET_CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
+function normalizeResetCode(value) {
+  const compact = String(value || '').trim().replace(/\s+/g, '');
+  return compact.length === 6 ? compact.toUpperCase() : compact;
 }
 
 function authDebugLog(message, details) {
@@ -325,12 +339,17 @@ function registerAuthRoutes(app, deps) {
       const token = clean(req.query.token);
       if (!token || token.length < 32) {
         logVerification('Verification failed with reason', { reason: 'invalid_token_format' });
-        return res.redirect('/app?verify_error=expired');
+        return res.redirect('/app?verify_error=invalid');
       }
       const user = stmts.getUserByVerificationToken.get(token);
       if (!user) {
         logVerification('Verification failed with reason', { reason: 'token_not_found' });
-        return res.redirect('/app?verify_error=expired');
+        return res.redirect('/app?verify_error=invalid');
+      }
+      if (user.email_verified) {
+        if (req.session) req.session.userId = user.id;
+        logVerification('Verification already completed', { email: user.email });
+        return res.redirect('/app?verified=1');
       }
       const sentAt = user.email_verification_sent_at ? new Date(user.email_verification_sent_at).getTime() : 0;
       if (!sentAt || Date.now() - sentAt > 24 * 60 * 60 * 1000) {
@@ -405,7 +424,7 @@ function registerAuthRoutes(app, deps) {
       if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
       const user = stmts.getUserByEmail.get(email);
-      if (!user || !(await bcrypt.compare(password, user.password))) {
+      if (!user || user.account_status === 'deleted' || !(await bcrypt.compare(password, user.password))) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
 
@@ -439,14 +458,18 @@ function registerAuthRoutes(app, deps) {
       if (!user) return res.json({ ok: true, message: 'If that email exists, a reset link has been sent.' });
 
       stmts.deleteExpiredPasswordResetTokens.run(Date.now());
-      const token = crypto.randomBytes(32).toString('hex');
+      let token = generateResetCode(crypto);
+      for (let attempt = 0; stmts.getPasswordResetToken.get(token) && attempt < 8; attempt += 1) {
+        token = generateResetCode(crypto);
+      }
       stmts.insertPasswordResetToken.run(token, user.id, Date.now() + 15 * 60 * 1000, Date.now());
       const resetLink = `${BASE_URL.replace(/\/$/, '')}/app?screen=s-reset&code=${token}`;
       const emailHtml = `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333;">
           <h2>Password Reset</h2>
           <p>Someone requested a password reset for your Mentally Prepare account.</p>
-          <p>If this was you, click the link below to reset your password. This link expires in 15 minutes.</p>
+          <p>If this was you, use this reset code: <strong style="font-size:20px;letter-spacing:4px;">${token}</strong></p>
+          <p>You can also click the link below to reset your password. This link expires in 15 minutes.</p>
           <p><a href="${resetLink}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;">Reset Password</a></p>
           <p style="font-size:12px;color:#999;margin-top:40px;">If you didn't request this, you can safely ignore this email.</p>
         </div>`;
@@ -461,15 +484,18 @@ function registerAuthRoutes(app, deps) {
 
   app.post('/api/reset-password', passwordResetLimiter, async (req, res) => {
     try {
-      const token = clean(req.body.code);
+      const token = normalizeResetCode(req.body.code);
       const newPassword = String(req.body.newPassword || '');
-      if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password are required' });
-      if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      if (!token || !newPassword) return res.status(400).json({ error: 'Reset code and new password are required.' });
+      if (!/^(?:[A-Z0-9]{6}|[A-F0-9]{64})$/i.test(token)) return res.status(400).json({ error: 'Invalid reset code. Check the code or request a new one.' });
+      if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
 
-      const entry = stmts.getValidPasswordResetToken.get(token, Date.now());
+      const entry = stmts.getPasswordResetToken.get(token);
       if (!entry) {
-        return res.status(400).json({ error: 'Invalid or expired reset token' });
+        return res.status(400).json({ error: 'Invalid reset code. Check the code or request a new one.' });
       }
+      if (entry.used_at) return res.status(400).json({ error: 'Reset code has already been used. Please request a new one.' });
+      if (entry.expires_at <= Date.now()) return res.status(400).json({ error: 'Reset code expired. Please request a new one.' });
 
       const user = stmts.getUserById.get(entry.user_id);
       if (!user) return res.status(400).json({ error: 'User not found' });

@@ -1,5 +1,6 @@
 const path = require('path');
 const crypto = require('crypto');
+const REPORT_STATUSES = new Set(['open', 'reviewed', 'dismissed', 'escalated', 'resolved']);
 
 function registerAdminRoutes(app, deps) {
   const {
@@ -26,6 +27,31 @@ function registerAdminRoutes(app, deps) {
 
   const appLink = process.env.APP_BASE_URL || 'https://mymentallyprepare.com/app';
   const baseUrl = (process.env.APP_BASE_URL || 'https://mymentallyprepare.com').replace(/\/app\/?$/, '').replace(/\/$/, '');
+
+  function updateReportStatus(reportId, status, reason, actor = 'admin') {
+    if (!Number.isInteger(reportId) || reportId <= 0) {
+      const err = new Error('Valid report ID required');
+      err.statusCode = 400;
+      throw err;
+    }
+    if (!REPORT_STATUSES.has(status)) {
+      const err = new Error('Valid report status required');
+      err.statusCode = 400;
+      throw err;
+    }
+    return db.transaction(() => {
+      const report = stmts.getReportById.get(reportId);
+      if (!report) {
+        const err = new Error('Report not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      const oldStatus = report.status || 'open';
+      stmts.updateReportStatus.run(status, reportId);
+      stmts.insertReportStatusHistory.run(reportId, actor, String(reason || '').trim(), oldStatus, status);
+      return { ok: true, report_id: reportId, old_status: oldStatus, new_status: status };
+    })();
+  }
 
   function parseDate(value) {
     if (!value) return null;
@@ -117,7 +143,7 @@ function registerAdminRoutes(app, deps) {
   app.get('/admin/reports', requireAdmin, (req, res) => {
     try {
       const rows = db.prepare(`
-        SELECT r.id, r.day, r.reason, r.created_at, r.category, r.status
+        SELECT r.id, r.day, r.reason, r.created_at, r.updated_at, r.category, r.status
         FROM reports r
         ORDER BY r.created_at DESC
         LIMIT 20
@@ -128,7 +154,8 @@ function registerAdminRoutes(app, deps) {
         category: r.category,
         status: r.status,
         reason: r.reason,
-        date: r.created_at
+        date: r.created_at,
+        updated_at: r.updated_at
       })));
     } catch (e) {
       res.status(500).json({ error: 'Failed to load reports' });
@@ -162,6 +189,7 @@ function registerAdminRoutes(app, deps) {
             LIMIT 1
           ) as partner_name
         FROM users u
+        WHERE COALESCE(u.account_status, 'active') != 'deleted'
         ORDER BY u.created_at DESC
       `).all();
       res.json(rows.map(row => ({ ...row, has_match: !!row.match_id })));
@@ -554,6 +582,9 @@ function registerAdminRoutes(app, deps) {
       const user = findUserByIdentifier(req.body.user_id);
       if (!user) return res.status(404).json({ error: 'User not found' });
       deleteUserDataTx(user.id, 'admin_removed');
+      stmts.insertAnalyticsEvent.run(null, 'admin_remove_user', JSON.stringify({
+        target_anonymised_id: crypto.createHash('sha256').update(String(user.id)).digest('hex').slice(0, 16)
+      }));
       res.json({ ok: true });
     } catch (e) {
       res.status(e.statusCode || 500).json({ error: e.message || 'Failed to remove user' });
@@ -589,15 +620,24 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
+  app.post('/admin/report-status', authLimiter, requireAdmin, (req, res) => {
+    try {
+      const reportId = Number(req.body.report_id);
+      const status = String(req.body.status || '').trim().toLowerCase();
+      const reason = String(req.body.reason || '').trim();
+      res.json(updateReportStatus(reportId, status, reason || `Marked ${status}`));
+    } catch (e) {
+      res.status(e.statusCode || 500).json({ error: e.message || 'Failed to update report' });
+    }
+  });
+
   app.post('/admin/dismiss-report', authLimiter, requireAdmin, (req, res) => {
     try {
       const reportId = Number(req.body.report_id);
-      if (!Number.isInteger(reportId) || reportId <= 0) return res.status(400).json({ error: 'Valid report ID required' });
-      const result = stmts.deleteReportById.run(reportId);
-      if (!result.changes) return res.status(404).json({ error: 'Report not found' });
-      res.json({ ok: true });
+      const reason = String(req.body.reason || '').trim();
+      res.json(updateReportStatus(reportId, 'dismissed', reason || 'Dismissed by admin'));
     } catch (e) {
-      res.status(500).json({ error: 'Failed to dismiss report' });
+      res.status(e.statusCode || 500).json({ error: e.message || 'Failed to dismiss report' });
     }
   });
 
@@ -612,6 +652,7 @@ function registerAdminRoutes(app, deps) {
         reveals: db.prepare('SELECT * FROM reveals ORDER BY id').all(),
         comments: db.prepare('SELECT * FROM comments ORDER BY id').all(),
         reports: db.prepare('SELECT * FROM reports ORDER BY id').all(),
+        report_status_history: db.prepare('SELECT * FROM report_status_history ORDER BY id').all(),
         payments: db.prepare('SELECT id, user_id, provider, provider_payment_id, provider_order_id, amount, currency, product, status, created_at, updated_at FROM payments ORDER BY id').all(),
         deletion_log: db.prepare('SELECT * FROM deletion_log ORDER BY id').all()
       };

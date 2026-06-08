@@ -349,6 +349,9 @@ db.exec(`
     profile_photo TEXT,
     auth_provider TEXT DEFAULT 'password',
     last_login_at TEXT,
+    account_status TEXT DEFAULT 'active',
+    deleted_at TEXT,
+    deleted_reason TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -420,6 +423,16 @@ db.exec(`
     day INTEGER DEFAULT 0,
     reason TEXT NOT NULL,
     status TEXT DEFAULT 'open',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS report_status_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    report_id INTEGER NOT NULL REFERENCES reports(id),
+    actor TEXT NOT NULL,
+    reason TEXT,
+    old_status TEXT,
+    new_status TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -627,6 +640,9 @@ ensureColumn('users', 'firebase_uid', 'TEXT');
 ensureColumn('users', 'profile_photo', 'TEXT');
 ensureColumn('users', 'auth_provider', "TEXT DEFAULT 'password'");
 ensureColumn('users', 'last_login_at', 'TEXT');
+ensureColumn('users', 'account_status', "TEXT DEFAULT 'active'");
+ensureColumn('users', 'deleted_at', 'TEXT');
+ensureColumn('users', 'deleted_reason', 'TEXT');
 ensureColumn('matches', 'matched_at', 'TEXT');
 ensureColumn('matches', 'updated_at', 'TEXT');
 ensureColumn('entries', 'updated_at', 'TEXT');
@@ -638,6 +654,18 @@ ensureColumn('reports', 'reported_user_id', 'INTEGER');
 ensureColumn('reports', 'entry_day', 'INTEGER');
 ensureColumn('reports', 'category', "TEXT DEFAULT 'entry'");
 ensureColumn('reports', 'status', "TEXT DEFAULT 'open'");
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS report_status_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    report_id INTEGER NOT NULL REFERENCES reports(id),
+    actor TEXT NOT NULL,
+    reason TEXT,
+    old_status TEXT,
+    new_status TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )
+`).run();
 
 // Silent Room — presence/witness columns
 ensureColumn('silent_lines', 'seen_count', 'INTEGER NOT NULL DEFAULT 0');
@@ -879,12 +907,36 @@ const stmts = {
   updateUserActivity: db.prepare('UPDATE users SET last_active_date = ? WHERE id = ?'),
   updateUserPassword: db.prepare('UPDATE users SET password = ? WHERE id = ?'),
   insertPasswordResetToken: db.prepare('INSERT INTO password_reset_tokens (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)'),
+  getPasswordResetToken: db.prepare('SELECT * FROM password_reset_tokens WHERE token = ?'),
   getValidPasswordResetToken: db.prepare('SELECT * FROM password_reset_tokens WHERE token = ? AND used_at IS NULL AND expires_at > ?'),
   markPasswordResetTokenUsed: db.prepare('UPDATE password_reset_tokens SET used_at = ? WHERE token = ?'),
   deleteExpiredPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE expires_at <= ?'),
   deleteUserPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?'),
-  verifyUserEmail: db.prepare('UPDATE users SET email_verified = 1, email_verified_at = ?, email_verification_token = NULL WHERE id = ?'),
+  verifyUserEmail: db.prepare('UPDATE users SET email_verified = 1, email_verified_at = ? WHERE id = ?'),
   updateVerificationToken: db.prepare('UPDATE users SET email_verification_token = ?, email_verification_sent_at = ? WHERE id = ?'),
+  anonymizeDeletedUser: db.prepare(`
+    UPDATE users
+    SET name = ?,
+        email = ?,
+        password = ?,
+        college = 'Deleted account',
+        college_normalized = 'deleted account',
+        archetype = NULL,
+        scores = NULL,
+        email_verified = 0,
+        email_verification_token = NULL,
+        email_verification_sent_at = NULL,
+        push_subscription = NULL,
+        push_preferences = NULL,
+        firebase_uid = NULL,
+        profile_photo = NULL,
+        auth_provider = 'deleted',
+        account_status = 'deleted',
+        deleted_at = ?,
+        deleted_reason = ?,
+        updated_at = ?
+    WHERE id = ?
+  `),
   updateUserConsent: db.prepare('UPDATE users SET consent_given = ?, consent_withdrawn_at = ? WHERE id = ?'),
   updateUserSwitch: db.prepare('UPDATE users SET switch_count = ? WHERE id = ?'),
   updateUserProfileBasics: db.prepare('UPDATE users SET college = ?, college_normalized = ?, year = ?, updated_at = ? WHERE id = ?'),
@@ -930,6 +982,7 @@ const stmts = {
     WHERE archetype = ?
       AND COALESCE(college_normalized, LOWER(college)) != ?
       AND id != ?
+      AND COALESCE(account_status, 'active') != 'deleted'
       AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
   `),
 
@@ -981,6 +1034,12 @@ const stmts = {
   `),
   deleteUserReports: db.prepare('DELETE FROM reports WHERE reporter_id = ?'),
   deleteReportById: db.prepare('DELETE FROM reports WHERE id = ?'),
+  getReportById: db.prepare('SELECT * FROM reports WHERE id = ?'),
+  updateReportStatus: db.prepare('UPDATE reports SET status = ?, updated_at = datetime(\'now\') WHERE id = ?'),
+  insertReportStatusHistory: db.prepare(`
+    INSERT INTO report_status_history (report_id, actor, reason, old_status, new_status)
+    VALUES (?, ?, ?, ?, ?)
+  `),
   insertBlock: db.prepare(`
     INSERT INTO blocked_users (blocker_id, blocked_user_id, match_id, reason)
     VALUES (?, ?, ?, ?)
@@ -1327,6 +1386,11 @@ app.use(session(sessionConfig));
 
 function requireAuth(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
+  const user = stmts.getUserById.get(req.session.userId);
+  if (!user || user.account_status === 'deleted') {
+    if (req.session) req.session.destroy(() => {});
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
   next();
 }
 
@@ -1765,26 +1829,61 @@ function deleteMatchData(matchId) {
   stmts.deleteMatchById.run(matchId);
 }
 
+function runDeleteIfPossible(sql, params = []) {
+  try {
+    db.prepare(sql).run(...params);
+  } catch (e) {
+    if (!/no such table|no such column/i.test(e.message || '')) throw e;
+  }
+}
+
+function deleteUserOwnedData(userId) {
+  runDeleteIfPossible('DELETE FROM wall_chat_messages WHERE sender_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM wall_match_requests WHERE reactor_id = ? OR poster_id = ? OR post_id IN (SELECT id FROM wall_posts WHERE user_id = ?)', [userId, userId, userId]);
+  runDeleteIfPossible('DELETE FROM wall_reactions WHERE user_id = ? OR post_id IN (SELECT id FROM wall_posts WHERE user_id = ?)', [userId, userId]);
+  runDeleteIfPossible('DELETE FROM wall_posts WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM silent_resonance WHERE user_id = ? OR line_id IN (SELECT id FROM silent_lines WHERE user_id = ?)', [userId, userId]);
+  runDeleteIfPossible('DELETE FROM crisis_review WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM silent_lines WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM blocked_users WHERE blocker_id = ? OR blocked_user_id = ?', [userId, userId]);
+  runDeleteIfPossible('DELETE FROM rematch_requests WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM payments WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM waiting_entries WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM password_reset_tokens WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM entries WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM reveals WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM comments WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM reactions WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM nudges WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM daily_notes WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM sealed_room_picks WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM tonights_question_entries WHERE user_id = ?', [userId]);
+}
+
 const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
+  const existing = stmts.getUserById.get(userId);
+  if (!existing) return { deleted: false };
   const matches = db.prepare('SELECT id FROM matches WHERE user1_id = ? OR user2_id = ?').all(userId, userId);
   for (const match of matches) deleteMatchData(match.id);
+  const deletedAt = new Date().toISOString();
+  const anonymisedId = crypto.createHash('sha256').update(String(userId)).digest('hex').slice(0, 16);
   stmts.insertDeletionLog.run(
-    crypto.createHash('sha256').update(String(userId)).digest('hex').slice(0, 16),
+    anonymisedId,
     reason
   );
-  stmts.deleteUserEntries.run(userId);
-  stmts.deleteUserWaitingEntries.run(userId);
-  try { stmts.deleteUserPasswordResetTokens.run(userId); } catch {}
-  stmts.deleteUserReveals.run(userId);
-  stmts.deleteUserComments.run(userId);
-  stmts.deleteUserReports.run(userId);
-  stmts.deleteUserPayments.run(userId);
-  stmts.deleteUserReactions.run(userId);
-  stmts.deleteUserNudges.run(userId);
-  try { stmts.deleteUserDailyNotes.run(userId); } catch {}
-  try { stmts.deleteUserSealedPicks.run(userId); } catch {}
-  try { stmts.deleteUserTonightsEntries.run(userId); } catch {}
-  stmts.deleteUser.run(userId);
+  deleteUserOwnedData(userId);
+  const lockedPassword = `deleted:${crypto.randomBytes(32).toString('hex')}`;
+  const deletedEmail = `deleted-${userId}-${Date.now()}-${anonymisedId}@deleted.local`;
+  stmts.anonymizeDeletedUser.run(
+    'Deleted user',
+    deletedEmail,
+    lockedPassword,
+    deletedAt,
+    reason,
+    deletedAt,
+    userId
+  );
+  return { deleted: true, anonymisedId };
 });
 
 function getPartnerId(match, userId) {
@@ -2374,8 +2473,8 @@ function requireAdmin(req, res, next) {
 }
 
 function getAdminStats() {
-  const totalUsers = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-  const verifiedUsers = db.prepare('SELECT COUNT(*) as c FROM users WHERE email_verified = 1').get().c;
+  const totalUsers = db.prepare("SELECT COUNT(*) as c FROM users WHERE COALESCE(account_status, 'active') != 'deleted'").get().c;
+  const verifiedUsers = db.prepare("SELECT COUNT(*) as c FROM users WHERE email_verified = 1 AND COALESCE(account_status, 'active') != 'deleted'").get().c;
   const activeMatches = db.prepare('SELECT COUNT(*) as c FROM matches').get().c;
   const blockedUsers = db.prepare('SELECT COUNT(*) as c FROM blocked_users').get().c;
   const rematchRequests = db.prepare("SELECT COUNT(*) as c FROM rematch_requests WHERE status = 'open'").get().c;
@@ -2387,7 +2486,7 @@ function getAdminStats() {
     FROM entries
     WHERE date(created_at, '+5 hours', '+30 minutes') = date('now', '+5 hours', '+30 minutes')
   `).get().c;
-  const openReports = db.prepare('SELECT COUNT(*) as c FROM reports').get().c;
+  const openReports = db.prepare("SELECT COUNT(*) as c FROM reports WHERE COALESCE(status, 'open') = 'open'").get().c;
   const reachedDay21 = db.prepare('SELECT started_at FROM matches').all()
     .filter(match => getMatchDay(match.started_at) >= 21).length;
   const bothRevealed = db.prepare(`
@@ -2415,7 +2514,7 @@ function getAdminStats() {
     SELECT u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at
     FROM users u
     LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
-    WHERE m.id IS NULL AND u.archetype IS NOT NULL
+    WHERE m.id IS NULL AND u.archetype IS NOT NULL AND COALESCE(u.account_status, 'active') != 'deleted'
     ORDER BY u.created_at ASC
   `).all().map(user => ({
     ...user,

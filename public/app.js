@@ -775,6 +775,7 @@ function consumeVerificationQueryNotice() {
   let message = '';
   if (params.get('verified') === '1') message = 'Verification successful. You can now continue.';
   if (params.get('verify_error') === 'expired') message = 'Verification link expired. Please request a new one.';
+  if (params.get('verify_error') === 'invalid') message = 'Verification link is invalid. Please request a new one.';
   if (params.get('verify_error') === 'system') message = 'Verification failed. Please request a new one.';
   if (!message) return;
   params.delete('verified');
@@ -782,6 +783,22 @@ function consumeVerificationQueryNotice() {
   const query = params.toString();
   window.history.replaceState({}, '', `${window.location.pathname}${query ? '?' + query : ''}${window.location.hash}`);
   setTimeout(() => toast(message, 4200), 250);
+}
+
+function consumePasswordResetDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('screen') !== 's-reset') return false;
+  const code = (params.get('code') || '').trim();
+  showAppShell();
+  go('s-reset');
+  const input = document.getElementById('reset-code');
+  if (input && code) input.value = code.toUpperCase();
+  params.delete('screen');
+  params.delete('code');
+  const query = params.toString();
+  window.history.replaceState({}, '', `${window.location.pathname}${query ? '?' + query : ''}${window.location.hash}`);
+  if (code) setTimeout(() => toast('Reset code filled. Choose a new password.', 3200), 250);
+  return true;
 }
 
 function typingDots() { return '<div class="typing-dots"><span></span><span></span><span></span></div>'; }
@@ -942,6 +959,10 @@ function bindStaticUi() {
   bindStaticUi();
   const firebaseRestored = await restoreFirebaseSession();
   const loggedIn = firebaseRestored || await loadState();
+  if (window.location.pathname.indexOf('/app') === 0 && consumePasswordResetDeepLink()) {
+    consumeVerificationQueryNotice();
+    return;
+  }
   if (window.location.pathname.indexOf('/app') === 0 && handleLandingHash()) {
     consumeVerificationQueryNotice();
     return;
@@ -3577,9 +3598,10 @@ async function forgotPassword() {
 }
 
 async function resetPassword() {
-  const code = document.getElementById('reset-code').value.trim();
+  const code = document.getElementById('reset-code').value.trim().replace(/\s+/g, '').toUpperCase();
   const newPassword = document.getElementById('reset-password').value;
   if (!code || !newPassword) { toast('Enter code and new password'); return; }
+  if (!/^(?:[A-Z0-9]{6}|[A-F0-9]{64})$/i.test(code)) { toast('Enter the 6-character reset code from your email'); return; }
   if (newPassword.length < 8) { toast('Password must be at least 8 characters'); return; }
   try {
     await api('POST', '/reset-password', { code, newPassword });
