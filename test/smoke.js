@@ -207,6 +207,9 @@ async function run() {
     const legacyReset = await request('POST', '/api/reset-password', { code: legacyToken, newPassword: 'legacynew123' });
     assert.strictEqual(legacyReset.status, 200, `legacy reset got ${legacyReset.status}: ${legacyReset.raw}`);
     assert.strictEqual((await request('POST', '/api/login', { email: legacyEmail, password: 'legacynew123' })).status, 200, 'legacy token reset works');
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    assert.match(appJs, /if\s*\(\s*code\.length\s*===\s*6\s*\)\s*\{\s*code\s*=\s*code\.toUpperCase\(\);\s*\}/, 'frontend only uppercases 6-character reset codes');
+    assert.doesNotMatch(appJs, /input\.value\s*=\s*code\.toUpperCase\(\)/, 'frontend does not uppercase legacy reset links while prefilling');
     ok('Password reset full flow');
   } catch (e) { fail('Password reset full flow', e); }
 
@@ -286,6 +289,9 @@ async function run() {
     const report = await request('POST', '/api/report', { matchId, day: 1, reason: 'unsafe', category: 'entry' }, { cookie });
     assert.strictEqual(report.status, 200, `report got ${report.status}: ${report.raw}`);
     const reportRow = db.prepare('SELECT * FROM reports ORDER BY id DESC LIMIT 1').get();
+    const blankReason = await request('POST', '/admin/report-status', { report_id: reportRow.id, status: 'reviewed', reason: '   ' }, { 'x-admin-password': 'test-admin-pw' });
+    assert.strictEqual(blankReason.status, 400, `blank reason got ${blankReason.status}: ${blankReason.raw}`);
+    assert.match(blankReason.json.error, /reason is required/i);
     for (const status of ['reviewed', 'dismissed', 'escalated', 'resolved']) {
       const r = await request('POST', '/admin/report-status', { report_id: reportRow.id, status, reason: `mark ${status}` }, { 'x-admin-password': 'test-admin-pw' });
       assert.strictEqual(r.status, 200, `mark ${status} got ${r.status}: ${r.raw}`);

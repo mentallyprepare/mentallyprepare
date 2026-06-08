@@ -625,7 +625,8 @@ function registerAdminRoutes(app, deps) {
       const reportId = Number(req.body.report_id);
       const status = String(req.body.status || '').trim().toLowerCase();
       const reason = String(req.body.reason || '').trim();
-      res.json(updateReportStatus(reportId, status, reason || `Marked ${status}`));
+      if (!reason) return res.status(400).json({ error: 'Reason is required' });
+      res.json(updateReportStatus(reportId, status, reason));
     } catch (e) {
       res.status(e.statusCode || 500).json({ error: e.message || 'Failed to update report' });
     }
@@ -635,7 +636,8 @@ function registerAdminRoutes(app, deps) {
     try {
       const reportId = Number(req.body.report_id);
       const reason = String(req.body.reason || '').trim();
-      res.json(updateReportStatus(reportId, 'dismissed', reason || 'Dismissed by admin'));
+      if (!reason) return res.status(400).json({ error: 'Reason is required' });
+      res.json(updateReportStatus(reportId, 'dismissed', reason));
     } catch (e) {
       res.status(e.statusCode || 500).json({ error: e.message || 'Failed to dismiss report' });
     }

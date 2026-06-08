@@ -792,7 +792,10 @@ function consumePasswordResetDeepLink() {
   showAppShell();
   go('s-reset');
   const input = document.getElementById('reset-code');
-  if (input && code) input.value = code.toUpperCase();
+  if (input && code) {
+    const compactCode = code.replace(/\s+/g, '');
+    input.value = compactCode.length === 6 ? compactCode.toUpperCase() : compactCode;
+  }
   params.delete('screen');
   params.delete('code');
   const query = params.toString();
@@ -3598,7 +3601,10 @@ async function forgotPassword() {
 }
 
 async function resetPassword() {
-  const code = document.getElementById('reset-code').value.trim().replace(/\s+/g, '').toUpperCase();
+  let code = document.getElementById('reset-code').value.trim().replace(/\s+/g, '');
+  if (code.length === 6) {
+    code = code.toUpperCase();
+  }
   const newPassword = document.getElementById('reset-password').value;
   if (!code || !newPassword) { toast('Enter code and new password'); return; }
   if (!/^(?:[A-Z0-9]{6}|[A-F0-9]{64})$/i.test(code)) { toast('Enter the 6-character reset code from your email'); return; }

@@ -4,7 +4,7 @@ const DEFAULT_BASE_URL = 'https://mymentallyprepare.com';
 
 const baseUrl = normalizeBaseUrl(process.argv[2] || process.env.SMOKE_BASE_URL || DEFAULT_BASE_URL);
 const expectSameOriginAuth = process.env.EXPECT_SAME_ORIGIN_AUTH_DOMAIN === 'true';
-const expectedScriptVersion = process.env.EXPECT_APP_SCRIPT_VERSION || 'firebase-google-12';
+const expectedScriptVersion = process.env.EXPECTED_APP_VERSION || process.env.EXPECT_APP_SCRIPT_VERSION || 'landing-tabs-fix-20260607';
 
 function normalizeBaseUrl(value) {
   const raw = String(value || DEFAULT_BASE_URL).trim();
