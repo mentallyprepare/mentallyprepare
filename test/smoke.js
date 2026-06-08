@@ -20,6 +20,7 @@ process.env.NODE_ENV = 'test';
 process.env.SESSION_SECRET = 'test-secret-for-smoke';
 process.env.ADMIN_PASSWORD = 'test-admin-pw';
 process.env.DB_PATH = DB_PATH;
+process.env.FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN = 'false';
 
 function request(method, urlPath, body, headers) {
   return new Promise((resolve, reject) => {
@@ -101,6 +102,20 @@ async function run() {
     assert.strictEqual(r.json.status, 'ready');
     ok('/api/ready returns 200');
   } catch (e) { fail('/api/ready', e); }
+
+  // 1b. Production Google auth uses same-origin helper config on the custom domain
+  try {
+    const firebaseConfig = await request('GET', '/api/firebase-config', null, { Host: 'mymentallyprepare.com' });
+    assert.strictEqual(firebaseConfig.status, 200, `firebase config got ${firebaseConfig.status}: ${firebaseConfig.raw}`);
+    assert.strictEqual(firebaseConfig.json.enabled, true);
+    assert.strictEqual(firebaseConfig.json.config.authDomain, 'mymentallyprepare.com');
+
+    const helperConfig = await request('GET', '/__/firebase/init.json', null, { Host: 'mymentallyprepare.com' });
+    assert.strictEqual(helperConfig.status, 200, `firebase helper init got ${helperConfig.status}: ${helperConfig.raw.slice(0, 200)}`);
+    assert.strictEqual(helperConfig.json.authDomain, 'mymentallyprepare.com');
+    assert.strictEqual(helperConfig.json.projectId, 'mentally-prepare');
+    ok('Firebase custom-domain auth config');
+  } catch (e) { fail('Firebase custom-domain auth config', e); }
 
   // 2. Register a user
   let cookie;

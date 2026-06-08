@@ -210,15 +210,28 @@ try {
 
 function getFirebaseAuthDomain(req) {
   const configured = process.env.FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_WEB_CONFIG.authDomain;
-  if (process.env.FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN !== 'true') return configured;
+  if (!shouldUseSameOriginFirebaseAuthDomain(req)) return configured;
+  return getRequestHost(req) || configured;
+}
 
+function getRequestHost(req) {
   const host = String(req && req.headers && req.headers.host ? req.headers.host : '').split(':')[0].toLowerCase();
+  return host;
+}
+
+function isProductionFirebaseAuthHost(host) {
   const sameOriginHosts = new Set([
     'mymentallyprepare.com',
     'www.mymentallyprepare.com',
     'mentallyprepare-production.up.railway.app'
   ]);
-  return sameOriginHosts.has(host) ? host : configured;
+  return sameOriginHosts.has(host);
+}
+
+function shouldUseSameOriginFirebaseAuthDomain(req) {
+  const configured = String(process.env.FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN || '').toLowerCase();
+  if (configured === 'true') return true;
+  return isProductionFirebaseAuthHost(getRequestHost(req));
 }
 
 function getFirebaseWebConfig(req) {
@@ -778,14 +791,15 @@ function handleLivenessText(req, res) {
 function handleReadiness(req, res) {
   try {
     db.prepare('SELECT 1').get();
+    const firebaseConfig = getFirebaseWebConfig(req);
     res.json({
       status: 'ready',
       timestamp: new Date().toISOString(),
       db: 'sqlite',
       dataDir: DATA_DIR,
       railwayVolumeMountPath: process.env.RAILWAY_VOLUME_MOUNT_PATH || null,
-      firebaseAuthDomain: getFirebaseWebConfig(req).config.authDomain,
-      firebaseSameOriginAuthDomain: process.env.FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN === 'true'
+      firebaseAuthDomain: firebaseConfig.config.authDomain,
+      firebaseSameOriginAuthDomain: firebaseConfig.config.authDomain === getRequestHost(req)
     });
   } catch (e) {
     res.status(503).json({ status: 'not_ready', error: e.message });
@@ -1283,7 +1297,12 @@ async function proxyFirebaseAuthHelper(req, res) {
 }
 
 app.all('/__/auth/*', proxyFirebaseAuthHelper);
-app.get('/__/firebase/init.json', proxyFirebaseAuthHelper);
+app.get('/__/firebase/init.json', (req, res) => {
+  const payload = getFirebaseWebConfig(req);
+  if (!payload.enabled) return res.status(503).json({ error: 'Firebase web config is not enabled' });
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(payload.config);
+});
 
 app.use(express.json({ limit: '16kb' }));
 
