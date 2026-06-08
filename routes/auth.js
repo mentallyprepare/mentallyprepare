@@ -244,6 +244,7 @@ function registerAuthRoutes(app, deps) {
         user = stmts.getUserById.get(Number(result.lastInsertRowid));
         created = true;
         trackEvent(user.id, 'signup_completed', { provider: GOOGLE_PROVIDER });
+        trackEvent(user.id, 'signup', { provider: GOOGLE_PROVIDER });
         authDebugLog('Backend user created/updated', {
           action: 'created',
           userId: user.id,
@@ -310,6 +311,7 @@ function registerAuthRoutes(app, deps) {
 
       req.session.userId = Number(result.lastInsertRowid);
       trackEvent(req.session.userId, 'signup_completed');
+      trackEvent(req.session.userId, 'signup');
       try {
         logVerification('Email service ready', { provider: 'configured email service' });
         await withEmailTimeout(

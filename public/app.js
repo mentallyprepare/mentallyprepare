@@ -2531,9 +2531,17 @@ function partnerStatusHtml(ps, compact) {
   const visibleCount = ps.partnerEntriesVisible || 0;
   const totalCount = ps.partnerTotalEntries || ps.partnerEntryCount || 0;
   const meta = ps.hasPartner ? (totalCount === 0 ? 'Your first notes open after midnight' : `${visibleCount} of ${totalCount} note${totalCount === 1 ? '' : 's'} unsealed`) : 'waiting room';
+  const activity = ps.activityLabel ? `<span>${escapeHtml(ps.activityLabel)}</span>` : '';
   const wroteToday = ps.hasPartner ? `<span>${ps.partnerHasWrittenToday ? 'They wrote tonight.' : "They haven't written yet. You can write first, they'll get it at midnight."}</span>` : '';
   const nextOpen = ps.nextUnsealAt ? `<span>Their next note unseals at ${escapeHtml(formatUnsealAt(ps.nextUnsealAt))}</span>` : '<span>Unseals after midnight IST</span>';
-  const switchActions = ps.canSwitch ? `
+  const reminderAction = ps.canRemindPartner ? '<button class="prompt-small-btn ghost" type="button" data-send-reminder>Send gentle reminder</button>' : '';
+  const rescueActions = Array.isArray(ps.rescueActions) && ps.rescueActions.length ? `
+    <div class="partner-rescue-actions" aria-label="Partner rescue options">
+      <button class="prompt-small-btn ghost" type="button" data-continue-solo>Continue solo</button>
+      ${ps.canSwitch ? '<button class="prompt-small-btn" type="button" data-open-switch>Find new partner</button>' : '<button class="prompt-small-btn ghost" type="button" disabled>Find new partner</button>'}
+      <button class="prompt-small-btn ghost" type="button" data-keep-waiting>Wait for partner</button>
+    </div>` : '';
+  const switchActions = ps.canSwitch && !rescueActions ? `
     <div class="partner-status-actions">
       <button class="prompt-small-btn ghost" type="button" data-keep-waiting>Keep waiting</button>
       <button class="prompt-small-btn" type="button" data-open-switch>Find a new match</button>
@@ -2544,10 +2552,14 @@ function partnerStatusHtml(ps, compact) {
     <p class="partner-status-copy">${escapeHtml(copy)}</p>
     <div class="partner-status-meta">
       <span>${escapeHtml(meta)}</span>
+      ${activity}
       ${wroteToday}
       ${nextOpen}
       <span title="You can quietly switch to a new anonymous partner without them knowing.">${ps.switchesRemaining || 0} quiet rematch${ps.switchesRemaining === 1 ? "" : "es"} left</span>
     </div>
+    ${ps.canRemindPartner ? '<p class="partner-status-copy">Your reflection partner may appreciate a reminder.</p>' : ''}
+    ${reminderAction}
+    ${rescueActions}
     ${switchActions}
   </div>`;
 }
@@ -2563,6 +2575,10 @@ async function renderPartnerStatusModule(id, compact) {
   if (switchBtn) switchBtn.addEventListener('click', openSwitchPartnerModal);
   const waitBtn = mount.querySelector('[data-keep-waiting]');
   if (waitBtn) waitBtn.addEventListener('click', function() { toast('You are not stuck. We will keep the room open.'); });
+  const reminderBtn = mount.querySelector('[data-send-reminder]');
+  if (reminderBtn) reminderBtn.addEventListener('click', sendPartnerReminder);
+  const soloBtn = mount.querySelector('[data-continue-solo]');
+  if (soloBtn) soloBtn.addEventListener('click', continueSolo);
 }
 
 function openSwitchPartnerModal() {
@@ -2577,6 +2593,7 @@ function openSwitchPartnerModal() {
       <h3 class="mp-modal-title">Find someone new?</h3>
       <p class="mp-modal-copy">Your partner has been quiet for a while. You can keep waiting, or we can quietly look for a new anonymous match for you. Your previous exchange will stay private.</p>
       <div class="mp-modal-actions">
+        <button class="prompt-small-btn ghost" type="button" id="switchSoloBtn">Continue solo</button>
         <button class="prompt-small-btn ghost" type="button" id="switchCancelBtn">Keep waiting</button>
         <button class="prompt-small-btn" type="button" id="switchConfirmBtn">Find new match</button>
       </div>
@@ -2585,6 +2602,25 @@ function openSwitchPartnerModal() {
   overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
   document.getElementById('switchCancelBtn').addEventListener('click', function() { overlay.remove(); });
   document.getElementById('switchConfirmBtn').addEventListener('click', switchPartner);
+  document.getElementById('switchSoloBtn').addEventListener('click', continueSolo);
+}
+
+async function sendPartnerReminder() {
+  try {
+    const result = await api('POST', '/partner-reminder', {});
+    toast(result.message || 'Gentle reminder sent.');
+    await loadState();
+    renderPartnerStatusModule('partner-status-module');
+  } catch (e) { toast(e.message || 'Reminder did not send.'); }
+}
+
+async function continueSolo() {
+  try {
+    const result = await api('POST', '/continue-solo', {});
+    const modal = document.getElementById('switchPartnerModal');
+    if (modal) modal.remove();
+    toast(result.message || 'You can keep writing privately.');
+  } catch (e) { toast(e.message || 'Could not save that choice.'); }
 }
 
 async function switchPartner() {
@@ -4363,7 +4399,7 @@ function wallShowCrisis(message, held) {
       '<p class="wall-crisis-msg">' + escapeHtml(crisisMsg) + '</p>' +
       '<div class="wall-crisis-helplines">' +
         '<div class="wall-crisis-helpline primary">' +
-          '<strong>Tele MANAS (Govt. of India)</strong>' +
+          '<strong>Tele MANAS</strong>' +
           '<span class="wall-crisis-number">14416</span>' +
           '<span class="wall-crisis-alt">or 1800-89-14416</span>' +
           '<span class="wall-crisis-hours">24×7 · 20 languages</span>' +

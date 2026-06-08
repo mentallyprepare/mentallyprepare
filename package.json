@@ -2,7 +2,7 @@
   "name": "mentally-prepare",
   "version": "2.0.0",
   "private": true,
-  "description": "Mentally Prepare — anonymous peer reset for students",
+  "description": "Mentally Prepare - private 21-day reflection journey",
   "engines": {
     "node": ">=18"
   },

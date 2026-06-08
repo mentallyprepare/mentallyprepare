@@ -1204,7 +1204,9 @@ function trackEvent(userId, eventName, metadata = {}) {
       'matched', 'day_1_written', 'day_2_returned', 'missed_day', 'report_clicked',
       'block_clicked', 'rematch_requested', 'reveal_choice_submitted', 'account_deleted',
       'crisis_keyword_triggered', 'signup_error', 'email_send_failed', 'login',
-      'day_written', 'mutual_reveal'
+      'day_written', 'mutual_reveal', 'signup', 'first_reflection', 'day_2', 'day_7',
+      'day_14', 'day_21', 'reveal_request', 'paid_conversion', 'partner_reminder_sent',
+      'continue_solo_selected'
     ]);
     if (!allowed.has(eventName)) return;
     stmts.insertAnalyticsEvent.run(userId || null, eventName, JSON.stringify(metadata || {}));
@@ -1475,7 +1477,7 @@ function scanForSafety(text) {
   const piiFlags = [];
   let pii = CONTENT_FLAGS.some(kw => lower.includes(kw));
   if (pii) piiFlags.push('personal_identifier_keyword');
-  // Regex for Indian phone numbers (10 digits, with or without spaces/dashes)
+  // Regex for +91-format phone numbers (10 digits, with or without spaces/dashes)
   const phoneRegex = /(?:\+91[- ]?)?(?:[6-9][0-9]{9})|(?:[0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{4})/g;
   if (phoneRegex.test(text)) { pii = true; piiFlags.push('phone_or_whatsapp'); }
 
@@ -1935,7 +1937,8 @@ registerPaymentRoutes(app, {
   crypto,
   razorpay,
   stripe,
-  stmts
+  stmts,
+  trackEvent
 });
 
 registerAppRoutes(app, {
