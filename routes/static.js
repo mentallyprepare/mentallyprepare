@@ -18,6 +18,12 @@ function registerStaticRoutes(app, { baseUrl, rootDir }) {
     res.sendFile(path.join(rootDir, 'public', 'waitlist.html'));
   });
 
+  // ── Noindex middleware for app, admin, and API routes ──
+  app.use(['/app', '/admin', '/api', '/signup', '/login', '/forgot', '/onboarding', '/scan', '/room'], (req, res, next) => {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    next();
+  });
+
   app.get('/app', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'app.html'));
   });
@@ -46,7 +52,23 @@ function registerStaticRoutes(app, { baseUrl, rootDir }) {
 
   app.get('/robots.txt', (req, res) => {
     res.type('text/plain');
-    res.send(`User-agent: *\nAllow: /\nSitemap: ${baseUrl}/sitemap.xml`);
+    res.send([
+      'User-agent: *',
+      'Allow: /',
+      'Disallow: /app',
+      'Disallow: /app/',
+      'Disallow: /admin',
+      'Disallow: /admin/',
+      'Disallow: /api/',
+      'Disallow: /signup',
+      'Disallow: /login',
+      'Disallow: /forgot',
+      'Disallow: /onboarding',
+      'Disallow: /scan',
+      'Disallow: /room',
+      '',
+      `Sitemap: ${baseUrl}/sitemap.xml`
+    ].join('\n'));
   });
 }
 
