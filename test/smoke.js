@@ -82,6 +82,16 @@ async function registerUser({ name = 'Smoke Tester', email = uniqueEmail('user')
   return { email, password, cookie };
 }
 
+function clearMatchesForUser(db, userId) {
+  const matches = db.prepare('SELECT id FROM matches WHERE user1_id = ? OR user2_id = ?').all(userId, userId);
+  for (const match of matches) {
+    for (const table of ['entries', 'comments', 'reactions', 'reveals', 'nudges', 'daily_notes', 'sealed_room_picks']) {
+      try { db.prepare(`DELETE FROM ${table} WHERE match_id = ?`).run(match.id); } catch {}
+    }
+    db.prepare('DELETE FROM matches WHERE id = ?').run(match.id);
+  }
+}
+
 let passed = 0;
 let failed = 0;
 
@@ -127,6 +137,7 @@ async function run() {
     assert.strictEqual(helperFrame.headers['cross-origin-resource-policy'], undefined, 'auth helper must not set Cross-Origin-Resource-Policy');
     ok('Firebase auth helper headers allow redirect completion');
   } catch (e) { fail('Firebase auth helper headers allow redirect completion', e); }
+
 
   // 2. Register a user
   let cookie;
@@ -330,6 +341,92 @@ async function run() {
     assert.ok(db.prepare('SELECT * FROM reports WHERE id = ?').get(reportRow.id), 'report still exists after dismiss endpoint');
     ok('Report status history');
   } catch (e) { fail('Report status history', e); }
+
+  // 13. Sprint 1 global positioning removes region-limited marketing copy
+  try {
+    const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
+    assert.match(indexHtml, /Feel seen without performing\./);
+    assert.match(indexHtml, /private 21-day reflection journey where two people connect through honest conversations, not followers, likes, or profiles/i);
+    assert.match(appHtml, /Feel seen without performing\./);
+    ok('Global homepage positioning');
+  } catch (e) { fail('Global homepage positioning', e); }
+
+  // 14. Partner status exposes activity labels, gentle reminder, rescue options, and continue-solo tracking
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get('smoke@test.example');
+    clearMatchesForUser(db, user.id);
+    const partnerId = db.prepare("INSERT INTO users (name, email, password, college, year, archetype, consent_given, consent_date, last_active_date) VALUES ('Retention Partner', ?, 'seeded-password', 'Test University B', '2nd', 'connector', 1, datetime('now'), date('now'))").run(uniqueEmail('retention-partner')).lastInsertRowid;
+    const partnerUser = db.prepare('SELECT * FROM users WHERE id = ?').get(partnerId);
+    const matchId = db.prepare("INSERT INTO matches (user1_id, user2_id, matched_at, started_at) VALUES (?, ?, datetime('now'), datetime('now', '-8 days'))").run(user.id, partnerUser.id).lastInsertRowid;
+    db.prepare("UPDATE users SET last_active_date = date('now') WHERE id = ?").run(partnerUser.id);
+    let status = await request('GET', '/api/partner-status', null, { cookie });
+    assert.strictEqual(status.status, 200, `partner status got ${status.status}: ${status.raw}`);
+    assert.strictEqual(status.json.activityLabel, 'Partner active today');
+
+    db.prepare("UPDATE users SET last_active_date = date('now', '-3 days') WHERE id = ?").run(partnerUser.id);
+    status = await request('GET', '/api/partner-status', null, { cookie });
+    assert.strictEqual(status.json.activityLabel, 'Partner active this week');
+
+    db.prepare("UPDATE users SET last_active_date = date('now', '-8 days') WHERE id = ?").run(partnerUser.id);
+    status = await request('GET', '/api/partner-status', null, { cookie });
+    assert.strictEqual(status.json.activityLabel, 'Partner inactive');
+    assert.deepStrictEqual(status.json.rescueActions.map(a => a.id), ['continue_solo', 'find_new_partner', 'wait_for_partner']);
+
+    const reminder = await request('POST', '/api/partner-reminder', {}, { cookie });
+    assert.strictEqual(reminder.status, 200, `partner reminder got ${reminder.status}: ${reminder.raw}`);
+    assert.ok(db.prepare("SELECT * FROM nudges WHERE user_id = ? AND match_id = ? AND type = 'partner_reminder'").get(partnerUser.id, matchId));
+    assert.ok(db.prepare("SELECT * FROM analytics_events WHERE user_id = ? AND event_name = 'partner_reminder_sent'").get(user.id));
+    db.prepare("UPDATE nudges SET dismissed = 1 WHERE user_id = ? AND match_id = ? AND type = 'partner_reminder'").run(partnerUser.id, matchId);
+    const repeatedReminder = await request('POST', '/api/partner-reminder', {}, { cookie });
+    assert.strictEqual(repeatedReminder.status, 200, `repeated reminder got ${repeatedReminder.status}: ${repeatedReminder.raw}`);
+    assert.strictEqual(db.prepare("SELECT COUNT(*) as c FROM nudges WHERE user_id = ? AND match_id = ? AND type = 'partner_reminder'").get(partnerUser.id, matchId).c, 1, 'reminder cooldown ignores dismissed state');
+    assert.strictEqual(db.prepare("SELECT COUNT(*) as c FROM analytics_events WHERE user_id = ? AND event_name = 'partner_reminder_sent'").get(user.id).c, 1, 'reminder analytics tracked only when nudge is created');
+
+    const solo = await request('POST', '/api/continue-solo', {}, { cookie });
+    assert.strictEqual(solo.status, 200, `continue solo got ${solo.status}: ${solo.raw}`);
+    assert.ok(db.prepare("SELECT * FROM analytics_events WHERE user_id = ? AND event_name = 'continue_solo_selected'").get(user.id));
+    const repeatedSolo = await request('POST', '/api/continue-solo', {}, { cookie });
+    assert.strictEqual(repeatedSolo.status, 200, `repeated continue solo got ${repeatedSolo.status}: ${repeatedSolo.raw}`);
+    assert.strictEqual(db.prepare("SELECT COUNT(*) as c FROM analytics_events WHERE user_id = ? AND event_name = 'continue_solo_selected'").get(user.id).c, 1, 'continue solo analytics tracked once for the same match');
+    ok('Partner rescue flow');
+  } catch (e) { fail('Partner rescue flow', e); }
+
+  // 15. Analytics include named retention milestones
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get('smoke@test.example');
+    clearMatchesForUser(db, user.id);
+    db.prepare('DELETE FROM entries WHERE user_id = ?').run(user.id);
+    const partnerId = db.prepare("INSERT INTO users (name, email, password, college, year, archetype, consent_given, consent_date, last_active_date) VALUES ('Analytics Partner', ?, 'seeded-password', 'Test University C', '2nd', 'connector', 1, datetime('now'), date('now'))").run(uniqueEmail('analytics-partner')).lastInsertRowid;
+    const partnerUser = db.prepare('SELECT * FROM users WHERE id = ?').get(partnerId);
+    db.prepare("UPDATE users SET archetype = NULL, scores = NULL, college = 'Test University A', college_normalized = 'test-university-a' WHERE id = ?").run(user.id);
+    const scan = await request('POST', '/api/scan', {
+      archetype: 'protector',
+      scores: { openness: 75, awareness: 65, guard: 25, reciprocity: 70 },
+      answers: [4, 5, 3, 6, 4, 5, 3, 6, 4, 5, 3]
+    }, { cookie });
+    assert.strictEqual(scan.status, 200, `scan got ${scan.status}: ${scan.raw}`);
+    const match = db.prepare('SELECT * FROM matches WHERE user1_id = ? OR user2_id = ?').get(user.id, user.id);
+    assert.ok(match, 'match created by scan');
+    const matchId = match.id;
+    db.prepare("DELETE FROM analytics_events WHERE user_id = ? AND event_name IN ('first_reflection', 'day_2', 'day_7', 'day_14', 'day_21', 'day_written')").run(user.id);
+    for (const day of [1, 2, 7, 14, 21]) {
+      db.prepare('DELETE FROM entries WHERE user_id = ? AND match_id = ?').run(user.id, matchId);
+      db.prepare('UPDATE matches SET started_at = datetime(\'now\', ?) WHERE id = ?').run(`-${day - 1} days`, matchId);
+      const entry = await request('POST', '/api/entry', { text: `day ${day} reflection`, mood: 'Okay' }, { cookie });
+      assert.strictEqual(entry.status, 200, `day ${day} entry got ${entry.status}: ${entry.raw}`);
+      if (day === 7) {
+        const repeatedEntry = await request('POST', '/api/entry', { text: 'day 7 edited reflection', mood: 'Okay' }, { cookie });
+        assert.strictEqual(repeatedEntry.status, 200, `day 7 repeated entry got ${repeatedEntry.status}: ${repeatedEntry.raw}`);
+      }
+    }
+    for (const eventName of ['signup', 'matched', 'first_reflection', 'day_2', 'day_7', 'day_14', 'day_21']) {
+      assert.ok(db.prepare('SELECT * FROM analytics_events WHERE user_id = ? AND event_name = ?').get(user.id, eventName), `${eventName} tracked`);
+    }
+    assert.strictEqual(db.prepare("SELECT COUNT(*) as c FROM analytics_events WHERE user_id = ? AND event_name = 'day_7'").get(user.id).c, 1, 'day 7 milestone tracked once per matched day');
+    assert.strictEqual(db.prepare("SELECT COUNT(*) as c FROM analytics_events WHERE user_id = ? AND event_name = 'day_written'").get(user.id).c, 5, 'entry edits do not duplicate day_written analytics');
+    ok('Retention analytics milestones');
+  } catch (e) { fail('Retention analytics milestones', e); }
 
   // Clean up
   db.close();

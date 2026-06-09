@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 // ─── Silent Room API Routes ───────────────────────────────────────────────────
 function registerSilentRoutes(app, deps) {
-  const { apiLimiter, requireAuth, db, scanForSafety, HELPLINES } = deps;
+  const { apiLimiter, requireAuth, db, scanForSafety, HELPLINES, getCrisisPayload } = deps;
 
   const sl = {
     getRateCount: db.prepare(`
@@ -149,12 +149,13 @@ function registerSilentRoutes(app, deps) {
       const safety = scanForSafety(content);
       if (safety.crisis) {
         sl.logCrisis.run(userId, content);
+        const crisis = getCrisisPayload(req);
         return res.status(200).json({
           id: null,
           status: 'crisis_intercepted',
           show_resources: true,
-          message: `This app is not emergency support. If you feel unsafe, contact emergency services, a trusted person, or Tele MANAS India: ${HELPLINES.teleManas}.`,
-          helplines: HELPLINES
+          message: crisis.message,
+          helplines: crisis.helplines
         });
       }
       if (safety.pii) {

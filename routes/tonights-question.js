@@ -12,6 +12,7 @@ function registerTonightsQuestionRoutes(app, deps) {
     prompts,
     scanForSafety,
     HELPLINES,
+    getCrisisPayload,
     trackEvent
   } = deps;
 
@@ -102,7 +103,7 @@ function registerTonightsQuestionRoutes(app, deps) {
         safety: {
           crisis: safety.crisis,
           pii: safety.pii,
-          helplines: safety.crisis ? HELPLINES : null
+          helplines: safety.crisis ? getCrisisPayload(req).helplines : null
         }
       });
     } catch (e) {

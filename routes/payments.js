@@ -6,7 +6,8 @@ function registerPaymentRoutes(app, deps) {
     crypto,
     razorpay,
     stripe,
-    stmts
+    stmts,
+    trackEvent
   } = deps;
 
   app.post('/api/pay/razorpay/create', apiLimiter, requireAuth, async (req, res) => {
@@ -62,6 +63,7 @@ function registerPaymentRoutes(app, deps) {
       const payment = stmts.getPaymentByOrder.get(razorpay_order_id);
       if (payment) {
         stmts.updatePayment.run(razorpay_payment_id, 'paid', payment.id);
+        if (trackEvent) trackEvent(payment.user_id, 'paid_conversion', { provider: 'razorpay', product: payment.product, paymentId: payment.id });
       }
 
       res.json({ ok: true, verified: true });
@@ -125,6 +127,7 @@ function registerPaymentRoutes(app, deps) {
         const payment = stmts.getPaymentByOrder.get(session.id);
         if (payment) {
           stmts.updatePayment.run(session.payment_intent, 'paid', payment.id);
+          if (trackEvent) trackEvent(payment.user_id, 'paid_conversion', { provider: 'stripe', product: payment.product, paymentId: payment.id });
         }
       }
 

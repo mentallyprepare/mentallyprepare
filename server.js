@@ -1218,7 +1218,9 @@ function trackEvent(userId, eventName, metadata = {}) {
       'matched', 'day_1_written', 'day_2_returned', 'missed_day', 'report_clicked',
       'block_clicked', 'rematch_requested', 'reveal_choice_submitted', 'account_deleted',
       'crisis_keyword_triggered', 'signup_error', 'email_send_failed', 'login',
-      'day_written', 'mutual_reveal'
+      'day_written', 'mutual_reveal', 'signup', 'first_reflection', 'day_2', 'day_7',
+      'day_14', 'day_21', 'reveal_request', 'paid_conversion', 'partner_reminder_sent',
+      'continue_solo_selected'
     ]);
     if (!allowed.has(eventName)) return;
     stmts.insertAnalyticsEvent.run(userId || null, eventName, JSON.stringify(metadata || {}));
@@ -1497,11 +1499,35 @@ const CONTENT_FLAGS = [
 ];
 
 const HELPLINES = {
-  teleManas: '14416 or 1800 891 4416',
-  iCall: '9152987821',
-  vandrevala: '+91 9999 666 555',
-  nimhans: '080-46110007'
+  generic: 'your local emergency services or a crisis line in your country',
+  IN: {
+    teleManas: '14416 or 1800 891 4416',
+    iCall: '9152987821',
+    vandrevala: '+91 9999 666 555',
+    nimhans: '080-46110007'
+  }
 };
+
+/** Detect India locale from request headers */
+function isIndiaLocale(req) {
+  const tz = req.headers['x-timezone'] || '';
+  const lang = (req.headers['accept-language'] || '').toLowerCase();
+  return tz.includes('Asia/Kolkata') || tz.includes('Asia/Calcutta')
+    || lang.startsWith('hi') || lang.includes('en-in');
+}
+
+/** Build locale-appropriate crisis response fields */
+function getCrisisPayload(req) {
+  const india = isIndiaLocale(req);
+  let message = 'If things feel like too much right now, please contact your local emergency services or a trusted person.';
+  let helplines = { generic: HELPLINES.generic };
+
+  if (india && HELPLINES.IN) {
+    message += ` In India, you can reach Tele MANAS at ${HELPLINES.IN.teleManas}.`;
+    helplines = { ...helplines, ...HELPLINES.IN };
+  }
+  return { message, helplines };
+}
 
 function scanForSafety(text) {
   const lower = text.toLowerCase();
@@ -1509,7 +1535,7 @@ function scanForSafety(text) {
   const piiFlags = [];
   let pii = CONTENT_FLAGS.some(kw => lower.includes(kw));
   if (pii) piiFlags.push('personal_identifier_keyword');
-  // Regex for Indian phone numbers (10 digits, with or without spaces/dashes)
+  // Regex for +91-format phone numbers (10 digits, with or without spaces/dashes)
   const phoneRegex = /(?:\+91[- ]?)?(?:[6-9][0-9]{9})|(?:[0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{4})/g;
   if (phoneRegex.test(text)) { pii = true; piiFlags.push('phone_or_whatsapp'); }
 
@@ -1969,7 +1995,8 @@ registerPaymentRoutes(app, {
   crypto,
   razorpay,
   stripe,
-  stmts
+  stmts,
+  trackEvent
 });
 
 registerAppRoutes(app, {
@@ -1991,6 +2018,7 @@ registerAppRoutes(app, {
   scanForSafety,
   normalizeCollegeName,
   HELPLINES,
+  getCrisisPayload,
   attemptMatch,
   trackEvent,
   attachWaitingEntriesToMatch,
@@ -2009,6 +2037,7 @@ registerWaitingEntryRoute(app, {
   prompts,
   scanForSafety,
   HELPLINES,
+  getCrisisPayload,
   trackEvent
 });
 
@@ -2022,6 +2051,7 @@ registerTonightsQuestionRoutes(app, {
   prompts,
   scanForSafety,
   HELPLINES,
+  getCrisisPayload,
   trackEvent
 });
 
@@ -2031,7 +2061,8 @@ registerSilentRoutes(app, {
   requireAuth,
   db,
   scanForSafety,
-  HELPLINES
+  HELPLINES,
+  getCrisisPayload
 });
 registerSilentAdminRoutes(app, {
   requireAdmin,
@@ -2046,6 +2077,7 @@ if (process.env.WALL_ENABLED === 'true') {
     db,
     scanForSafety,
     HELPLINES,
+    getCrisisPayload,
     trackEvent
   });
 }

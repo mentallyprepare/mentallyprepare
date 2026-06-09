@@ -17,6 +17,7 @@ function registerAppRoutes(app, deps) {
     scanForSafety,
     normalizeCollegeName,
     HELPLINES,
+    getCrisisPayload,
     attemptMatch,
     trackEvent,
     attachWaitingEntriesToMatch,
@@ -202,6 +203,30 @@ function registerAppRoutes(app, deps) {
     return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
   }
 
+  function daysSinceActivityDate(value) {
+    if (!value) return null;
+    const raw = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw) && raw === new Date().toISOString().slice(0, 10)) return 0;
+    const date = new Date(raw.includes('T') ? raw : `${raw}T00:00:00+05:30`);
+    if (Number.isNaN(date.getTime())) return null;
+    return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+  }
+
+  function getActivityLabel(days) {
+    if (days === 0) return 'Partner active today';
+    if (days !== null && days <= 7) return 'Partner active this week';
+    return 'Partner inactive';
+  }
+
+  function getRescueActions(daysInactive, canSwitch) {
+    if (daysInactive === null || daysInactive < 5) return [];
+    return [
+      { id: 'continue_solo', label: 'Continue solo' },
+      { id: 'find_new_partner', label: canSwitch ? 'Find new partner' : 'Find new partner unavailable' },
+      { id: 'wait_for_partner', label: 'Wait for partner' }
+    ];
+  }
+
   function buildPartnerWritingStatus({ userId, partnerId, match, currentDay, visiblePartnerEntries = [], switchCount = 0 }) {
     const switchesRemaining = Math.max(0, 2 - (switchCount || 0));
     if (!match || !partnerId) {
@@ -219,11 +244,16 @@ function registerAppRoutes(app, deps) {
         canSwitch: false,
         switchesRemaining,
         status: 'waiting',
+        activityLabel: null,
+        daysSincePartnerActive: null,
+        canRemindPartner: false,
+        rescueActions: [],
         friendlyTitle: 'We are still looking for the right anonymous match.',
         friendlyMessage: 'You can write tonight while we search. Your first note will stay ready.'
       };
     }
 
+    const partner = stmts.getUserById.get(partnerId);
     const partnerEntriesAll = db.prepare(`
       SELECT day, created_at
       FROM entries
@@ -236,7 +266,9 @@ function registerAppRoutes(app, deps) {
     const myTodayEntry = stmts.getEntry.get(userId, match.id, currentDay);
     const partnerEntriesVisible = visiblePartnerEntries.length;
     const daysQuiet = daysSinceEntry(partnerLastEntry);
-    const canSwitchByQuiet = daysQuiet !== null && daysQuiet >= 5;
+    const daysSincePartnerActive = daysSinceActivityDate(partner && partner.last_active_date);
+    const daysInactive = daysSincePartnerActive !== null ? daysSincePartnerActive : daysQuiet;
+    const canSwitchByQuiet = daysInactive !== null && daysInactive >= 5;
     const canSwitch = canSwitchByQuiet && switchesRemaining > 0;
     const waitingForPartner = !!myTodayEntry && !todayPartnerEntry;
     const nextUnsealAt = todayPartnerEntry && !isEntryUnlocked(todayPartnerEntry, match)
@@ -292,6 +324,10 @@ function registerAppRoutes(app, deps) {
       nextUnsealAt,
       unsealMessage,
       daysSincePartnerEntry: daysQuiet,
+      daysSincePartnerActive,
+      activityLabel: getActivityLabel(daysInactive),
+      canRemindPartner: daysInactive !== null && daysInactive >= 2,
+      rescueActions: getRescueActions(daysInactive, canSwitch),
       canSwitch,
       switchesRemaining,
       status,
@@ -663,12 +699,21 @@ function registerAppRoutes(app, deps) {
       if (day > 21) return res.status(400).json({ error: 'Journey complete' });
 
       const prompt = cleanSelectedPrompt(selectedPrompt) || prompts[(day - 1) % prompts.length];
-      if (trackEvent && day === 1) trackEvent(userId, 'day_1_written', { day });
-      if (trackEvent && day === 2) trackEvent(userId, 'day_2_returned', { day });
-      if (trackEvent) trackEvent(userId, 'day_written', { day });
+      const existingEntry = stmts.getEntry.get(userId, match.id, day);
+      if (trackEvent && !existingEntry && day === 1) {
+        trackEvent(userId, 'day_1_written', { day });
+        trackEvent(userId, 'first_reflection', { day });
+      }
+      if (trackEvent && !existingEntry && day === 2) {
+        trackEvent(userId, 'day_2_returned', { day });
+        trackEvent(userId, 'day_2', { day });
+      }
+      if (trackEvent && !existingEntry && [7, 14, 21].includes(day)) trackEvent(userId, `day_${day}`, { day });
+      if (trackEvent && !existingEntry) trackEvent(userId, 'day_written', { day });
       stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
 
-      res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: safety.crisis ? HELPLINES : null } });
+      const crisisData = safety.crisis ? getCrisisPayload(req) : null;
+      res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: crisisData ? crisisData.helplines : null } });
     } catch (e) {
       console.error('Entry error:', e);
       res.status(500).json({ error: 'Failed to save entry' });
@@ -707,6 +752,53 @@ function registerAppRoutes(app, deps) {
     } catch (e) {
       console.error('Partner status error:', e);
       res.status(500).json({ error: 'Failed to check partner status' });
+    }
+  });
+
+  app.post('/api/partner-reminder', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const match = stmts.getMatch.get(userId, userId);
+      if (!match) return res.status(400).json({ error: 'No active match found' });
+      const partnerId = getPartnerId(match, userId);
+      const partner = stmts.getUserById.get(partnerId);
+      if (!partner) return res.status(400).json({ error: 'Partner not found' });
+      const daysInactive = daysSinceActivityDate(partner.last_active_date);
+      if (daysInactive !== null && daysInactive < 2) {
+        return res.status(400).json({ error: 'Your partner has been active recently. Give them a little time.' });
+      }
+      const recent = db.prepare(`
+        SELECT id FROM nudges
+        WHERE user_id = ? AND match_id = ? AND type = 'partner_reminder'
+          AND created_at >= datetime('now', '-24 hours')
+        LIMIT 1
+      `).get(partnerId, match.id);
+      if (!recent) {
+        stmts.insertNudge.run(partnerId, match.id, 'partner_reminder', 'Your reflection partner may appreciate a reminder.');
+        if (trackEvent) trackEvent(userId, 'partner_reminder_sent', { matchId: match.id, partnerInactiveDays: daysInactive });
+      }
+      res.json({ ok: true, message: 'Gentle reminder sent.' });
+    } catch (e) {
+      console.error('Partner reminder error:', e);
+      res.status(500).json({ error: 'Failed to send reminder' });
+    }
+  });
+
+  app.post('/api/continue-solo', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const match = stmts.getMatch.get(userId, userId);
+      const metadata = { hasMatch: !!match, matchId: match ? match.id : null };
+      const existingEvent = db.prepare(`
+        SELECT id FROM analytics_events
+        WHERE user_id = ? AND event_name = 'continue_solo_selected' AND metadata = ?
+        LIMIT 1
+      `).get(userId, JSON.stringify(metadata));
+      if (trackEvent && !existingEvent) trackEvent(userId, 'continue_solo_selected', metadata);
+      res.json({ ok: true, state: 'solo', message: 'You can keep writing privately while the room settles.' });
+    } catch (e) {
+      console.error('Continue solo error:', e);
+      res.status(500).json({ error: 'Failed to save solo choice' });
     }
   });
 
@@ -873,6 +965,7 @@ function registerAppRoutes(app, deps) {
       const existing = stmts.getReveal.get(match.id, userId);
       if (existing) return res.status(409).json({ error: 'Reveal choice is already locked.' });
       stmts.insertRevealChoice.run(match.id, userId, choice, new Date().toISOString());
+      if (trackEvent) trackEvent(userId, 'reveal_request', { choice });
       if (trackEvent) trackEvent(userId, 'reveal_choice_submitted', { choice });
       const REVEAL_YES = ['first_name', 'name_college', 'contact_details'];
       if (trackEvent && REVEAL_YES.includes(choice)) {

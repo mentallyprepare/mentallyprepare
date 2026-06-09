@@ -154,6 +154,16 @@ async function main() {
     }
   }
 
+  if (expectSameOriginAuth) {
+    const helperInit = await getJson('/__/firebase/init.json');
+    if (assertStatus(helperInit.response, '/__/firebase/init.json', 200)) {
+      if (helperInit.data.authDomain === expectedHost) pass(`Firebase helper init authDomain matches ${expectedHost}`);
+      else fail(`Firebase helper init authDomain mismatch: got ${helperInit.data.authDomain || 'missing'}, expected ${expectedHost}`);
+      if (helperInit.data.projectId) pass('Firebase helper init includes projectId');
+      else fail('Firebase helper init missing projectId');
+    }
+  }
+
   const app = await getText('/app');
   if (assertStatus(app.response, '/app', 200)) {
     if (app.text.includes(`/app.js?v=${expectedScriptVersion}`)) pass(`app loads ${expectedScriptVersion}`);
