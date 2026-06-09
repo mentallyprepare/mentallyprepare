@@ -1228,7 +1228,11 @@ function trackEvent(userId, eventName, metadata = {}) {
 }
 
 // --- Middleware --------------------------
-app.use(helmet({
+function isFirebaseAuthHelperPath(req) {
+  return req.path.startsWith('/__/auth/') || req.path === '/__/firebase/init.json';
+}
+
+const appSecurityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -1246,7 +1250,12 @@ app.use(helmet({
   crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   crossOriginEmbedderPolicy: false,
   referrerPolicy: { policy: 'no-referrer' }
-}));
+});
+
+app.use((req, res, next) => {
+  if (isFirebaseAuthHelperPath(req)) return next();
+  return appSecurityHeaders(req, res, next);
+});
 // --- Stripe webhook MUST be registered BEFORE express.json() ---
 // (Stripe needs the raw body for signature verification)
 let stripe = null;
