@@ -117,6 +117,17 @@ async function run() {
     ok('Firebase custom-domain auth config');
   } catch (e) { fail('Firebase custom-domain auth config', e); }
 
+  // 1c. Firebase auth helper pages must not inherit app frame-blocking headers.
+  try {
+    const helperFrame = await request('GET', '/__/auth/handler', null, { Host: 'mymentallyprepare.com' });
+    assert.strictEqual(helperFrame.status, 200, `firebase auth handler got ${helperFrame.status}: ${helperFrame.raw.slice(0, 200)}`);
+    const csp = String(helperFrame.headers['content-security-policy'] || '');
+    assert.doesNotMatch(csp, /frame-ancestors\s+'none'/i, 'auth helper must not block Firebase iframe/redirect handling');
+    assert.strictEqual(helperFrame.headers['x-frame-options'], undefined, 'auth helper must not set X-Frame-Options');
+    assert.strictEqual(helperFrame.headers['cross-origin-resource-policy'], undefined, 'auth helper must not set Cross-Origin-Resource-Policy');
+    ok('Firebase auth helper headers allow redirect completion');
+  } catch (e) { fail('Firebase auth helper headers allow redirect completion', e); }
+
   // 2. Register a user
   let cookie;
   try {
