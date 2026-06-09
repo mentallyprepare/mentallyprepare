@@ -1484,11 +1484,35 @@ const CONTENT_FLAGS = [
 ];
 
 const HELPLINES = {
-  teleManas: '14416 or 1800 891 4416',
-  iCall: '9152987821',
-  vandrevala: '+91 9999 666 555',
-  nimhans: '080-46110007'
+  generic: 'your local emergency services or a crisis line in your country',
+  IN: {
+    teleManas: '14416 or 1800 891 4416',
+    iCall: '9152987821',
+    vandrevala: '+91 9999 666 555',
+    nimhans: '080-46110007'
+  }
 };
+
+/** Detect India locale from request headers */
+function isIndiaLocale(req) {
+  const tz = req.headers['x-timezone'] || '';
+  const lang = (req.headers['accept-language'] || '').toLowerCase();
+  return tz.includes('Asia/Kolkata') || tz.includes('Asia/Calcutta')
+    || lang.startsWith('hi') || lang.includes('en-in');
+}
+
+/** Build locale-appropriate crisis response fields */
+function getCrisisPayload(req) {
+  const india = isIndiaLocale(req);
+  let message = 'If things feel like too much right now, please contact your local emergency services or a trusted person.';
+  let helplines = { generic: HELPLINES.generic };
+
+  if (india && HELPLINES.IN) {
+    message += ` In India, you can reach Tele MANAS at ${HELPLINES.IN.teleManas}.`;
+    helplines = { ...helplines, ...HELPLINES.IN };
+  }
+  return { message, helplines };
+}
 
 function scanForSafety(text) {
   const lower = text.toLowerCase();
@@ -1979,6 +2003,7 @@ registerAppRoutes(app, {
   scanForSafety,
   normalizeCollegeName,
   HELPLINES,
+  getCrisisPayload,
   attemptMatch,
   trackEvent,
   attachWaitingEntriesToMatch,
@@ -1997,6 +2022,7 @@ registerWaitingEntryRoute(app, {
   prompts,
   scanForSafety,
   HELPLINES,
+  getCrisisPayload,
   trackEvent
 });
 
@@ -2010,6 +2036,7 @@ registerTonightsQuestionRoutes(app, {
   prompts,
   scanForSafety,
   HELPLINES,
+  getCrisisPayload,
   trackEvent
 });
 
@@ -2019,7 +2046,8 @@ registerSilentRoutes(app, {
   requireAuth,
   db,
   scanForSafety,
-  HELPLINES
+  HELPLINES,
+  getCrisisPayload
 });
 registerSilentAdminRoutes(app, {
   requireAdmin,
@@ -2034,6 +2062,7 @@ if (process.env.WALL_ENABLED === 'true') {
     db,
     scanForSafety,
     HELPLINES,
+    getCrisisPayload,
     trackEvent
   });
 }

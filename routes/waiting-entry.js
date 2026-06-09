@@ -1,6 +1,6 @@
 // Route for saving Day 1 entry while waiting for a match
 module.exports = function(app, deps) {
-  const { apiLimiter, requireAuth, stmts, prompts, scanForSafety, HELPLINES, trackEvent } = deps;
+  const { apiLimiter, requireAuth, stmts, prompts, scanForSafety, HELPLINES, getCrisisPayload, trackEvent } = deps;
 
   app.post('/api/waiting-entry', apiLimiter, requireAuth, (req, res) => {
     try {
@@ -28,7 +28,8 @@ module.exports = function(app, deps) {
       stmts.upsertWaitingEntry.run(userId, text.trim(), mood || '🌓', prompt);
 
       if (trackEvent) trackEvent(userId, 'day_1_written', { waiting: true });
-      res.json({ ok: true, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: safety.crisis ? HELPLINES : null } });
+      const crisisData = safety.crisis ? getCrisisPayload(req) : null;
+      res.json({ ok: true, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: crisisData ? crisisData.helplines : null } });
     } catch (e) {
       console.error('Waiting entry error:', e);
       res.status(500).json({ error: 'Failed to save waiting entry' });

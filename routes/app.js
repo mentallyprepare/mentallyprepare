@@ -17,6 +17,7 @@ function registerAppRoutes(app, deps) {
     scanForSafety,
     normalizeCollegeName,
     HELPLINES,
+    getCrisisPayload,
     attemptMatch,
     trackEvent,
     attachWaitingEntriesToMatch,
@@ -711,7 +712,8 @@ function registerAppRoutes(app, deps) {
       if (trackEvent && !existingEntry) trackEvent(userId, 'day_written', { day });
       stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
 
-      res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: safety.crisis ? HELPLINES : null } });
+      const crisisData = safety.crisis ? getCrisisPayload(req) : null;
+      res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: crisisData ? crisisData.helplines : null } });
     } catch (e) {
       console.error('Entry error:', e);
       res.status(500).json({ error: 'Failed to save entry' });

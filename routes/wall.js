@@ -8,7 +8,7 @@ const MAX_POSTS_PER_DAY = 3;
 const MATCH_DURATION_DAYS = 21;
 
 function registerWallRoutes(app, deps) {
-  const { apiLimiter, requireAuth, db, scanForSafety, HELPLINES, trackEvent } = deps;
+  const { apiLimiter, requireAuth, db, scanForSafety, HELPLINES, getCrisisPayload, trackEvent } = deps;
 
   // ── Prepared statements ──
   const wallStmts = {
@@ -83,7 +83,7 @@ function registerWallRoutes(app, deps) {
     ),
   };
 
-  const CRISIS_MESSAGE = "If things feel like too much right now, you don't have to sit with it alone. These people are here, any time:";
+  // Crisis message now comes from getCrisisPayload(req) for locale-aware helplines
 
   // GET /api/wall/feed
   app.get('/api/wall/feed', apiLimiter, requireAuth, (req, res) => {
@@ -136,10 +136,11 @@ function registerWallRoutes(app, deps) {
       if (safety.crisis) {
         wallStmts.insertPost.run(q.id, userId, trimmed, match_opt_in ? 1 : 0, 1);
         if (trackEvent) trackEvent(userId, 'crisis_keyword_triggered', { surface: 'wall_post' });
+        const crisis = getCrisisPayload(req);
         return res.json({
           crisis: true,
-          helplines: HELPLINES,
-          message: CRISIS_MESSAGE,
+          helplines: crisis.helplines,
+          message: crisis.message,
         });
       }
 
@@ -199,7 +200,8 @@ function registerWallRoutes(app, deps) {
           const safety = scanForSafety(cleanLine);
           if (safety.crisis) {
             if (trackEvent) trackEvent(userId, 'crisis_keyword_triggered', { surface: 'wall_support_line' });
-            return res.json({ crisis: true, helplines: HELPLINES, message: CRISIS_MESSAGE });
+            const crisis = getCrisisPayload(req);
+            return res.json({ crisis: true, helplines: crisis.helplines, message: crisis.message });
           }
         }
       }
