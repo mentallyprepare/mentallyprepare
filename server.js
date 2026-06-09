@@ -1315,6 +1315,12 @@ app.get('/__/firebase/init.json', (req, res) => {
 
 app.use(express.json({ limit: '16kb' }));
 
+// ── Noindex middleware for app, admin, and API routes ──
+app.use(['/app', '/admin', '/api', '/signup', '/login', '/forgot', '/onboarding', '/scan', '/room'], (req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
+});
+
 // Keep Railway health checks independent from session middleware.
 app.get('/api/health', handleLiveness);
 app.get('/health', handleLivenessText);

@@ -18,12 +18,6 @@ function registerStaticRoutes(app, { baseUrl, rootDir }) {
     res.sendFile(path.join(rootDir, 'public', 'waitlist.html'));
   });
 
-  // ── Noindex middleware for app, admin, and API routes ──
-  app.use(['/app', '/admin', '/api', '/signup', '/login', '/forgot', '/onboarding', '/scan', '/room'], (req, res, next) => {
-    res.set('X-Robots-Tag', 'noindex, nofollow');
-    next();
-  });
-
   app.get('/app', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'app.html'));
   });
