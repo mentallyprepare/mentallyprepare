@@ -144,8 +144,13 @@
     <a href="#how" data-nav-target="how">How It Works</a>
     <a href="#l-archetypes" data-nav-target="l-archetypes">Archetypes</a>
     <a href="#l-stories" data-nav-target="l-stories">Stories</a>
+    <a href="/app?screen=s-login" data-auth-target="s-login">Log in</a>
+    <a href="/app?screen=s-signup" data-auth-target="s-signup">Sign up</a>
   </div>
-  <button class="site-nav-cta" id="navCta" type="button">Begin tonight</button>
+  <div class="site-nav-actions">
+    <button class="site-nav-link-btn" id="navLoginBtn" type="button">Log in</button>
+    <button class="site-nav-cta" id="navCta" type="button">Sign up</button>
+  </div>
   <button class="site-nav-menu" id="siteMenuBtn" type="button" aria-expanded="false" aria-controls="siteNavLinks">&#9776;</button>
 </nav>
 
@@ -164,6 +169,8 @@
     <p class="hero-sub">A private 21-day reflection journey where two people connect through honest conversations, not followers, likes, or profiles.</p>
     <div class="hero-actions">
       <button class="btn-primary" id="heroStartBtn" type="button">Begin tonight</button>
+      <button class="btn-ghost-l" id="heroSignupBtn" type="button">Sign up</button>
+      <button class="btn-ghost-l" id="heroLoginBtn" type="button">Log in</button>
       <a href="#how" class="btn-ghost-l" id="heroHowLink">See How It Works</a>
     </div>
   </div>
@@ -340,7 +347,7 @@
   <div class="cta-inner reveal">
     <h2 class="cta-h2">Ready to be<br/><em>seen?</em></h2>
     <p class="cta-p">21 days. One stranger. Zero performance. Start your anonymous emotional reset today.</p>
-    <button class="cta-btn" onclick="startApp()">Begin Your Reset</button>
+    <button class="cta-btn" onclick="startSignup()">Begin Your Reset</button>
     <div class="cta-note">Free. Anonymous. No app download required.</div>
   </div>
 </section>
@@ -362,33 +369,60 @@
     </div>
     <h1 class="splash-h">One honest line.<br/><em>Twenty-one nights.<br/>Your call.</em></h1>
     <p class="splash-p">A private writing ritual for students. Anonymous by default. No public profile. Reveal only if both people choose it.</p>
-    <button class="btn" onclick="go('s-ob1')">Begin tonight</button>
+    <button class="btn" onclick="go('s-signup')">Begin tonight</button>
     <button class="btn-ghost" onclick="go('s-login')" style="margin-top:10px">I already have an account</button>
     <div class="splash-note">Free. Anonymous. Takes about 3 minutes.</div>
   </div>
 </div>
 
+<!-- SIGNUP ENTRY -->
+<div class="screen auth-screen" id="s-signup">
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="eyebrow">Start tonight</div>
+      <h1 class="auth-title">Create your Mentally Prepare account</h1>
+      <p class="auth-copy">Before the scan, create a private account so your 21-day journey can be saved safely.</p>
+      <div class="journey-preview" aria-label="Journey preview">
+        <div class="journey-step"><span>1</span><strong>Create Account</strong></div>
+        <div class="journey-step"><span>2</span><strong>Take Scan</strong></div>
+        <div class="journey-step"><span>3</span><strong>Get Matched</strong></div>
+        <div class="journey-step"><span>4</span><strong>Write Daily</strong></div>
+        <div class="journey-step"><span>5</span><strong>Reveal on Day 21</strong></div>
+      </div>
+      <button class="btn google-auth-btn" id="signupGoogleBtn" onclick="googleLogin('signup')" type="button"><span class="google-mark">G</span><span>Continue with Google</span></button>
+      <button class="btn-ghost auth-secondary-btn" onclick="go('s-ob4')" type="button">Email signup</button>
+      <p class="auth-trust">Your journal stays private. You choose what to reveal on Day 21.</p>
+      <div class="auth-switch">Already have an account? <a href="/app?screen=s-login" onclick="openAuthScreen('s-login');return false;">Log in</a></div>
+      <div class="auth-status" id="signup-status" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
 <!-- LOGIN -->
-<div class="screen" id="s-login">
-  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
-    <div class="moon-base" style="width:72px;height:72px;box-shadow:0 0 40px rgba(201,169,110,.5),0 0 80px rgba(201,169,110,.15);animation:float 5s ease-in-out infinite;margin-bottom:28px;"></div>
+<div class="screen auth-screen" id="s-login">
+  <div class="auth-shell">
+    <div class="auth-card">
     <div class="eyebrow">Welcome back</div>
-    <h2 style="font-family:'Playfair Display',serif;font-size:28px;font-weight:400;line-height:1.15;margin-bottom:24px;">Return to<br/><em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">your private room.</em></h2>
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-copy">Open your private room and continue where you left off.</p>
+    <button class="btn google-auth-btn" id="loginGoogleBtn" onclick="googleLogin('login')" type="button"><span class="google-mark">G</span><span>Continue with Google</span></button>
+    <div class="auth-divider"><span>Email/password login</span></div>
     <div style="width:100%;text-align:left;">
       <div class="input-block">
         <label class="input-label">Email</label>
-        <input class="input-field" type="email" id="login-email" placeholder="you@college.edu"/>
+        <input class="input-field" type="email" id="login-email" placeholder="you@example.com" autocomplete="email"/>
       </div>
       <div class="input-block">
         <label class="input-label">Password</label>
-        <input class="input-field" type="password" id="login-password" placeholder="Your password"/>
+        <input class="input-field" type="password" id="login-password" placeholder="Your password" autocomplete="current-password"/>
       </div>
     </div>
-    <button class="btn" onclick="login()" style="margin-top:8px;">Open my room</button>
-    <button class="btn-ghost google-auth-btn" onclick="googleLogin('login')" style="margin-top:10px;" type="button"><span class="google-mark">G</span>Continue with Google</button>
-    <div style="margin-top:14px;"><a href="#" onclick="go('s-forgot');return false;" style="font-size:12px;color:var(--rose-l);text-decoration:underline;text-underline-offset:3px;">Forgot password?</a></div>
-    <button class="btn-ghost" onclick="go('s-splash')" style="margin-top:10px;">← Back</button>
+    <button class="btn" id="loginSubmitBtn" onclick="login()" type="button">Log in</button>
+    <div class="auth-links"><a href="#" onclick="go('s-forgot');return false;">Forgot password?</a></div>
+    <div class="auth-switch">New here? <a href="/app?screen=s-signup" onclick="openAuthScreen('s-signup');return false;">Create account</a></div>
+    <div class="auth-status" id="login-status" role="status" aria-live="polite"></div>
   </div>
+</div>
 </div>
 
 <!-- FORGOT PASSWORD -->
@@ -403,7 +437,8 @@
         <input class="input-field" type="email" id="forgot-email" placeholder="you@college.edu"/>
       </div>
     </div>
-    <button class="btn" onclick="forgotPassword()" style="margin-top:8px;">Send reset code</button>
+    <button class="btn" id="forgotSubmitBtn" onclick="forgotPassword()" style="margin-top:8px;">Send reset code</button>
+    <div class="auth-status" id="forgot-status" role="status" aria-live="polite"></div>
     <button class="btn-ghost" onclick="go('s-login')" style="margin-top:10px;">← Back to login</button>
   </div>
 </div>
@@ -425,7 +460,8 @@
         <input class="input-field" type="password" id="reset-password" placeholder="At least 8 characters"/>
       </div>
     </div>
-    <button class="btn" onclick="resetPassword()" style="margin-top:8px;">Set new password</button>
+    <button class="btn" id="resetSubmitBtn" onclick="resetPassword()" style="margin-top:8px;">Set new password</button>
+    <div class="auth-status" id="reset-status" role="status" aria-live="polite"></div>
     <button class="btn-ghost" onclick="go('s-forgot')" style="margin-top:10px;">← Back</button>
   </div>
 </div>
@@ -447,7 +483,6 @@
       <h2 class="slide-h">This is not a course.<br/><em>It is a ritual.</em></h2>
       <p class="slide-p">Small enough to do tonight. Private enough to tell the truth.</p>
     </div>
-    <div class="nav-row"><button class="btn-back" onclick="go('s-splash')">←</button><button class="btn btn-next" onclick="go('s-ob2')">Next →</button></div>
   </div>
 </div>
 
@@ -595,8 +630,9 @@
     </label>
     <div class="nav-row">
       <button class="btn-back" onclick="go('s-ob4b')">←</button>
-      <button class="btn btn-next" onclick="register()" style="background:linear-gradient(135deg,var(--gold),var(--rose-d));">Begin the scan ✦</button>
+      <button class="btn btn-next" id="registerSubmitBtn" onclick="register()" style="background:linear-gradient(135deg,var(--gold),var(--rose-d));">Begin the scan</button>
     </div>
+    <div class="auth-status" id="register-status" role="status" aria-live="polite"></div>
   </div>
 </div>
 

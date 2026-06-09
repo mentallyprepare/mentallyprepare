@@ -262,11 +262,16 @@ async function restoreFirebaseSession() {
 }
 
 async function googleLogin(context) {
+  const statusId = context === 'signup' ? 'signup-status' : 'login-status';
+  const buttonId = context === 'signup' ? 'signupGoogleBtn' : 'loginGoogleBtn';
   try {
+    setAuthStatus(statusId, 'Opening Google sign in...', 'loading');
+    setButtonLoading(buttonId, true, 'Opening Google...');
     authDebug('Google login clicked', { context: context || 'login' });
     authDebug('Google auth started', { context: context || 'login' });
     const auth = await initFirebaseAuth();
     if (!auth) {
+      setAuthStatus(statusId, 'Google login is not configured yet.', 'error');
       toast('Google login is not configured yet.');
       return;
     }
@@ -287,6 +292,7 @@ async function googleLogin(context) {
     } catch (e) {
       if (e && ['auth/popup-blocked', 'auth/cancelled-popup-request', 'auth/popup-closed-by-user'].includes(e.code)) {
         authDebug('Redirect started');
+        setAuthStatus(statusId, 'Redirecting to Google...', 'loading');
         await auth.signInWithRedirect(provider);
         return;
       }
@@ -298,7 +304,10 @@ async function googleLogin(context) {
       message: e && e.message,
       error: e
     });
+    setAuthStatus(statusId, firebaseLoginMessage(e), 'error');
     toast(firebaseLoginMessage(e));
+  } finally {
+    setButtonLoading(buttonId, false);
   }
 }
 
@@ -666,6 +675,22 @@ function go(id) {
   window.scrollTo(0,0);
 }
 
+function openAuthScreen(id) {
+  showAppShell();
+  go(id);
+  if (history && history.replaceState && ['s-signup', 's-login', 's-reset'].includes(id)) {
+    history.replaceState(null, '', `/app?screen=${encodeURIComponent(id)}`);
+  }
+}
+
+function startSignup() {
+  openAuthScreen('s-signup');
+}
+
+function startLogin() {
+  openAuthScreen('s-login');
+}
+
 function toast(msg, duration) {
   const t = document.getElementById('toast');
   if (!t) return;
@@ -785,22 +810,26 @@ function consumeVerificationQueryNotice() {
   setTimeout(() => toast(message, 4200), 250);
 }
 
-function consumePasswordResetDeepLink() {
+function consumeAuthScreenDeepLink() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('screen') !== 's-reset') return false;
+  const screen = params.get('screen');
+  const allowedScreens = ['s-signup', 's-login', 's-reset'];
+  if (!allowedScreens.includes(screen)) return false;
   const code = (params.get('code') || '').trim();
   showAppShell();
-  go('s-reset');
-  const input = document.getElementById('reset-code');
-  if (input && code) {
-    const compactCode = code.replace(/\s+/g, '');
-    input.value = compactCode.length === 6 ? compactCode.toUpperCase() : compactCode;
+  go(screen);
+  if (screen === 's-reset') {
+    const input = document.getElementById('reset-code');
+    if (input && code) {
+      const compactCode = code.replace(/\s+/g, '');
+      input.value = compactCode.length === 6 ? compactCode.toUpperCase() : compactCode;
+    }
   }
   params.delete('screen');
   params.delete('code');
   const query = params.toString();
   window.history.replaceState({}, '', `${window.location.pathname}${query ? '?' + query : ''}${window.location.hash}`);
-  if (code) setTimeout(() => toast('Reset code filled. Choose a new password.', 3200), 250);
+  if (screen === 's-reset' && code) setTimeout(() => toast('Reset code filled. Choose a new password.', 3200), 250);
   return true;
 }
 
@@ -813,12 +842,14 @@ function startApp() {
   showAppShell();
   document.getElementById('navCta').textContent = '← Back to Home';
   document.getElementById('navCta').onclick = function() { showLanding(); };
+  const navLoginBtn = document.getElementById('navLoginBtn');
+  if (navLoginBtn) navLoginBtn.style.display = 'none';
   // Close mobile menu if open
   const navLinks = document.querySelector('.site-nav-links');
   if (navLinks) navLinks.classList.remove('open');
   // If already logged in, route to correct screen
   if (state) { routeToScreen(); }
-  else { go('s-splash'); }
+  else { go('s-signup'); }
   window.scrollTo(0, 0);
   setTimeout(showInstallPromptIfUseful, 900);
 }
@@ -848,8 +879,13 @@ function showLanding(targetId) {
   if (appArea) appArea.style.display = 'none';
   document.body.classList.remove('app-active','focus-writing');
   setMotionMode('idle');
-  document.getElementById('navCta').textContent = 'Begin tonight';
-  document.getElementById('navCta').onclick = function() { startApp(); };
+  document.getElementById('navCta').textContent = 'Sign up';
+  document.getElementById('navCta').onclick = startSignup;
+  const navLoginBtn = document.getElementById('navLoginBtn');
+  if (navLoginBtn) {
+    navLoginBtn.style.display = '';
+    navLoginBtn.onclick = startLogin;
+  }
   window.scrollTo(0, 0);
   if (targetId) {
     setTimeout(function() {
@@ -878,8 +914,11 @@ function handleLandingHash() {
 function bindStaticUi() {
   const siteNavLogo = document.getElementById('siteNavLogo');
   const navCta = document.getElementById('navCta');
+  const navLoginBtn = document.getElementById('navLoginBtn');
   const siteMenuBtn = document.getElementById('siteMenuBtn');
   const heroStartBtn = document.getElementById('heroStartBtn');
+  const heroSignupBtn = document.getElementById('heroSignupBtn');
+  const heroLoginBtn = document.getElementById('heroLoginBtn');
   const heroHowLink = document.getElementById('heroHowLink');
   const heroScrollBtn = document.getElementById('heroScrollBtn');
 
@@ -890,9 +929,12 @@ function bindStaticUi() {
     });
   }
 
-  if (navCta) navCta.onclick = startApp;
+  if (navCta) navCta.onclick = startSignup;
+  if (navLoginBtn) navLoginBtn.onclick = startLogin;
   if (siteMenuBtn) siteMenuBtn.addEventListener('click', toggleSiteMenu);
-  if (heroStartBtn) heroStartBtn.addEventListener('click', startApp);
+  if (heroStartBtn) heroStartBtn.addEventListener('click', startSignup);
+  if (heroSignupBtn) heroSignupBtn.addEventListener('click', startSignup);
+  if (heroLoginBtn) heroLoginBtn.addEventListener('click', startLogin);
 
   if (heroHowLink) {
     heroHowLink.addEventListener('click', function(e) {
@@ -912,6 +954,17 @@ function bindStaticUi() {
     link.addEventListener('click', function(e) {
       e.preventDefault();
       navTo(link.getAttribute('data-nav-target'));
+    });
+  });
+
+  document.querySelectorAll('[data-auth-target]').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      openAuthScreen(link.getAttribute('data-auth-target'));
+      const navLinks = document.querySelector('.site-nav-links');
+      const menuBtn = document.getElementById('siteMenuBtn');
+      if (navLinks) navLinks.classList.remove('open');
+      if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
     });
   });
 
@@ -962,7 +1015,7 @@ function bindStaticUi() {
   bindStaticUi();
   const firebaseRestored = await restoreFirebaseSession();
   const loggedIn = firebaseRestored || await loadState();
-  if (window.location.pathname.indexOf('/app') === 0 && consumePasswordResetDeepLink()) {
+  if (window.location.pathname.indexOf('/app') === 0 && consumeAuthScreenDeepLink()) {
     consumeVerificationQueryNotice();
     return;
   }
@@ -973,7 +1026,6 @@ function bindStaticUi() {
   if (!loggedIn) {
     if (window.location.pathname.indexOf('/app') === 0) {
       startApp();
-      go('s-login');
     }
     consumeVerificationQueryNotice();
     return;
@@ -987,6 +1039,29 @@ function bindStaticUi() {
 // ═══════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════
+function setButtonLoading(id, isLoading, label) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  if (isLoading) {
+    if (!btn.dataset.idleLabel) btn.dataset.idleLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = label || 'Working...';
+  } else {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+    if (btn.dataset.idleLabel) btn.innerHTML = btn.dataset.idleLabel;
+  }
+}
+
+function setAuthStatus(id, message, kind) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = message || '';
+  el.classList.remove('is-error', 'is-success', 'is-loading');
+  if (kind) el.classList.add('is-' + kind);
+}
+
 function fieldError(id, message) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -1187,11 +1262,14 @@ async function register() {
   if (!ok) return;
 
   try {
+    setAuthStatus('register-status', 'Creating your private room...', 'loading');
+    setButtonLoading('registerSubmitBtn', true, 'Creating account...');
     const result = await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven, ageConfirmed: ageChecked });
     await loadState();
     // Make sure app area is visible
     showAppShell();
     toast(result.message || 'Account created. You can continue now.', 3600);
+    setAuthStatus('register-status', 'Account created. Starting your scan...', 'success');
     injectVerificationPendingNotice('s-scan-intro');
     go('s-scan-intro');
   } catch (e) {
@@ -1199,26 +1277,41 @@ async function register() {
     if (state && state.user && !state.user.emailVerified) {
       showAppShell();
       toast('Account created. Verify your email when you get a chance.', 3600);
+      setAuthStatus('register-status', 'Account created. Verify your email when you can.', 'success');
       go('s-scan-intro');
       return;
     }
+    setAuthStatus('register-status', e.message || 'Signup failed. Please try again.', 'error');
     toast(e.message);
+  } finally {
+    setButtonLoading('registerSubmitBtn', false);
   }
 }
 
 async function login() {
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
-  if (!email || !password) { toast('Enter email and password'); return; }
+  if (!email || !password) {
+    setAuthStatus('login-status', 'Enter email and password.', 'error');
+    toast('Enter email and password');
+    return;
+  }
 
   try {
+    setAuthStatus('login-status', 'Opening your room...', 'loading');
+    setButtonLoading('loginSubmitBtn', true, 'Logging in...');
     await api('POST', '/login', { email, password });
     await loadState();
     // Make sure app area is visible
     showAppShell();
     toast('Welcome back! ✦');
     routeToScreen();
-  } catch (e) { toast(e.message); }
+  } catch (e) {
+    setAuthStatus('login-status', e.message || 'Login failed. Please try again.', 'error');
+    toast(e.message);
+  } finally {
+    setButtonLoading('loginSubmitBtn', false);
+  }
 }
 
 async function logout() {
@@ -3627,29 +3720,59 @@ async function deleteAccount() {
 // ═══════════════════════════════════════
 async function forgotPassword() {
   const email = document.getElementById('forgot-email').value.trim();
-  if (!email) { toast('Enter your email'); return; }
+  if (!email) {
+    setAuthStatus('forgot-status', 'Enter your email.', 'error');
+    toast('Enter your email');
+    return;
+  }
   try {
+    setAuthStatus('forgot-status', 'Sending reset code...', 'loading');
+    setButtonLoading('forgotSubmitBtn', true, 'Sending...');
     const result = await api('POST', '/forgot-password', { email });
-    toast('Reset code generated ✓');
-
+    toast('Reset code generated');
+    setAuthStatus('forgot-status', result.message || 'If that email exists, a reset code has been sent.', 'success');
     go('s-reset');
-  } catch (e) { toast(e.message); }
+  } catch (e) {
+    setAuthStatus('forgot-status', e.message || 'Could not send reset code.', 'error');
+    toast(e.message);
+  } finally {
+    setButtonLoading('forgotSubmitBtn', false);
+  }
 }
-
 async function resetPassword() {
   let code = document.getElementById('reset-code').value.trim().replace(/\s+/g, '');
   if (code.length === 6) {
     code = code.toUpperCase();
   }
   const newPassword = document.getElementById('reset-password').value;
-  if (!code || !newPassword) { toast('Enter code and new password'); return; }
-  if (!/^(?:[A-Z0-9]{6}|[A-F0-9]{64})$/i.test(code)) { toast('Enter the 6-character reset code from your email'); return; }
-  if (newPassword.length < 8) { toast('Password must be at least 8 characters'); return; }
+  if (!code || !newPassword) {
+    setAuthStatus('reset-status', 'Enter code and new password.', 'error');
+    toast('Enter code and new password');
+    return;
+  }
+  if (!/^(?:[A-Z0-9]{6}|[A-F0-9]{64})$/i.test(code)) {
+    setAuthStatus('reset-status', 'Enter the reset code from your email.', 'error');
+    toast('Enter the 6-character reset code from your email');
+    return;
+  }
+  if (newPassword.length < 8) {
+    setAuthStatus('reset-status', 'Password must be at least 8 characters.', 'error');
+    toast('Password must be at least 8 characters');
+    return;
+  }
   try {
+    setAuthStatus('reset-status', 'Setting your new password...', 'loading');
+    setButtonLoading('resetSubmitBtn', true, 'Saving...');
     await api('POST', '/reset-password', { code, newPassword });
-    toast('Password reset! Sign in now ✦');
+    toast('Password reset. Sign in now.');
+    setAuthStatus('reset-status', 'Password reset. You can log in now.', 'success');
     go('s-login');
-  } catch (e) { toast(e.message); }
+  } catch (e) {
+    setAuthStatus('reset-status', e.message || 'Password reset failed.', 'error');
+    toast(e.message);
+  } finally {
+    setButtonLoading('resetSubmitBtn', false);
+  }
 }
 // ═══════════════════════════════════════
 // DAILY NOTE CARD — Feature 01

@@ -138,6 +138,22 @@ async function run() {
     ok('Firebase auth helper headers allow redirect completion');
   } catch (e) { fail('Firebase auth helper headers allow redirect completion', e); }
 
+  // 1d. First-time users have clear signup/login entry points and deep links.
+  try {
+    const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    assert.match(indexHtml, /href="\/app\?screen=s-signup"/, 'landing page links directly to signup');
+    assert.match(indexHtml, /href="\/app\?screen=s-login"/, 'landing page links directly to login');
+    assert.match(appHtml, /id="s-signup"/, 'dedicated signup screen exists');
+    assert.match(appHtml, /Create your Mentally Prepare account/, 'signup screen has clear heading');
+    assert.match(appHtml, /Welcome back/, 'login screen has clear heading');
+    assert.match(appHtml, /Create Account[\s\S]*Take Scan[\s\S]*Get Matched[\s\S]*Write Daily[\s\S]*Reveal on Day 21/, 'journey preview appears before signup');
+    assert.match(appJs, /consumeAuthScreenDeepLink/, 'app consumes auth screen deep links');
+    assert.match(appJs, /s-signup[\s\S]*s-login[\s\S]*s-reset/, 'signup, login, and reset deep links are supported');
+    ok('Signup/login entry routing and CTAs');
+  } catch (e) { fail('Signup/login entry routing and CTAs', e); }
+
 
   // 2. Register a user
   let cookie;
