@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'signup-login-entry-20260609';
+const CACHE_NAME = 'post-login-routing-20260609';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',
