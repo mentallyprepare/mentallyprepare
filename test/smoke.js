@@ -4,6 +4,7 @@ const http = require('http');
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
+const vm = require('vm');
 const Database = require('better-sqlite3');
 
 const PORT = 9876;
@@ -21,6 +22,19 @@ process.env.SESSION_SECRET = 'test-secret-for-smoke';
 process.env.ADMIN_PASSWORD = 'test-admin-pw';
 process.env.DB_PATH = DB_PATH;
 process.env.FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN = 'false';
+
+function extractFunction(source, name) {
+  const start = source.indexOf(`function ${name}`);
+  assert.notStrictEqual(start, -1, `${name} function exists`);
+  const braceStart = source.indexOf('{', start);
+  let depth = 0;
+  for (let i = braceStart; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1;
+    if (source[i] === '}') depth -= 1;
+    if (depth === 0) return source.slice(start, i + 1);
+  }
+  throw new Error(`${name} function body was not closed`);
+}
 
 function request(method, urlPath, body, headers) {
   return new Promise((resolve, reject) => {
@@ -157,6 +171,31 @@ async function run() {
       appJs.indexOf('shouldOpenAuthDeepLinkBeforeSessionRestore()') < appJs.indexOf('const firebaseRestored = await restoreFirebaseSession();'),
       'auth deep links must win before logged-in users are routed to scan'
     );
+    assert.match(appJs, /function getPostAuthDestination\(/, 'post-auth routing is centralized');
+
+    const routingContext = {
+      archetypes: { protector: {}, connector: {}, performer: {}, disconnector: {} },
+      result: null
+    };
+    vm.runInNewContext(`
+      ${extractFunction(appJs, 'needsGoogleProfileBasics')}
+      ${extractFunction(appJs, 'hasCompletedScan')}
+      ${extractFunction(appJs, 'getPostAuthDestination')}
+      result = {
+        newUser: getPostAuthDestination({ user: { authProvider: 'password' }, entries: [] }),
+        googleNeedsBasics: getPostAuthDestination({ user: { authProvider: 'google', college: 'Not Provided', year: '' }, entries: [] }),
+        completedScanNoMatch: getPostAuthDestination({ user: { authProvider: 'password', archetype: 'protector', scores: null }, entries: [] }),
+        activeMatchOpenToday: getPostAuthDestination({ user: { archetype: 'connector' }, match: { day: 4 }, entries: [{ day: 3 }] }),
+        activeMatchTodayDone: getPostAuthDestination({ user: { archetype: 'connector' }, match: { day: 4 }, entries: [{ day: 4 }] }),
+        completedCycle: getPostAuthDestination({ user: { archetype: 'connector' }, match: { day: 21 }, entries: [{ day: 21 }] })
+      };
+    `, routingContext);
+    assert.strictEqual(routingContext.result.newUser.screen, 's-scan-intro', 'new users without scan go to scan');
+    assert.strictEqual(routingContext.result.googleNeedsBasics.screen, 's-profile', 'Google users missing basics finish profile first');
+    assert.strictEqual(routingContext.result.completedScanNoMatch.screen, 's-waiting', 'completed-scan users without match go to waiting');
+    assert.strictEqual(routingContext.result.activeMatchOpenToday.screen, 's-journal', 'active matches with no entry today go to journal');
+    assert.strictEqual(routingContext.result.activeMatchTodayDone.screen, 's-sealed', 'active matches with entry today go to sealed journey home');
+    assert.strictEqual(routingContext.result.completedCycle.action, 'reveal', 'completed cycles go to post-cycle reveal flow');
     ok('Signup/login entry routing and CTAs');
   } catch (e) { fail('Signup/login entry routing and CTAs', e); }
 

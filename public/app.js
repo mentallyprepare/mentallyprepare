@@ -1112,22 +1112,33 @@ function validEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 }
 
-function needsGoogleProfileBasics() {
-  if (!state || !state.user) return false;
-  const provider = String(state.user.authProvider || '').toLowerCase();
+function needsGoogleProfileBasics(user) {
+  user = user || (state && state.user);
+  if (!user) return false;
+  const provider = String(user.authProvider || '').toLowerCase();
   if (provider.indexOf('google') === -1) return false;
-  const college = String(state.user.college || '').trim().toLowerCase();
-  const year = String(state.user.year || '').trim();
+  const college = String(user.college || '').trim().toLowerCase();
+  const year = String(user.year || '').trim();
   return !college || college === 'not provided' || !year;
 }
 
 function hasCompletedScan(user) {
-  if (!user || !archetypes[user.archetype]) return false;
-  const scores = user.scores || {};
-  return ['openness', 'awareness', 'guard', 'reciprocity'].every(function(key) {
-    const value = Number(scores[key]);
-    return Number.isFinite(value) && value >= 0 && value <= 100;
+  return !!(user && archetypes[user.archetype]);
+}
+
+function getPostAuthDestination(currentState) {
+  if (!currentState || !currentState.user) return { screen: 's-splash' };
+  if (needsGoogleProfileBasics(currentState.user)) return { screen: 's-profile', action: 'google-profile-basics' };
+  if (!hasCompletedScan(currentState.user)) return { screen: 's-scan-intro', action: 'scan' };
+  if (!currentState.match) return { screen: 's-waiting', action: 'waiting' };
+  if (Number(currentState.match.day) >= 21) return { screen: 's-reveal-wait', action: 'reveal' };
+  const entries = Array.isArray(currentState.entries) ? currentState.entries : [];
+  const todayDone = entries.some(function(entry) {
+    return Number(entry.day) === Number(currentState.match.day);
   });
+  return todayDone
+    ? { screen: 's-sealed', action: 'sealed' }
+    : { screen: 's-journal', action: 'journal' };
 }
 
 function pickProfileYear(el) {
@@ -1343,14 +1354,17 @@ async function logout() {
 }
 
 function routeToScreen() {
-  if (!state) { go('s-splash'); return; }
-  if (needsGoogleProfileBasics()) { renderGoogleProfileBasics(); go('s-profile'); return; }
-  if (!hasCompletedScan(state.user)) { injectVerificationPendingNotice('s-scan-intro'); go('s-scan-intro'); return; }
-  if (!state.match) { renderWaiting(); go('s-waiting'); return; }
-  if (state.match.day >= 21) { handleRevealFlow(); return; }
-  const todayDone = state.entries.find(e => e.day === state.match.day);
-  if (todayDone) { renderSealed(); go('s-sealed'); }
-  else { renderJournal(); go('s-journal'); }
+  const destination = getPostAuthDestination(state);
+  if (destination.action === 'google-profile-basics') { renderGoogleProfileBasics(); go(destination.screen); return; }
+  if (destination.action === 'scan') { injectVerificationPendingNotice('s-scan-intro'); go(destination.screen); return; }
+  if (destination.action === 'waiting') { renderWaiting(); go(destination.screen); return; }
+  if (destination.action === 'reveal') {
+    if (!handleRevealFlow()) { renderSealed(); go('s-sealed'); }
+    return;
+  }
+  if (destination.action === 'sealed') { renderSealed(); go(destination.screen); return; }
+  if (destination.action === 'journal') { renderJournal(); go(destination.screen); return; }
+  go(destination.screen);
 }
 
 // ═══════════════════════════════════════
@@ -2800,7 +2814,7 @@ async function reportEntry(day) {
 // REVEAL FLOW
 // ═══════════════════════════════════════
 function handleRevealFlow() {
-  if (!state || !state.reveal || !state.reveal.available) return;
+  if (!state || !state.reveal || !state.reveal.available) return false;
   const r = state.reveal;
 
   if (!r.myChoice) {
@@ -2814,6 +2828,7 @@ function handleRevealFlow() {
   } else if (r.myChoice && r.partnerChose && !r.revealed) {
     renderRevealAnonymous(); go('s-reveal-wait');
   }
+  return true;
 }
 
 function renderRevealConsent() {
