@@ -1230,7 +1230,11 @@ function trackEvent(userId, eventName, metadata = {}) {
 }
 
 // --- Middleware --------------------------
-app.use(helmet({
+function isFirebaseAuthHelperPath(req) {
+  return req.path.startsWith('/__/auth/') || req.path === '/__/firebase/init.json';
+}
+
+const appSecurityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -1248,7 +1252,12 @@ app.use(helmet({
   crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   crossOriginEmbedderPolicy: false,
   referrerPolicy: { policy: 'no-referrer' }
-}));
+});
+
+app.use((req, res, next) => {
+  if (isFirebaseAuthHelperPath(req)) return next();
+  return appSecurityHeaders(req, res, next);
+});
 // --- Stripe webhook MUST be registered BEFORE express.json() ---
 // (Stripe needs the raw body for signature verification)
 let stripe = null;
@@ -1307,6 +1316,12 @@ app.get('/__/firebase/init.json', (req, res) => {
 });
 
 app.use(express.json({ limit: '16kb' }));
+
+// ── Noindex middleware for app, admin, and API routes ──
+app.use(['/app', '/admin', '/api', '/signup', '/login', '/forgot', '/onboarding', '/scan', '/room'], (req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
+});
 
 // Keep Railway health checks independent from session middleware.
 app.get('/api/health', handleLiveness);

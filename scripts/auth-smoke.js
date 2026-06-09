@@ -62,6 +62,29 @@ function assertStatus(response, path, expectedStatus) {
   return true;
 }
 
+function assertFirebaseAuthHelperHeaders(response, path) {
+  const csp = response.headers.get('content-security-policy') || '';
+  if (/frame-ancestors\s+'none'/i.test(csp)) {
+    fail(`${path} is blocked by frame-ancestors 'none'`);
+  } else {
+    pass(`${path} does not block Firebase iframe handling with frame-ancestors`);
+  }
+
+  const xFrameOptions = response.headers.get('x-frame-options');
+  if (xFrameOptions) {
+    fail(`${path} sets X-Frame-Options: ${xFrameOptions}`);
+  } else {
+    pass(`${path} does not set X-Frame-Options`);
+  }
+
+  const corp = response.headers.get('cross-origin-resource-policy');
+  if (corp) {
+    fail(`${path} sets Cross-Origin-Resource-Policy: ${corp}`);
+  } else {
+    pass(`${path} does not set Cross-Origin-Resource-Policy`);
+  }
+}
+
 async function main() {
   console.log(`Mentally Prepare auth smoke check: ${baseUrl}`);
   const expectedHost = new URL(baseUrl).host.split(':')[0];
@@ -118,6 +141,17 @@ async function main() {
   if (assertStatus(authHandler.response, '/__/auth/handler', 200)) {
     if (authHandler.text.includes('handler.js')) pass('Firebase auth helper proxy returned handler page');
     else fail('Firebase auth helper proxy did not look like the Firebase handler page');
+    assertFirebaseAuthHelperHeaders(authHandler.response, '/__/auth/handler');
+  }
+
+  if (expectSameOriginAuth) {
+    const helperInit = await getJson('/__/firebase/init.json');
+    if (assertStatus(helperInit.response, '/__/firebase/init.json', 200)) {
+      if (helperInit.data.authDomain === expectedHost) pass(`Firebase helper init authDomain matches ${expectedHost}`);
+      else fail(`Firebase helper init authDomain mismatch: got ${helperInit.data.authDomain || 'missing'}, expected ${expectedHost}`);
+      if (helperInit.data.projectId) pass('Firebase helper init includes projectId');
+      else fail('Firebase helper init missing projectId');
+    }
   }
 
   if (expectSameOriginAuth) {

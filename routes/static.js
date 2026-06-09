@@ -46,7 +46,23 @@ function registerStaticRoutes(app, { baseUrl, rootDir }) {
 
   app.get('/robots.txt', (req, res) => {
     res.type('text/plain');
-    res.send(`User-agent: *\nAllow: /\nSitemap: ${baseUrl}/sitemap.xml`);
+    res.send([
+      'User-agent: *',
+      'Allow: /',
+      'Disallow: /app',
+      'Disallow: /app/',
+      'Disallow: /admin',
+      'Disallow: /admin/',
+      'Disallow: /api/',
+      'Disallow: /signup',
+      'Disallow: /login',
+      'Disallow: /forgot',
+      'Disallow: /onboarding',
+      'Disallow: /scan',
+      'Disallow: /room',
+      '',
+      `Sitemap: ${baseUrl}/sitemap.xml`
+    ].join('\n'));
   });
 }
 
