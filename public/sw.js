@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'landing-tabs-fix-20260607';
+const CACHE_NAME = 'signup-login-entry-20260609';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',
