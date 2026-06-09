@@ -171,6 +171,12 @@ function getStoredGoogleRedirectContext() {
   }
 }
 
+function hasPendingGoogleRedirectContext() {
+  const context = getStoredGoogleRedirectContext();
+  const savedAt = Number(context && context.savedAt);
+  return Number.isFinite(savedAt) && Date.now() - savedAt < 10 * 60 * 1000;
+}
+
 function clearStoredGoogleRedirectContext() {
   try { sessionStorage.removeItem(GOOGLE_REDIRECT_CONTEXT_KEY); } catch {}
 }
@@ -833,6 +839,14 @@ function consumeAuthScreenDeepLink() {
   return true;
 }
 
+function shouldOpenAuthDeepLinkBeforeSessionRestore() {
+  if (window.location.pathname.indexOf('/app') !== 0) return false;
+  const params = new URLSearchParams(window.location.search);
+  const screen = params.get('screen');
+  if (!['s-signup', 's-login', 's-reset'].includes(screen)) return false;
+  return !hasPendingGoogleRedirectContext();
+}
+
 function typingDots() { return '<div class="typing-dots"><span></span><span></span><span></span></div>'; }
 
 // ═══════════════════════════════════════
@@ -1013,6 +1027,11 @@ function bindStaticUi() {
 // ═══════════════════════════════════════
 (async function init() {
   bindStaticUi();
+  if (shouldOpenAuthDeepLinkBeforeSessionRestore()) {
+    consumeAuthScreenDeepLink();
+    consumeVerificationQueryNotice();
+    return;
+  }
   const firebaseRestored = await restoreFirebaseSession();
   const loggedIn = firebaseRestored || await loadState();
   if (window.location.pathname.indexOf('/app') === 0 && consumeAuthScreenDeepLink()) {

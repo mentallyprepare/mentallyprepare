@@ -151,6 +151,12 @@ async function run() {
     assert.match(appHtml, /Create Account[\s\S]*Take Scan[\s\S]*Get Matched[\s\S]*Write Daily[\s\S]*Reveal on Day 21/, 'journey preview appears before signup');
     assert.match(appJs, /consumeAuthScreenDeepLink/, 'app consumes auth screen deep links');
     assert.match(appJs, /s-signup[\s\S]*s-login[\s\S]*s-reset/, 'signup, login, and reset deep links are supported');
+    assert.match(appJs, /function shouldOpenAuthDeepLinkBeforeSessionRestore\(\)/, 'auth deep links are checked before session restore');
+    assert.match(appJs, /function hasPendingGoogleRedirectContext\(\)/, 'Google redirect completion is preserved');
+    assert.ok(
+      appJs.indexOf('shouldOpenAuthDeepLinkBeforeSessionRestore()') < appJs.indexOf('const firebaseRestored = await restoreFirebaseSession();'),
+      'auth deep links must win before logged-in users are routed to scan'
+    );
     ok('Signup/login entry routing and CTAs');
   } catch (e) { fail('Signup/login entry routing and CTAs', e); }
 
