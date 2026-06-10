@@ -489,6 +489,67 @@ async function run() {
     ok('Retention analytics milestones');
   } catch (e) { fail('Retention analytics milestones', e); }
 
+  // I-1. Matching never pairs two users from the same normalized college
+  try {
+    const { lastInsertRowid: uid } = db.prepare("INSERT INTO users (name, email, password, college, college_normalized, year, gender, match_gender_pref, match_year_pref, archetype, scores, consent_given, consent_date, last_active_date, switch_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), date('now'), 0, datetime('now'))").run(
+      'Alice', uniqueEmail('college'), 'pw', 'SRCC Delhi', 'srcc-delhi', '2nd', 'female', 'any', 'any', 'connector', '{"openness":50,"awareness":50,"guard":50,"reciprocity":50}'
+    );
+    const candidates = db.prepare(`
+      SELECT * FROM users
+      WHERE archetype = 'protector'
+        AND COALESCE(college_normalized, LOWER(college)) != 'srcc-delhi'
+        AND id != ?
+        AND COALESCE(account_status, 'active') != 'deleted'
+        AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
+    `).all(uid);
+    const sameCollege = candidates.filter(c => (c.college_normalized || c.college.toLowerCase()) === 'srcc-delhi');
+    assert.strictEqual(sameCollege.length, 0, 'no candidates share normalized college');
+    db.prepare('DELETE FROM users WHERE id = ?').run(uid);
+    ok('Matching excludes same normalized college');
+  } catch (e) { fail('Matching excludes same normalized college', e); }
+
+  // I-2. Entry sealed today is not visible to partner until next IST day
+  try {
+    const partnerEntriesStmt = db.prepare('SELECT * FROM entries WHERE user_id = ? AND match_id = ? AND day < ? ORDER BY day DESC');
+    const { lastInsertRowid: uidA } = db.prepare("INSERT INTO users (name, email, password, college, college_normalized, year, gender, match_gender_pref, match_year_pref, archetype, scores, consent_given, consent_date, last_active_date, switch_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), date('now'), 0, datetime('now'))").run(
+      'VisA', uniqueEmail('visa'), 'pw', 'TestU', 'testu', '2nd', 'female', 'any', 'any', 'protector', '{}'
+    );
+    const { lastInsertRowid: uidB } = db.prepare("INSERT INTO users (name, email, password, college, college_normalized, year, gender, match_gender_pref, match_year_pref, archetype, scores, consent_given, consent_date, last_active_date, switch_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), date('now'), 0, datetime('now'))").run(
+      'VisB', uniqueEmail('visb'), 'pw', 'OtherU', 'otheru', '2nd', 'male', 'any', 'any', 'connector', '{}'
+    );
+    const { lastInsertRowid: matchId } = db.prepare("INSERT INTO matches (user1_id, user2_id, started_at) VALUES (?, ?, datetime('now'))").run(uidA, uidB);
+    db.prepare("INSERT INTO entries (user_id, match_id, day, text, mood, prompt) VALUES (?, ?, 1, 'hello', '🌓', 'test')").run(uidA, matchId);
+    const currentDay = 1;
+    const partnerVisible = partnerEntriesStmt.all(uidA, matchId, currentDay);
+    assert.strictEqual(partnerVisible.length, 0, 'same-day entry not visible to partner via day < currentDay');
+    const nextDay = 2;
+    const partnerVisibleNext = partnerEntriesStmt.all(uidA, matchId, nextDay);
+    assert.strictEqual(partnerVisibleNext.length, 1, 'entry visible to partner on the next day');
+    db.prepare('DELETE FROM entries WHERE match_id = ?').run(matchId);
+    db.prepare('DELETE FROM matches WHERE id = ?').run(matchId);
+    db.prepare('DELETE FROM users WHERE id IN (?, ?)').run(uidA, uidB);
+    ok('Entry not visible to partner until next day');
+  } catch (e) { fail('Entry not visible to partner until next day', e); }
+
+  // I-3. Silent Room presence count uses IST day boundary
+  try {
+    const anyUser = db.prepare('SELECT id FROM users LIMIT 1').get();
+    assert.ok(anyUser, 'need at least one user for silent_lines FK');
+    const presenceQuery = db.prepare(`
+      SELECT COUNT(DISTINCT user_id) as c FROM silent_lines
+      WHERE status = 'approved'
+        AND created_at >= datetime('now', '+5 hours', '+30 minutes', 'start of day', '-5 hours', '-30 minutes')
+        AND deleted_at IS NULL
+    `);
+    const before = presenceQuery.get().c;
+    const lineId = 'ist-test-' + Date.now();
+    db.prepare("INSERT INTO silent_lines (id, user_id, content, status, created_at, expires_at) VALUES (?, ?, 'test line', 'approved', datetime('now'), datetime('now', '+1 day'))").run(lineId, anyUser.id);
+    const after = presenceQuery.get().c;
+    assert.strictEqual(after, before + 1, 'presence count incremented for today IST');
+    db.prepare('DELETE FROM silent_lines WHERE id = ?').run(lineId);
+    ok('Silent Room presence uses IST day boundary');
+  } catch (e) { fail('Silent Room presence uses IST day boundary', e); }
+
   // Clean up
   db.close();
   for (const ext of ['', '-wal', '-shm']) {
