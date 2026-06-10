@@ -12,7 +12,7 @@
     "check:syntax": "node scripts/check-syntax.js",
     "smoke:api": "node scripts/api-smoke.js",
     "smoke:auth": "node scripts/auth-smoke.js",
-    "backup": "node backup.js",
+    "backup": "node scripts/backup.js",
     "test": "node test/smoke.js"
   },
   "dependencies": {

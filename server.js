@@ -158,6 +158,7 @@ const { registerTonightsQuestionRoutes } = require('./routes/tonights-question')
 const { registerPaymentRoutes } = require('./routes/payments');
 const { registerSilentRoutes, registerSilentAdminRoutes } = require('./routes/silent');
 const { registerWallRoutes } = require('./routes/wall');
+const { runBackup } = require('./scripts/backup');
 // ---------------------------------------------------------------
 const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
@@ -1218,7 +1219,7 @@ function trackEvent(userId, eventName, metadata = {}) {
       'matched', 'day_1_written', 'day_2_returned', 'missed_day', 'report_clicked',
       'block_clicked', 'rematch_requested', 'reveal_choice_submitted', 'account_deleted',
       'crisis_keyword_triggered', 'signup_error', 'email_send_failed', 'login',
-      'day_written', 'mutual_reveal', 'signup', 'first_reflection', 'day_2', 'day_7',
+      'day_written', 'mutual_reveal', 'signup', 'first_reflection', 'day_2', 'day_3', 'day_7',
       'day_14', 'day_21', 'reveal_request', 'paid_conversion', 'partner_reminder_sent',
       'continue_solo_selected'
     ]);
@@ -2474,7 +2475,14 @@ function scheduleNotifications() {
     sendInactivePushReminders(48, 'inactive_48');
   });
 
+  // 4:00 AM IST is 22:30 UTC — daily DB backup
+  cron.schedule('30 22 * * *', () => {
+    console.log('Running daily DB backup...');
+    runBackup().then(r => console.log('Backup:', r.ok ? 'success' : 'failed', r.local || '')).catch(e => console.error('Backup error:', e.message));
+  });
+
   console.log('  ✦ Cron schedules loaded for email and push reminders');
+  console.log('  ✦ Daily DB backup scheduled (4am IST)');
 }
 scheduleNotifications();
 
