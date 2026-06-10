@@ -1999,6 +1999,22 @@ function renderJournal() {
     </div>`;
   }
 
+  // Day 7 / Day 14 milestone cards
+  let milestoneHTML = '';
+  if (day === 7) {
+    const day1Entry = state.entries.find(e => e.day === 1);
+    const day1Line = day1Entry ? escapeHtml(day1Entry.text.slice(0, 80)) + (day1Entry.text.length > 80 ? '...' : '') : '';
+    milestoneHTML = `<div class="info-card" style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:18px auto 0 auto;max-width:520px;color:var(--ink-s);font-family:'Lora',serif;font-size:15px;text-align:center;">
+      <div style="font-size:16px;font-family:'Playfair Display',serif;color:var(--gold-l);margin-bottom:6px;">Week one, sealed.</div>
+      ${day1Line ? `<div style="font-style:italic;color:var(--ink-m);margin-bottom:6px;">"${day1Line}"</div><div style="color:var(--ink-s);font-size:13px;">You wrote this six nights ago.</div>` : ''}
+    </div>`;
+  } else if (day === 14) {
+    milestoneHTML = `<div class="info-card" style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin:18px auto 0 auto;max-width:520px;color:var(--ink-s);font-family:'Lora',serif;font-size:15px;text-align:center;">
+      <div style="font-size:16px;font-family:'Playfair Display',serif;color:var(--gold-l);margin-bottom:6px;">One week left.</div>
+      <div>What do you want to know before the reveal?</div>
+    </div>`;
+  }
+
   // Nudge banners
   let nudgesHTML = '';
   if (state.nudges && state.nudges.length > 0) {
@@ -2030,6 +2046,7 @@ function renderJournal() {
     <div style="padding:16px 24px 0;"><div class="greeting">${getGreeting(state.user.name)}</div></div>
     ${revealHeaderHTML}
     ${specialDayHTML}
+    ${milestoneHTML}
     ${nudgesHTML}
     ${partnerInactiveCard}
     ${connScoreHTML}
