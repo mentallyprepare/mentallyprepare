@@ -708,7 +708,7 @@ function registerAppRoutes(app, deps) {
         trackEvent(userId, 'day_2_returned', { day });
         trackEvent(userId, 'day_2', { day });
       }
-      if (trackEvent && !existingEntry && [7, 14, 21].includes(day)) trackEvent(userId, `day_${day}`, { day });
+      if (trackEvent && !existingEntry && [3, 7, 14, 21].includes(day)) trackEvent(userId, `day_${day}`, { day });
       if (trackEvent && !existingEntry) trackEvent(userId, 'day_written', { day });
       stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
 
