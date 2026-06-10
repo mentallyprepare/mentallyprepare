@@ -1655,7 +1655,7 @@ function renderResult(matched) {
 // TONIGHT'S QUESTION (Waiting Room)
 // ═══════════════════════════════════════
 let tqData = null;
-let tqMood = '🌓';
+let tqMood = null;
 
 async function loadTonightsQuestion() {
   try {
@@ -1852,6 +1852,7 @@ async function sealTonightsEntry() {
   var area = document.getElementById('tq-draft');
   var text = area ? area.value.trim() : '';
   if (!text) { toast('A few words are enough before sealing.'); return; }
+  if (!tqMood) { toast('Pick a mood before sealing — even a rough one.'); return; }
 
   try {
     var piiConfirmed = false;
@@ -1860,6 +1861,7 @@ async function sealTonightsEntry() {
       if (!piiConfirmed) return;
     }
     var result = await api('POST', '/tonights-question', { text: text, mood: tqMood, piiConfirmed: piiConfirmed });
+    tqMood = null;
     sessionStorage.removeItem('mp-tq-draft');
 
     if (result.safety && result.safety.crisis) showSafety();
