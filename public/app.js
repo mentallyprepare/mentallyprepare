@@ -1581,9 +1581,24 @@ async function submitScan() {
   try {
     const { matched } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype, answers: scanAnswers });
     await loadState();
-    renderResult(matched);
-    go('s-result');
+    renderArchetypeReveal(matched);
+    go('s-archetype-reveal');
   } catch (e) { toast(e.message); }
+}
+
+function renderArchetypeReveal(matched) {
+  const archKey = state.user.archetype;
+  const arch = archetypes[archKey];
+  document.getElementById('s-archetype-reveal').innerHTML = `
+    <div class="result-cosmic-card ${archKey}" style="max-width:340px;">
+      ${renderConstellationCorners()}
+      ${renderCosmicOrb(archKey)}
+      <div class="result-type" style="margin-top:8px;">${arch.name}</div>
+      <p class="result-line" style="margin-bottom:0;">${arch.quote}</p>
+    </div>
+    <button class="btn" onclick="renderResult(${matched});go('s-result')">Continue</button>
+    <button class="share-btn" onclick="shareArchetype()">Share my archetype</button>
+  `;
 }
 
 function renderCosmicOrb(archKey) {
@@ -1644,8 +1659,7 @@ function renderResult(matched) {
       <div><div class="match-title">You'll be matched with</div><div class="match-name">${arch.matchName}</div></div>
     </div>
     ${verificationPendingHtml()}
-    ${actionBtn}
-    <button class="share-btn" onclick="shareArchetype()" style="margin-bottom:10px;">📋 Share my archetype</button>`;
+    ${actionBtn}`;
   setTimeout(() => {
     document.querySelectorAll('#s-result .trait-fill').forEach(bar => { bar.style.width = bar.dataset.w; });
   }, 400);
@@ -3103,8 +3117,7 @@ function getStreakNudge(streak) {
 function shareArchetype() {
   if (!state) return;
   const arch = archetypes[state.user.archetype];
-  const s = state.user.scores;
-  const text = `${arch.name}\n${arch.quote}\n\nOpenness: ${s.openness}%\nAwareness: ${s.awareness}%\nGuard: ${s.guard}%\nReciprocity: ${s.reciprocity}%\n\n— Mentally Prepare (ECP-11)`;
+  const text = `I got ${arch.name} on the ECP-11. mymentallyprepare.com`;
   if (navigator.share) { navigator.share({ title: 'My Connection Profile', text }).catch(() => {}); }
   else if (navigator.clipboard) { navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard ✓')); }
   else { toast('Sharing not supported'); }
