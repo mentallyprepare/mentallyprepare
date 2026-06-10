@@ -711,6 +711,7 @@ function registerAppRoutes(app, deps) {
       if (trackEvent && !existingEntry && [3, 7, 14, 21].includes(day)) trackEvent(userId, `day_${day}`, { day });
       if (trackEvent && !existingEntry) trackEvent(userId, 'day_written', { day });
       stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
+      stmts.clearGhostNudge.run(userId, match.id);
 
       const crisisData = safety.crisis ? getCrisisPayload(req) : null;
       res.json({ ok: true, day, safety: { crisis: safety.crisis, pii: safety.pii, piiFlags: safety.piiFlags, helplines: crisisData ? crisisData.helplines : null } });

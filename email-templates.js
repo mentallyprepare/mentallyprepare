@@ -280,11 +280,34 @@ function partnerWroteEmail(name, partnerName, dayNumber) {
   return buildTemplate({ content: body });
 }
 
+function partnerStillWritingEmail(name) {
+  const first = firstName(name);
+  const body = `
+    <h1 style="margin:0; font-size:32px; text-transform:none;">your partner is still writing.</h1>
+    ${dividerHtml(BRAND.purple, BRAND.violet)}
+    <p style="margin:16px 0 8px;">${first}, your partner wrote again tonight. the prompt is still open on your side.</p>
+    <p style="margin:0 0 16px;">one honest line is enough. you don't have to catch up.</p>
+    <div style="text-align:center; margin:24px 0;">
+      <a href="${SITE_URL}/app" style="
+        display:inline-block;
+        padding:10px 28px;
+        border-radius:999px;
+        border:1px solid ${BRAND.purple};
+        color:${BRAND.text};
+        font-weight:600;
+        text-decoration:none;
+      ">Seal tonight's entry &rarr;</a>
+    </div>
+  `;
+  return buildTemplate({ preheader: 'your partner is still writing. one honest line is enough.', content: body });
+}
+
 module.exports = {
   waitlistConfirmationEmail,
   waitlistAcceptedEmail,
   loginWelcomeEmail,
   matchFoundEmail,
   dailyPromptReminderEmail,
-  partnerWroteEmail
+  partnerWroteEmail,
+  partnerStillWritingEmail
 };

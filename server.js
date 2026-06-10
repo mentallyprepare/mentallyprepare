@@ -162,7 +162,7 @@ const { runBackup } = require('./scripts/backup');
 // ---------------------------------------------------------------
 const webpush = require('web-push');
 const { BASE_URL } = require('./lib/config');
-const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome, sendMatchFoundNotification, sendDailyPromptReminder, sendPartnerWroteReminder } = require('./email-service');
+const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome, sendMatchFoundNotification, sendDailyPromptReminder, sendPartnerWroteReminder, sendPartnerStillWriting } = require('./email-service');
 const cron = require('node-cron');
 
 const DEFAULT_FIREBASE_WEB_CONFIG = {
@@ -1109,6 +1109,16 @@ const stmts = {
   dismissNudge: db.prepare('UPDATE nudges SET dismissed = 1 WHERE id = ? AND user_id = ?'),
   deleteUserNudges: db.prepare('DELETE FROM nudges WHERE user_id = ?'),
   deleteMatchNudges: db.prepare('DELETE FROM nudges WHERE match_id = ?'),
+  getGhostNudge: db.prepare("SELECT id FROM nudges WHERE user_id = ? AND match_id = ? AND type = 'partner_still_writing' AND dismissed = 0 LIMIT 1"),
+  clearGhostNudge: db.prepare("DELETE FROM nudges WHERE user_id = ? AND match_id = ? AND type = 'partner_still_writing'"),
+  hasBlockReportRematch: db.prepare(`
+    SELECT 1 FROM blocked_users WHERE (blocker_id = ? OR blocked_user_id = ?) AND match_id = ?
+    UNION ALL
+    SELECT 1 FROM reports WHERE match_id = ? AND status = 'open'
+    UNION ALL
+    SELECT 1 FROM rematch_requests WHERE match_id = ?
+    LIMIT 1
+  `),
 
   // Archetype snapshots
   insertSnapshot: db.prepare('INSERT INTO archetype_snapshots (user_id, match_id, day, scores, archetype) VALUES (?, ?, ?, ?, ?)'),
@@ -2424,6 +2434,46 @@ function send10pmReminders() {
   console.log('  ✦ 10pm: Queued partner-wrote email and push reminders');
 }
 
+function sendQuietPartnerNudges() {
+  const rows = stmts.getActiveMatchUsers.all();
+  let sent = 0;
+  for (const row of rows) {
+    const day = getMatchDay(row.started_at);
+    if (day < 3 || day > 21) continue;
+    const match = stmts.getMatch.get(row.id, row.id);
+    if (!match) continue;
+    const partnerId = getPartnerId(match, row.id);
+
+    // Safety: skip if block, report, or rematch exists on this match
+    if (stmts.hasBlockReportRematch.get(row.id, row.id, match.id, match.id, match.id)) continue;
+
+    // Check: user missed last 2 days
+    const userYesterday = stmts.getEntry.get(row.id, match.id, day - 1);
+    const userToday = stmts.getEntry.get(row.id, match.id, day);
+    if (userYesterday || userToday) continue;
+
+    // Check: partner wrote at least one of those days
+    const partnerYesterday = stmts.getEntry.get(partnerId, match.id, day - 1);
+    const partnerToday = stmts.getEntry.get(partnerId, match.id, day);
+    if (!partnerYesterday && !partnerToday) continue;
+
+    // Dedup: one nudge per quiet spell (cleared when user seals an entry)
+    if (stmts.getGhostNudge.get(row.id, match.id)) continue;
+
+    const user = parseUser(stmts.getUserById.get(row.id));
+    if (!user) continue;
+
+    stmts.insertNudge.run(row.id, match.id, 'partner_still_writing', 'your partner is still writing. one honest line is enough.');
+    sendPartnerStillWriting(user.email, user.name).catch(err => console.error('Ghost nudge email failed', err));
+    const prefs = parsePushPreferences(row.push_preferences);
+    if (prefs.enabled && prefs.eveningReminder) {
+      sendGentlePush(row, 'partner_still_writing', 'your partner is still writing. one honest line is enough.').catch(() => {});
+    }
+    sent++;
+  }
+  console.log(`  ✦ Ghost nudge: sent ${sent} quiet-partner nudges`);
+}
+
 // Midnight IST = 18:30 UTC — unseal partner entry + note generation
 function sendMidnightUnseals() {
   generateDailyNotesForAll();
@@ -2448,6 +2498,7 @@ function scheduleNotifications() {
   cron.schedule('30 15 * * *', () => {
     console.log('Running 9pm Reminders...');
     send9pmReminders();
+    sendQuietPartnerNudges();
   });
 
   // 10 PM IST is 16:30 UTC
