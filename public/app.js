@@ -1631,7 +1631,7 @@ function renderResult(matched) {
     </div>
     <div style="padding:0 24px;margin-bottom:14px;"><div style="font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;text-align:center;">${arch.description}</div></div>
     <div class="result-card">
-      <div style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:14px;">ECP-11 Profile</div>
+      <div style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:14px;">ECP-11 · Emotional Connection Profile</div>
       <div class="trait-row">
         <div class="trait"><div class="trait-top"><span class="trait-name">Openness</span><span class="trait-pct">${s.openness}%</span></div><div class="trait-bar"><div class="trait-fill" style="width:0%" data-w="${s.openness}%"></div></div></div>
         <div class="trait"><div class="trait-top"><span class="trait-name">Awareness</span><span class="trait-pct">${s.awareness}%</span></div><div class="trait-bar"><div class="trait-fill" style="width:0%" data-w="${s.awareness}%"></div></div></div>
