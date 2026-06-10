@@ -2568,7 +2568,7 @@ function renderNotificationSettingsHtml() {
         ${prefRow('morningReminder', 'Morning reminder')}
         ${prefRow('eveningReminder', 'Evening reminder')}
         ${prefRow('dailyReflection', 'Daily reflection reminder')}
-        ${prefRow('streakReminder', 'Streak reminder')}
+        ${prefRow('streakReminder', 'Nightly nudge')}
         ${prefRow('silentRoomReminder', 'Silent Room reminder')}
         <label class="push-pref-row push-pref-off">
           <span>Turn off notifications</span>
@@ -3594,7 +3594,7 @@ function renderNotificationPermissionModal(source) {
           ${notificationPrefToggleHtml('morningReminder', 'Morning reminder', prefs.morningReminder)}
           ${notificationPrefToggleHtml('eveningReminder', 'Evening reminder', prefs.eveningReminder)}
           ${notificationPrefToggleHtml('dailyReflection', 'Daily reflection reminder', prefs.dailyReflection)}
-          ${notificationPrefToggleHtml('streakReminder', 'Streak reminder', prefs.streakReminder)}
+          ${notificationPrefToggleHtml('streakReminder', 'Nightly nudge', prefs.streakReminder)}
           ${notificationPrefToggleHtml('silentRoomReminder', 'Silent Room reminder', prefs.silentRoomReminder)}
         </div>
         <button class="btn" type="button" onclick="enableNotificationsFromModal()">Allow gentle reminders</button>
