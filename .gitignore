@@ -22,10 +22,7 @@ tmp-prod-repro/
 tmpdata/
 tmpdata2/
 tmpdata3/
-prod-out.log
-prod-err.log
-prod2-out.log
-prod2-err.log
+*.log
 
 # Old server backups
 server.js.bak
@@ -34,3 +31,5 @@ tmp-mentallyprepare-redeploy/
 sendgrid.env
 test-email.js
 test-sendgrid-integrated.js
+daily-reminder-emails.txt
+*.code-workspace
