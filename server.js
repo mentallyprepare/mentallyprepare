@@ -2,6 +2,7 @@ require('dotenv').config({ quiet: true });
 
 // --- Crash reporting (Sentry). No-op without SENTRY_DSN set. ---
 // Crashes only: no tracing, no PII. Entry text never goes to third parties.
+// Console breadcrumbs disabled because our logs contain emails and user IDs.
 const Sentry = require('@sentry/node');
 const SENTRY_ENABLED = Boolean(process.env.SENTRY_DSN);
 if (SENTRY_ENABLED) {
@@ -15,6 +16,20 @@ if (SENTRY_ENABLED) {
     beforeBreadcrumb(crumb) {
       if (crumb.category === 'console') return null;
       return crumb;
+    },
+    beforeSend(event) {
+      if (event.request) {
+        delete event.request.data;
+        delete event.request.cookies;
+        delete event.request.query_string;
+        delete event.request.headers;
+      }
+      if (event.user) {
+        delete event.user.email;
+        delete event.user.ip_address;
+        delete event.user.username;
+      }
+      return event;
     },
   });
 }
