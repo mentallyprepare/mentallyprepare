@@ -9,6 +9,13 @@ if (SENTRY_ENABLED) {
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 0,
     sendDefaultPii: false,
+    integrations(defaults) {
+      return defaults.filter(i => i.name !== 'Console');
+    },
+    beforeBreadcrumb(crumb) {
+      if (crumb.category === 'console') return null;
+      return crumb;
+    },
   });
 }
 
