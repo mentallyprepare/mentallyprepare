@@ -15,619 +15,664 @@
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&family=Caveat:wght@400;700&display=swap" rel="stylesheet"/><style>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ===== DESIGN SYSTEM ===== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#08050f;--bg2:#0f0a1d;--ink:#fbf5ff;--muted:rgba(251,245,255,.68);--soft:rgba(251,245,255,.42);
-  --line:rgba(251,245,255,.105);--line2:rgba(251,245,255,.16);--rose:#d4859a;--rose2:#ebb4c2;
-  --purple:#7b5ea7;--violet:#b09fcc;--gold:#e0c58f;--paper:#f6efff;--paper-ink:#302547;
-  --display:'Instrument Serif',Georgia,serif;--body:'Manrope',Arial,sans-serif;--hand:'Caveat',cursive;
+  /* Palette */
+  --bg:#08050f;
+  --bg2:#0d0919;
+  --surface:rgba(251,245,255,.035);
+  --surface-hover:rgba(251,245,255,.055);
+  --ink:#fbf5ff;
+  --ink-secondary:rgba(251,245,255,.72);
+  --ink-muted:rgba(251,245,255,.48);
+  --ink-faint:rgba(251,245,255,.28);
+  --border:rgba(251,245,255,.09);
+  --border-hover:rgba(251,245,255,.16);
+  --rose:#d4859a;
+  --rose-light:#ebb4c2;
+  --rose-glow:rgba(212,133,154,.15);
+  --gold:#e0c58f;
+  --gold-glow:rgba(224,197,143,.12);
+  --purple:#7b5ea7;
+  --purple-light:#b09fcc;
+  --purple-glow:rgba(123,94,167,.15);
+  /* Typography */
+  --display:'Instrument Serif',Georgia,serif;
+  --body:'Manrope',Arial,sans-serif;
+  /* Spacing */
+  --section-pad:100px;
+  --gap-xl:64px;
+  --gap-lg:40px;
+  --gap-md:24px;
+  --gap-sm:16px;
+  --gap-xs:8px;
+  /* Radius */
+  --radius-card:20px;
+  --radius-pill:999px;
+  --radius-sm:12px;
 }
+
+/* ===== BASE ===== */
 html{scroll-behavior:smooth;background:var(--bg);overflow-x:hidden}
 body{min-height:100vh;background:
-  radial-gradient(circle at 16% 10%,rgba(212,133,154,.15),transparent 26%),
-  radial-gradient(circle at 82% 0%,rgba(123,94,167,.18),transparent 30%),
+  radial-gradient(circle at 16% 10%,rgba(212,133,154,.12),transparent 26%),
+  radial-gradient(circle at 82% 0%,rgba(123,94,167,.14),transparent 30%),
   linear-gradient(180deg,#08050f 0%,#0c0716 42%,#07040d 100%);
-  color:var(--ink);font-family:var(--body);font-weight:400;line-height:1.6;overflow-x:hidden;-webkit-font-smoothing:antialiased}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-a{color:inherit;text-decoration:none}::selection{background:rgba(212,133,154,.35)}
+  color:var(--ink);font-family:var(--body);font-weight:400;font-size:15px;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+/* Noise grain overlay */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:inherit;text-decoration:none}
+::selection{background:rgba(212,133,154,.35)}
 button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
-@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-@keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
-@keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* ===== DECORATIVE ===== */
 .stars{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
 .star{position:absolute;width:1px;height:1px;border-radius:50%;background:rgba(255,255,255,.7)}
+/* Section divider line */
+.divider{width:min(400px,70%);height:1px;margin:0 auto;background:linear-gradient(90deg,transparent,rgba(212,133,154,.3),transparent);position:relative}
+.divider::after{content:'';position:absolute;left:50%;top:50%;width:14px;height:14px;border:1px solid rgba(212,133,154,.3);transform:translate(-50%,-50%) rotate(45deg);background:var(--bg)}
+
+/* ===== ANIMATIONS ===== */
+@keyframes breathe{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes drift{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ===== LAYOUT ===== */
 .page{position:relative;z-index:1}
-.nav{position:fixed;top:0;left:0;right:0;z-index:30;height:70px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(8,5,15,.66);backdrop-filter:blur(18px);border-bottom:1px solid rgba(251,245,255,.07)}
-.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:14px;letter-spacing:.02em}
-.brand-logo{width:36px;height:36px;border-radius:12px;display:block;box-shadow:0 0 26px rgba(176,159,204,.32),0 10px 24px rgba(0,0,0,.25)}
-.nav-links{display:flex;gap:28px;align-items:center}.nav-links a{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
-.nav-links a:hover{color:var(--ink)}.nav-cta{font-size:12px;font-weight:800;color:var(--ink);padding:10px 18px;border:1px solid rgba(212,133,154,.28);border-radius:999px;background:rgba(212,133,154,.08)}
-.menu-btn{display:none;background:none;border:0;color:var(--ink);font-size:22px}.mobile-menu{display:none}
-.section{position:relative;padding:112px 24px}.inner{width:min(1120px,100%);margin:0 auto}.narrow{width:min(720px,100%);margin:0 auto}
-#ritual{padding-bottom:70px}
-.label{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
-.label.rule::before{content:'';width:26px;height:1px;background:currentColor;opacity:.65}
-.label.dot::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85}
-.headline{font-family:var(--display);font-size:clamp(36px,6vw,76px);font-weight:400;line-height:.96;letter-spacing:0;color:var(--ink);text-shadow:0 0 34px rgba(251,245,255,.06)}
-.headline em,.serif-em{font-style:italic;background:linear-gradient(135deg,var(--rose2),var(--gold),var(--rose2));background-size:200% auto;animation:shine 4s linear infinite;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;display:inline-block;padding-right:0.05em}
-@keyframes shine{to{background-position:200% center}}
-.copy{color:var(--muted);font-size:clamp(14px,1.4vw,17px);line-height:1.9}
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:52px;padding:0 24px;border-radius:999px;border:1px solid rgba(235,180,194,.42);background:linear-gradient(135deg,#b7657b,#765996);color:#fff;font-size:13px;font-weight:800;letter-spacing:.02em;box-shadow:0 14px 42px rgba(155,79,102,.34)}
-.btn.secondary{background:transparent;color:var(--muted);border-color:var(--line2);box-shadow:none}.btn:hover{transform:translateY(-1px)}
-.reveal{opacity:0;transform:translateY(22px);transition:opacity .75s ease,transform .75s ease}.reveal.visible{opacity:1;transform:translateY(0)}
+.section{padding:var(--section-pad) 24px;position:relative}
+.inner{width:min(1080px,100%);margin:0 auto}
 
-.hero{min-height:100vh;padding:118px 24px 78px;display:flex;align-items:center;overflow:hidden;background:radial-gradient(ellipse at 72% 50%,rgba(120,50,180,.22),transparent 62%),radial-gradient(circle at 50% 50%,#0c0420 0%,#020108 95%)}
-.hero::after{content:'';position:absolute;left:-20%;right:-20%;bottom:-180px;height:320px;border-radius:50% 50% 0 0;background:linear-gradient(180deg,rgba(217,199,255,.14),rgba(123,94,167,.06));pointer-events:none}
-.hero-grid{width:min(1180px,100%);margin:0 auto;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(330px,.82fr);gap:68px;align-items:center}
-.hero-kicker{display:inline-flex;align-items:center;gap:10px;width:max-content;padding:8px 14px;border:1px solid rgba(235,180,194,.34);border-radius:999px;background:rgba(212,133,154,.1);color:#f3c6d1;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:24px}
-.pulse{width:6px;height:6px;border-radius:50%;background:var(--rose2);animation:breathe 2.8s ease-in-out infinite}
-.hero h1{max-width:730px;color:#fff;text-shadow:0 0 44px rgba(235,180,194,.12)}.hero-sub{max-width:560px;margin:26px 0 32px;color:rgba(251,245,255,.78)}
-.hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.micro{margin-top:14px;color:var(--soft);font-size:11px}
-.artifact-wrap{position:relative;min-height:560px;display:block;overflow:hidden}
+/* ===== SECTION RHYTHM: eyebrow -> headline -> subtext -> content ===== */
+.eyebrow{display:inline-flex;align-items:center;gap:10px;margin-bottom:var(--gap-sm);color:var(--rose-light);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+.eyebrow::before{content:'';width:24px;height:1px;background:currentColor;opacity:.5}
+.section-title{font-family:var(--display);font-size:clamp(32px,5vw,56px);font-weight:400;line-height:1.02;color:var(--ink);margin-bottom:var(--gap-md)}
+.section-title em{font-style:italic;color:var(--rose-light)}
+.section-sub{color:var(--ink-secondary);font-size:clamp(14px,1.3vw,16px);line-height:1.85;max-width:540px;margin-bottom:var(--gap-lg)}
+
+/* ===== CARD SYSTEM (one style everywhere) ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);padding:28px 24px;transition:border-color .3s ease}
+.card:hover{border-color:var(--border-hover);box-shadow:0 0 40px rgba(212,133,154,.04),0 0 80px rgba(123,94,167,.03)}
+.card-label{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--rose-light);margin-bottom:10px}
+.card-title{font-family:var(--display);font-size:clamp(22px,2.5vw,28px);font-weight:400;line-height:1.1;margin-bottom:10px}
+.card-body{color:var(--ink-secondary);font-size:14px;line-height:1.8}
+
+/* ===== BUTTONS ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 28px;border-radius:var(--radius-pill);border:1px solid rgba(212,133,154,.35);background:linear-gradient(135deg,rgba(183,101,123,.9),rgba(118,89,150,.9));color:#fff;font-family:var(--body);font-size:13px;font-weight:700;letter-spacing:.02em;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease;box-shadow:0 8px 32px rgba(155,79,102,.25)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 12px 40px rgba(155,79,102,.35)}
+.btn-ghost{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 28px;border-radius:var(--radius-pill);border:1px solid var(--border-hover);background:transparent;color:var(--ink-secondary);font-family:var(--body);font-size:13px;font-weight:600;cursor:pointer;transition:border-color .3s ease,color .3s ease}
+.btn-ghost:hover{border-color:var(--rose);color:var(--ink)}
+
+/* ===== NAV ===== */
+.nav{position:fixed;top:0;left:0;right:0;z-index:30;height:64px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;background:rgba(8,5,15,.72);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:13px;letter-spacing:.02em}
+.brand-logo{width:32px;height:32px;border-radius:10px;display:block}
+.nav-links{display:flex;gap:24px;align-items:center}
+.nav-links a{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted);transition:color .2s}
+.nav-links a:hover{color:var(--ink)}
+.nav-cta{font-size:12px;font-weight:700;color:var(--ink);padding:8px 18px;border:1px solid rgba(212,133,154,.25);border-radius:var(--radius-pill);background:rgba(212,133,154,.08);transition:background .2s}
+.nav-cta:hover{background:rgba(212,133,154,.15)}
+.menu-btn{display:none;background:none;border:0;color:var(--ink);font-size:20px;cursor:pointer}
+.mobile-menu{display:none}
+
+/* ===== HERO ===== */
+.hero{min-height:100vh;padding:100px 24px 80px;display:flex;align-items:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 72% 50%,rgba(120,50,180,.18),transparent 55%),radial-gradient(ellipse at 30% 20%,rgba(212,133,154,.1),transparent 45%)}
+.hero::after{content:'';position:absolute;left:-20%;right:-20%;bottom:-160px;height:280px;border-radius:50% 50% 0 0;background:linear-gradient(180deg,rgba(217,199,255,.1),rgba(123,94,167,.04));pointer-events:none}
+.hero-grid{width:min(1080px,100%);margin:0 auto;display:grid;grid-template-columns:1.1fr .9fr;gap:var(--gap-xl);align-items:center}
+.hero-kicker{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border:1px solid rgba(212,133,154,.25);border-radius:var(--radius-pill);background:rgba(212,133,154,.07);color:var(--rose-light);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:var(--gap-md)}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--rose-light);animation:breathe 2.8s ease-in-out infinite}
+.hero h1{font-family:var(--display);font-size:clamp(40px,6.5vw,72px);font-weight:400;line-height:.96;color:#fff;max-width:640px}
+.hero h1 em{font-style:italic;color:var(--rose-light)}
+.hero-sub{max-width:480px;margin:var(--gap-md) 0 var(--gap-lg);color:var(--ink-secondary);font-size:clamp(14px,1.3vw,16px);line-height:1.85}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.hero-micro{margin-top:var(--gap-sm);color:var(--ink-muted);font-size:11px;line-height:1.7}
+.hero-micro a{text-decoration:underline;text-underline-offset:3px}
+
+/* Phone mockup */
+.phone-wrap{position:relative;display:flex;justify-content:center;min-height:560px}
 #hero-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
-.artifact-glow{position:absolute;width:390px;height:390px;border-radius:50%;background:radial-gradient(circle,rgba(212,133,154,.18),rgba(123,94,167,.12) 44%,transparent 70%);filter:blur(10px)}
-.phone{position:relative;width:310px;min-height:560px;border:1px solid rgba(251,245,255,.16);border-radius:38px;background:linear-gradient(180deg,#17102b,#0b0817 58%,#07050f);box-shadow:0 42px 100px rgba(0,0,0,.45),inset 0 0 0 8px rgba(0,0,0,.24);overflow:hidden;animation:drift 7s ease-in-out infinite}
-.phone::before{content:'';position:absolute;top:0;left:50%;width:116px;height:24px;transform:translateX(-50%);background:#05040b;border-radius:0 0 16px 16px;z-index:3}
-.phone-sky{position:absolute;inset:0;background:radial-gradient(circle at 20% 16%,rgba(255,255,255,.65) 0 1px,transparent 2px),radial-gradient(circle at 72% 28%,rgba(255,255,255,.5) 0 1px,transparent 2px),radial-gradient(circle at 42% 62%,rgba(255,255,255,.42) 0 1px,transparent 2px)}
-.phone-content{position:relative;padding:52px 24px 26px;display:flex;flex-direction:column;gap:18px}
-.phone-top{display:flex;justify-content:space-between;align-items:center;color:var(--soft);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
-.journal{margin-top:12px;border:1px solid rgba(251,245,255,.13);border-radius:22px;background:rgba(251,245,255,.055);padding:22px 18px}
-.journal-day{color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
-.journal-prompt{font-family:var(--display);font-size:29px;line-height:1;color:var(--ink);margin-bottom:18px}
-.journal-line{font-size:13px;line-height:1.8;color:var(--muted);border-left:2px solid rgba(212,133,154,.35);padding-left:13px}
-.status-note{border:1px solid rgba(224,197,143,.18);border-radius:18px;padding:14px 15px;color:rgba(251,245,255,.72);font-size:12px;background:rgba(224,197,143,.06)}
-.reveal-pill{position:absolute;right:-18px;bottom:96px;width:165px;padding:14px 16px;border-radius:18px;background:#f6efff;color:var(--paper-ink);box-shadow:0 18px 50px rgba(0,0,0,.22);transform:rotate(3deg)}
-.reveal-pill strong{display:block;font-family:var(--display);font-size:22px;font-weight:400;line-height:1}.reveal-pill span{font-size:10px;color:rgba(48,37,71,.68)}
+.phone{position:relative;width:280px;min-height:520px;border:1px solid var(--border-hover);border-radius:36px;background:linear-gradient(180deg,#14102a,#0a0714 60%,#07050f);box-shadow:0 40px 80px rgba(0,0,0,.5),inset 0 0 0 6px rgba(0,0,0,.3);overflow:hidden;animation:drift 7s ease-in-out infinite;z-index:2}
+.phone::before{content:'';position:absolute;top:0;left:50%;width:100px;height:22px;transform:translateX(-50%);background:#06050d;border-radius:0 0 14px 14px;z-index:3}
+.phone-screen{position:relative;padding:48px 20px 24px;display:flex;flex-direction:column;gap:14px}
+.phone-header{display:flex;justify-content:space-between;align-items:center;color:var(--ink-muted);font-size:9px;letter-spacing:.12em;text-transform:uppercase}
+.phone-card{border:1px solid var(--border);border-radius:16px;background:var(--surface);padding:18px 16px}
+.phone-card-label{color:var(--rose-light);font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
+.phone-card-title{font-family:var(--display);font-size:24px;line-height:1.05;color:var(--ink);margin-bottom:14px}
+.phone-card-text{font-size:12px;line-height:1.75;color:var(--ink-secondary);border-left:2px solid rgba(212,133,154,.3);padding-left:12px}
+.phone-status{border:1px solid rgba(224,197,143,.15);border-radius:14px;padding:12px 14px;color:var(--ink-secondary);font-size:11px;background:rgba(224,197,143,.04)}
+.phone-glow{position:absolute;width:400px;height:400px;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(212,133,154,.12),rgba(123,94,167,.1) 40%,transparent 70%);pointer-events:none;z-index:1;filter:blur(8px)}
 
-.confession{padding-top:40px}.founder-note{max-width:720px;margin:0 auto;text-align:left}
-.founder-note .note-body{font-family:var(--display);font-size:clamp(24px,3.2vw,38px);line-height:1.18;color:rgba(251,245,255,.86)}
-.signature{margin-top:26px;color:var(--soft);font-size:12px;letter-spacing:.05em}
-.quote-strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:44px 24px 36px;background:rgba(251,245,255,.018);overflow:hidden}
-.ql{font-family:var(--display);font-style:italic;line-height:1.18;color:rgba(251,245,255,.5);display:block;max-width:680px}
-.ql-1{font-size:clamp(16px,1.9vw,24px);margin:0 auto 24px calc(5% + 0px)}
-.ql-2{font-size:clamp(24px,3.2vw,42px);margin:0 auto 24px;text-align:center;color:rgba(251,245,255,.64)}
-.ql-3{font-size:clamp(13px,1.4vw,18px);margin:0 auto 24px calc(22% + 0px);color:rgba(251,245,255,.3)}
-.ql-4{font-size:clamp(18px,2.2vw,28px);margin:0 0 0 auto;text-align:right;padding-right:7%}
+/* ===== PROBLEM SECTION ===== */
+.problem{background:linear-gradient(180deg,transparent,rgba(123,94,167,.04),transparent)}
+.problem-content{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap-lg);margin-top:var(--gap-lg)}
+.problem-quote{font-family:var(--display);font-style:italic;font-size:clamp(20px,2.5vw,30px);line-height:1.25;color:var(--ink-secondary);border-left:2px solid var(--rose);padding-left:var(--gap-md)}
 
-.ritual-grid{display:grid;grid-template-columns:.78fr 1fr;gap:48px;align-items:start;padding:34px;border:1px solid rgba(251,245,255,.12);background:linear-gradient(135deg,rgba(251,245,255,.035),rgba(212,133,154,.025));border-radius:28px}.ritual-intro{position:sticky;top:110px}
-.timeline{position:relative;border-left:1px solid rgba(212,133,154,.22);padding-left:30px}
-.moment{position:relative;padding:0 0 30px}.moment:last-child{padding-bottom:0}
-.moment::before{content:'';position:absolute;left:-36px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:1px solid var(--rose2);box-shadow:0 0 0 7px rgba(212,133,154,.08)}
-.moment small{display:block;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px}
-.moment h3{font-family:var(--display);font-size:clamp(26px,3vw,38px);font-weight:400;line-height:1;margin-bottom:10px}.moment p{max-width:560px;color:var(--muted);font-size:14px;line-height:1.85}
-.safety-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.safety-item{background:rgba(10,7,18,.58);border:1px solid rgba(251,245,255,.08);border-radius:18px;padding:17px 16px;min-height:auto}.safety-item h4{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--rose2);margin-bottom:7px}.safety-item p{font-size:12px;color:var(--muted);line-height:1.65}
-.room-threshold{margin-top:34px;min-height:218px;display:grid;grid-template-columns:.78fr 1.22fr;gap:28px;align-items:center;position:relative;overflow:hidden;border-top:1px solid rgba(251,245,255,.075);border-bottom:1px solid rgba(251,245,255,.075);background:linear-gradient(90deg,rgba(235,180,194,.04),rgba(176,159,204,.035),transparent)}
-.room-threshold::before{content:'';position:absolute;inset:0;opacity:.16;background-image:linear-gradient(rgba(251,245,255,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(251,245,255,.22) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(90deg,#000,transparent 72%)}
-.threshold-copy{position:relative;padding:28px 0 28px 40px}.threshold-copy small{display:block;margin-bottom:12px;color:var(--rose2);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}.threshold-copy p{max-width:360px;font-family:var(--display);font-style:italic;font-size:clamp(23px,3vw,36px);line-height:1.05;color:rgba(251,245,255,.78)}
-.threshold-doodle{position:relative;height:178px}.threshold-orbit{position:absolute;right:24%;top:28px;width:210px;height:96px;border:1px solid rgba(235,180,194,.36);border-radius:50%;transform:rotate(-8deg);opacity:.72}.threshold-orbit::after{content:'';position:absolute;right:18px;top:20px;width:10px;height:10px;border-radius:50%;background:var(--rose2);box-shadow:0 0 22px rgba(235,180,194,.44)}
-.threshold-moon{position:absolute;right:11%;bottom:12px;width:86px;height:86px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 8%,#eadcf4 9% 28%,#b09fcc 55%,#665087 100%);box-shadow:0 0 44px rgba(176,159,204,.36)}
-.threshold-note{position:absolute;width:176px;padding:12px 14px;border:1px solid rgba(251,245,255,.13);border-radius:14px;background:rgba(246,239,255,.08);color:rgba(251,245,255,.72);font-size:11px;line-height:1.55;box-shadow:0 18px 40px rgba(0,0,0,.14)}
-.threshold-note.one{right:42%;top:20px;transform:rotate(-2deg)}.threshold-note.two{right:3%;top:22px;transform:rotate(2deg);color:rgba(235,180,194,.82)}
+/* ===== RITUAL (How it works) ===== */
+.steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap-sm)}
+.step-num{font-family:var(--display);font-size:36px;color:var(--rose);opacity:.5;margin-bottom:var(--gap-xs)}
 
-.silent{padding-top:74px;background:linear-gradient(180deg,transparent,rgba(123,94,167,.08),transparent)}
-.silent-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:58px;align-items:center}.wall{border:1px solid rgba(251,245,255,.12);border-radius:28px;background:rgba(251,245,255,.035);padding:26px;position:relative}
-.wall::before{content:'disappears in 7 days - no replies - no reactions';position:absolute;top:-12px;left:24px;background:var(--bg2);padding:4px 10px;color:var(--soft);font-size:10px;letter-spacing:.08em}
-.line{display:flex;gap:12px;align-items:flex-start;padding:16px 0;border-bottom:1px solid rgba(251,245,255,.07)}.line:last-child{border-bottom:0}.dot{width:6px;height:6px;border-radius:50%;background:var(--rose2);margin-top:10px;flex:none}.line p{font-family:var(--display);font-style:italic;color:rgba(251,245,255,.8);font-size:20px;line-height:1.35}.line time{display:block;margin-top:7px;font-family:var(--body);font-size:10px;color:var(--soft);font-style:normal}
+/* ===== PRODUCT SCREENS ===== */
+.screens{background:linear-gradient(180deg,transparent,rgba(212,133,154,.03),transparent)}
+.screen-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap-sm)}
+.screen-card{overflow:hidden}
+.screen-card .screen-preview{border:1px solid var(--border);border-radius:var(--radius-sm);background:rgba(10,7,20,.8);padding:20px 16px;margin-bottom:var(--gap-sm);min-height:200px}
+.screen-label{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--rose-light);margin-bottom:6px}
+.screen-desc{color:var(--ink-secondary);font-size:13px;line-height:1.7}
 
-.stories{padding-top:72px;overflow:hidden}
-.field-poster{position:relative;min-height:560px;display:grid;align-items:end;padding:44px 0 32px}
-.field-poster::before{content:'';position:absolute;left:50%;top:168px;width:430px;height:430px;transform:translateX(-50%);border:1px dashed rgba(235,180,194,.2);border-radius:50%;box-shadow:0 0 0 92px rgba(212,133,154,.025)}
-.field-poster::after{content:'';position:absolute;left:-6%;right:-6%;top:328px;height:270px;border-top:1px dashed rgba(235,180,194,.24);border-radius:50%;transform:rotate(-6deg)}
-.field-star{position:absolute;width:72px;height:72px;left:50%;top:315px;transform:translateX(-50%);filter:drop-shadow(0 0 20px rgba(235,180,194,.6))}
-.field-star::before,.field-star::after{content:'';position:absolute;inset:50% auto auto 50%;background:linear-gradient(90deg,transparent,#fff,transparent);transform:translate(-50%,-50%);width:72px;height:1px}.field-star::after{transform:translate(-50%,-50%) rotate(90deg)}
-.field-ray{position:absolute;left:50%;top:238px;width:1px;height:210px;background:linear-gradient(transparent,rgba(235,180,194,.64),transparent)}
-.day-note{position:absolute;z-index:1;max-width:260px;color:rgba(251,245,255,.7)}
-.day-note small{display:inline-block;font-family:var(--display);font-style:italic;color:var(--rose2);font-size:34px;line-height:1;border-bottom:1px solid rgba(235,180,194,.3);padding:0 18px 10px 0;margin-bottom:12px}.day-note p{font-family:var(--display);font-size:22px;line-height:1.35;color:rgba(251,245,255,.66)}
-.day-note.one{left:9%;top:198px}.day-note.two{right:14%;top:130px}.day-note.three{right:7%;top:444px}
-.script-ghost{position:absolute;font-family:var(--display);font-style:italic;font-size:22px;line-height:1.35;color:rgba(235,180,194,.13);transform:rotate(-10deg);max-width:310px}.script-ghost.left{left:-26px;top:20px}.script-ghost.right{right:-38px;bottom:130px;transform:rotate(-13deg)}
-.field-head{text-align:center;position:relative;z-index:2;margin:0 auto;width:min(780px,100%)}.field-head .label{justify-content:center}.field-head .headline{font-size:clamp(54px,8vw,104px)}.field-head .copy{max-width:600px;margin-left:auto;margin-right:auto}
-.field-divider{width:min(420px,80%);height:1px;background:linear-gradient(90deg,transparent,rgba(235,180,194,.52),transparent);margin:28px auto 26px;position:relative}.field-divider::after{content:'';position:absolute;left:50%;top:50%;width:18px;height:18px;border:1px solid rgba(235,180,194,.5);transform:translate(-50%,-50%) rotate(45deg);background:var(--bg)}
-.field-grid{display:flex;flex-wrap:wrap;gap:22px;margin-top:44px;align-items:flex-start;justify-content:center}
-.field{background:rgba(246,239,255,.04);border:1px solid rgba(251,245,255,.12);padding:28px 24px;flex:1 1 260px;max-width:340px;border-radius:3px;position:relative}
-.field:nth-child(1){transform:rotate(-1.5deg);margin-top:26px}
-.field:nth-child(2){transform:rotate(.4deg)}
-.field:nth-child(3){transform:rotate(-0.7deg);margin-top:32px}
-.field blockquote{font-family:var(--display);font-style:italic;font-size:21px;line-height:1.3;color:rgba(251,245,255,.82);margin-bottom:18px;border-left:2px solid rgba(212,133,154,.28);padding-left:13px}
-.meta{display:grid;gap:3px;font-family:var(--hand);font-size:14px;color:rgba(251,245,255,.38);line-height:1.5}
-.final{text-align:center;padding-bottom:128px}.final .copy{margin:20px auto 30px;max-width:560px}.footer{border-top:1px solid var(--line);padding:34px 24px;color:var(--soft);font-size:12px}.footer-inner{width:min(1120px,100%);margin:0 auto;display:flex;justify-content:space-between;gap:20px;align-items:center}.footer-links{display:flex;gap:18px}
+/* Screen mockup internals */
+.mock-eyebrow{font-size:8px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--rose-light);margin-bottom:8px}
+.mock-title{font-family:var(--display);font-size:18px;line-height:1.1;color:var(--ink);margin-bottom:12px}
+.mock-line{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
+.mock-line:last-child{border-bottom:0}
+.mock-dot{width:4px;height:4px;border-radius:50%;background:var(--rose-light);flex:none}
+.mock-text{font-size:11px;color:var(--ink-secondary);line-height:1.5}
+.mock-locked{display:flex;align-items:center;gap:6px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:rgba(251,245,255,.02);margin-top:8px}
+.mock-locked-icon{font-size:14px;opacity:.5}
+.mock-locked-text{font-size:10px;color:var(--ink-muted);line-height:1.5}
+.mock-slider{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.mock-slider-row{display:flex;align-items:center;gap:8px}
+.mock-slider-label{font-size:9px;color:var(--ink-muted);width:60px;flex:none}
+.mock-slider-track{flex:1;height:3px;border-radius:2px;background:rgba(251,245,255,.08);position:relative}
+.mock-slider-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--rose),var(--purple))}
+.mock-slider-dot{position:absolute;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:var(--ink);border:2px solid var(--rose);right:-2px}
+.mock-option{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;font-size:10px;color:var(--ink-secondary)}
+.mock-option .mock-radio{width:12px;height:12px;border-radius:50%;border:1px solid var(--border-hover);flex:none}
+.mock-option.selected{border-color:var(--rose);background:rgba(212,133,154,.06)}
+.mock-option.selected .mock-radio{border-color:var(--rose);background:var(--rose);box-shadow:inset 0 0 0 2px var(--bg)}
+.mock-wall-line{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(251,245,255,.06)}
+.mock-wall-line:last-child{border-bottom:0}
+.mock-wall-dot{width:4px;height:4px;border-radius:50%;background:var(--rose-light);margin-top:6px;flex:none}
+.mock-wall-text{font-family:var(--display);font-style:italic;font-size:13px;line-height:1.4;color:rgba(251,245,255,.7)}
+.mock-wall-time{font-family:var(--body);font-size:8px;color:var(--ink-faint);font-style:normal;display:block;margin-top:3px}
 
+/* ===== SILENT ROOM ===== */
+.silent-room-section{background:linear-gradient(180deg,transparent,rgba(123,94,167,.035) 50%,transparent)}
+.silent-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap-xl);align-items:center}
+.wall-card{border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);padding:24px 22px;position:relative}
+.wall-card::before{content:'disappears in 7 days';position:absolute;top:-10px;left:20px;background:var(--bg2);padding:2px 10px;color:var(--ink-faint);font-size:9px;letter-spacing:.08em;text-transform:uppercase}
+.wall-line{display:flex;gap:10px;align-items:flex-start;padding:14px 0;border-bottom:1px solid rgba(251,245,255,.06)}
+.wall-line:last-child{border-bottom:0}
+.wall-dot{width:5px;height:5px;border-radius:50%;background:var(--rose-light);margin-top:8px;flex:none}
+.wall-text{font-family:var(--display);font-style:italic;color:rgba(251,245,255,.75);font-size:19px;line-height:1.35}
+.wall-time{display:block;margin-top:5px;font-family:var(--body);font-size:10px;color:var(--ink-faint);font-style:normal}
+
+/* ===== SAFETY ===== */
+.safety-section{background:linear-gradient(180deg,transparent,rgba(212,133,154,.025) 50%,transparent)}
+.safety-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap-sm)}
+
+/* ===== JOURNEY ===== */
+.journey{background:linear-gradient(180deg,transparent,rgba(212,133,154,.03),transparent)}
+.journey-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap-sm)}
+.journey-day{font-family:var(--display);font-size:42px;color:var(--rose);opacity:.4;margin-bottom:var(--gap-xs)}
+.journey-quote{font-family:var(--display);font-style:italic;font-size:18px;line-height:1.3;color:rgba(251,245,255,.75);margin-bottom:12px}
+.journey-meta{font-size:11px;color:var(--ink-muted);line-height:1.6}
+
+/* ===== FINAL CTA ===== */
+.final{text-align:center;padding-bottom:140px;position:relative}
+.final::before{content:'';position:absolute;left:50%;top:30%;width:500px;height:300px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(212,133,154,.08),rgba(123,94,167,.05) 50%,transparent 80%);pointer-events:none;filter:blur(40px)}
+.final .section-title{margin-left:auto;margin-right:auto}
+.final .section-sub{margin-left:auto;margin-right:auto;text-align:center}
+
+/* ===== FOOTER ===== */
+.footer{border-top:1px solid var(--border);padding:32px 24px;color:var(--ink-muted);font-size:12px}
+.footer-inner{width:min(1080px,100%);margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.footer-links{display:flex;gap:18px}
+.footer-links a{transition:color .2s}
+.footer-links a:hover{color:var(--ink)}
+
+/* ===== RESPONSIVE ===== */
 @media(max-width:900px){
-  .nav{padding:0 18px}.brand-logo{width:38px;height:38px}.nav-links,.nav-cta{display:none}.menu-btn{display:block}.mobile-menu.open{display:flex}.mobile-menu{position:fixed;top:70px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--line);padding:12px 18px;flex-direction:column}.mobile-menu a{padding:14px 0;color:var(--muted);font-size:13px}
-  .hero{padding-top:98px;padding-bottom:50px;text-align:center;min-height:auto}.hero-grid,.ritual-grid,.silent-grid{grid-template-columns:1fr;gap:30px}.hero-actions{margin-left:auto;margin-right:auto;justify-content:center}.hero-sub{margin-left:auto;margin-right:auto}.artifact-wrap{min-height:330px;margin-top:-6px}.phone{width:250px;min-height:440px}.reveal-pill{right:22px;bottom:40px}.ritual-grid{padding:26px 22px;border-radius:22px}.ritual-intro{position:static;text-align:left}.timeline{padding-left:26px}.safety-row{grid-template-columns:1fr 1fr;gap:10px}.room-threshold{grid-template-columns:1fr;gap:0;min-height:260px;margin-top:24px}.threshold-copy{padding:26px 22px 0}.threshold-doodle{height:158px}.threshold-note.one{left:22px;right:auto;top:18px}.threshold-note.two{right:18px;top:42px}.threshold-orbit{right:18%;top:44px}.threshold-moon{right:10px;bottom:8px;width:70px;height:70px}.field-poster{min-height:760px;padding-top:46px;align-items:end}.day-note{max-width:210px}.day-note.one{left:3%;top:132px}.day-note.two{right:3%;top:292px}.day-note.three{display:none}.field-head{padding-top:0}.field-head .headline{font-size:clamp(50px,12vw,78px)}.field:nth-child(1),.field:nth-child(2),.field:nth-child(3){transform:none;margin-top:0}.ql-3{margin-left:5%}.section{padding:82px 20px}.headline{font-size:clamp(38px,10vw,52px)}.footer-inner{flex-direction:column;text-align:center}.footer-links{flex-wrap:wrap;justify-content:center}
+  :root{--section-pad:88px}
+  .nav-links,.nav-cta{display:none}
+  .menu-btn{display:block}
+  .mobile-menu.open{display:flex}
+  .mobile-menu{position:fixed;top:64px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--border);padding:12px 20px;flex-direction:column}
+  .mobile-menu a{padding:12px 0;color:var(--ink-secondary);font-size:13px}
+  .hero{padding-top:88px;min-height:auto;text-align:center}
+  .hero-grid{grid-template-columns:1fr;gap:var(--gap-lg)}
+  .hero-sub{margin-left:auto;margin-right:auto}
+  .hero-actions{justify-content:center}
+  .phone-wrap{min-height:400px}
+  .phone{width:240px;min-height:440px}
+  .problem-content{grid-template-columns:1fr;gap:var(--gap-md)}
+  .steps-grid{grid-template-columns:1fr 1fr;gap:var(--gap-sm)}
+  .screen-grid{grid-template-columns:1fr 1fr;gap:var(--gap-sm)}
+  .silent-grid{grid-template-columns:1fr;gap:var(--gap-lg)}
+  .safety-grid{grid-template-columns:1fr;gap:var(--gap-sm)}
+  .journey-grid{grid-template-columns:1fr;gap:var(--gap-sm)}
+  .footer-inner{flex-direction:column;text-align:center}
+  .footer-links{flex-wrap:wrap;justify-content:center}
 }
 @media(max-width:520px){
-  .hero h1{font-size:42px}.hero-sub{font-size:13.5px;line-height:1.75;margin-top:18px;margin-bottom:22px}.hero-kicker{font-size:9px;margin-bottom:18px}.phone{width:232px;min-height:414px}.journal{padding:17px 15px}.journal-prompt{font-size:22px}.journal-line{font-size:12px}.status-note{font-size:11px}.artifact-wrap{min-height:270px;margin-top:-16px;overflow:hidden}.reveal-pill{display:none}.section{padding:74px 20px}#ritual{padding-bottom:44px}.silent{padding-top:54px}.moment{padding-bottom:24px}.moment h3{font-size:25px}.moment p{font-size:13px;line-height:1.75}.safety-row{grid-template-columns:1fr}.safety-item{padding:16px 16px}.room-threshold{min-height:238px;border-radius:18px}.threshold-copy p{font-size:25px}.threshold-note{width:154px;font-size:10px}.threshold-note.two{display:none}.threshold-orbit{width:170px;height:78px;right:8%;top:54px}.field-poster{min-height:700px;padding-top:22px;align-items:end}.field-poster::before{width:250px;height:250px;top:116px}.field-poster::after{top:230px;opacity:.45}.field-star{top:228px}.field-ray{top:168px;height:132px}.day-note{max-width:150px}.day-note small{font-size:23px;margin-bottom:8px}.day-note p{font-size:14px;line-height:1.38}.day-note.one{left:0;top:92px}.day-note.two{right:0;top:254px}.day-note.three{display:none}.script-ghost{display:none}.field-head{margin-top:auto;padding-top:0}.field-head .label{margin-bottom:12px}.field-head .headline{font-size:42px;line-height:.98}.field-head .copy{font-size:13px;line-height:1.75}.field-divider{margin:20px auto 22px}.field{padding:24px 20px}.wall{padding:22px 18px}.line p{font-size:19px}.quote-track{gap:34px}.micro{font-size:10px}
+  :root{--section-pad:72px}
+  .hero h1{font-size:38px}
+  .steps-grid{grid-template-columns:1fr}
+  .screen-grid{grid-template-columns:1fr}
+  .phone{width:220px;min-height:400px}
+  .phone-card-title{font-size:20px}
+  .problem-quote{font-size:20px}
 }
 </style>
 </head>
 <body>
-<div class="stars" id="stars" aria-hidden="true"></div>
+
+<!-- Nav -->
 <nav class="nav" id="nav">
-  <a class="brand" href="#hero" aria-label="Mentally Prepare home"><img class="brand-logo" src="/icon-192x192.png" alt="" width="36" height="36"/><span>mentally prepare</span></a>
+  <a class="brand" href="#hero" aria-label="Mentally Prepare home">
+    <img class="brand-logo" src="/icon-192x192.png" alt="" width="32" height="32"/>
+    <span>mentally prepare</span>
+  </a>
   <div class="nav-links">
-    <a href="#ritual">How it works</a><a href="#silent-room">Silent Room</a><a href="#stories">Stories</a><a href="#safety">Safety</a>
+    <a href="#how">How it works</a>
+    <a href="#screens">Experience</a>
+    <a href="#silent-room">Silent Room</a>
+    <a href="#safety">Safety</a>
     <a href="/app?screen=s-login">Log in</a>
   </div>
-  <a class="nav-cta" href="/app?screen=s-signup">Sign up</a>
-  <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false">☰</button>
+  <a class="nav-cta" href="/app?screen=s-signup">Begin tonight</a>
+  <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false">&#9776;</button>
 </nav>
-<div class="mobile-menu" id="mobileMenu"><a href="#ritual">How it works</a><a href="#silent-room">Silent Room</a><a href="#stories">Stories</a><a href="/app?screen=s-login">Log in</a><a href="/app?screen=s-signup">Sign up</a><a href="/app?screen=s-signup">Begin tonight</a></div>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#how">How it works</a>
+  <a href="#screens">Experience</a>
+  <a href="#silent-room">Silent Room</a>
+  <a href="#safety">Safety</a>
+  <a href="/app?screen=s-login">Log in</a>
+  <a href="/app?screen=s-signup">Begin tonight</a>
+</div>
+
+<div class="stars" id="stars"></div>
+
 <main class="page">
+
+  <!-- 1. HERO -->
   <section class="hero" id="hero">
     <div class="hero-grid">
       <div>
-        <h1 class="headline reveal">Feel seen without performing.</h1>
-        <p class="copy hero-sub reveal">A private 21-day reflection journey where two people connect through honest conversations, not followers, likes, or profiles.</p>
+        <div class="hero-kicker reveal"><span class="pulse"></span>Early access &middot; currently free</div>
+        <h1 class="reveal">Feel seen without <em>performing.</em></h1>
+        <p class="hero-sub reveal">A private 21-day reflection journey where two people connect through honest writing. No followers, no profiles, no performance.</p>
         <div class="hero-actions reveal">
           <a class="btn" href="/app?screen=s-signup">Begin tonight</a>
-          <a class="btn secondary" href="/app?screen=s-signup">Sign up</a>
-          <a class="btn secondary" href="/app?screen=s-login">Log in</a>
-          <a class="btn secondary" href="#ritual">See the ritual</a>
+          <a class="btn-ghost" href="#how">How it works</a>
         </div>
-        <p class="micro reveal">Currently free during early access. Anonymous. Takes 3 minutes. No public profile.</p>
-        <p class="micro reveal"><a href="/safety" style="color:var(--soft);text-decoration:underline;">How reports, blocking, and the 18+ rule work</a></p>
+        <p class="hero-micro reveal">Anonymous. Takes 3 minutes. No public profile.<br><a href="/safety">How reports, blocking, and the 18+ rule work</a></p>
       </div>
-      <div class="artifact-wrap reveal" aria-label="A glowing planet with rings, a moon, and drifting stardust">
-        <canvas id="hero-canvas" aria-hidden="true"></canvas>
-      </div>
-    </div>
-  </section>
-
-  <section class="section confession" id="recognition">
-    <div class="founder-note reveal">
-      <p class="note-body">The most intense parts of us are often private. Not because we are broken. Because being fully seen asks for a kind of courage most days do not give us.</p>
-      <p class="copy" style="margin-top:24px">Mentally Prepare is a small experiment for that courage: one honest note, one unknown person, one quiet day at a time.</p>
-      <div class="signature">Built by Anushka Kumar - for young adults tired of performing fine.</div>
-    </div>
-  </section>
-
-  <div class="quote-strip">
-    <p class="ql ql-1">What kind of tired are you that sleep does not fix?</p>
-    <p class="ql ql-2">When did you last feel fully seen?</p>
-    <p class="ql ql-3">What would you say if no one knew it was you?</p>
-    <p class="ql ql-4">What are you carrying alone?</p>
-  </div>
-
-  <section class="section" id="ritual">
-    <div class="inner ritual-grid">
-      <div class="ritual-intro reveal">
-        <div class="label rule">The experiment</div>
-        <h2 class="headline">Four quiet parts. <em>Twenty-one days.</em></h2>
-        <p class="copy" style="margin-top:22px">No feed. No likes. No performance. The product is deliberately small so the writing can stay real.</p>
-      </div>
-      <div>
-        <div class="timeline">
-          <div class="moment reveal"><small>01 / 3 minutes</small><h3>Answer a small emotional quiz.</h3><p>Eleven sliders about closeness, distance, trust, and how you protect yourself when things feel too real.</p></div>
-          <div class="moment reveal"><small>02 / quietly matched</small><h3>Get paired with another person.</h3><p>Someone outside your everyday circle. Anonymous by default. You meet their thoughts before you meet their name.</p></div>
-          <div class="moment reveal"><small>03 / every night</small><h3>Write one note. Read one note.</h3><p>A prompt opens. You write what you can. Their reply reaches you later, without pressure to perform a perfect self.</p></div>
-          <div class="moment reveal"><small>04 / day 21</small><h3>Choose what becomes real.</h3><p>Both people choose a reveal level. Email is never shared automatically. One stay-anonymous choice keeps both identities private.</p></div>
+      <div class="phone-wrap reveal">
+        <canvas id="hero-canvas"></canvas>
+        <div class="phone-glow"></div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-header"><span>Day 09 of 21</span><span>10:14 pm</span></div>
+            <div class="phone-card">
+              <div class="phone-card-label">Tonight's prompt</div>
+              <div class="phone-card-title">What are you carrying that nobody asked about?</div>
+              <div class="phone-card-text">I keep saying I am fine but the truth is I have been sitting with something heavy for weeks and I do not know how to put it down without scaring someone.</div>
+            </div>
+            <div class="phone-status">&#9670; Your partner sealed their note. You will see it tomorrow.</div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="inner safety-row reveal" id="safety">
-      <div class="safety-item"><h4>Anonymous first</h4><p>No public profile, no photos, no visible college until a mutual reveal.</p></div>
-      <div class="safety-item"><h4>Mutual reveal</h4><p>Day 21 only opens identity details at the level both people independently choose.</p></div>
-      <div class="safety-item"><h4>Not therapy</h4><p>This is a writing ritual and peer connection experiment, not clinical care or crisis support.</p></div>
-      <div class="safety-item"><h4>Private by design</h4><p>No social feed. No follower count. No likes. Your words are not content.</p></div>
-    </div>
-    <div class="inner room-threshold reveal">
-      <div class="threshold-copy">
-        <small>Before the room</small>
-        <p>Leave one sentence where nobody can perform back at you.</p>
-      </div>
-      <div class="threshold-doodle" aria-hidden="true">
-        <span class="threshold-orbit"></span>
-        <span class="threshold-moon"></span>
-        <span class="threshold-note one">tonight I almost said it</span>
-        <span class="threshold-note two">seen, not judged</span>
-      </div>
-    </div>
   </section>
 
-  <section class="section silent" id="silent-room">
-    <div class="inner silent-grid">
-      <div class="reveal">
-        <div class="label dot">Silent Room</div>
-        <h2 class="headline">No replies. <em>Just witnessed.</em></h2>
-        <p class="copy" style="margin-top:22px">A quiet wall for one anonymous line. It disappears in 7 days. Nobody can fix it, rate it, or turn it into advice.</p>
-        <div style="margin-top:28px"><a class="btn secondary" href="/app">Enter the Silent Room</a></div>
-      </div>
-      <div class="wall reveal">
-        <div class="line"><span class="dot"></span><div><p>I keep being the easy person because I am scared of becoming heavy.</p><time>2h ago</time></div></div>
-        <div class="line"><span class="dot"></span><div><p>I called home and still did not say the thing.</p><time>5h ago</time></div></div>
-        <div class="line"><span class="dot"></span><div><p>Some days my room is quiet in a way that feels loud.</p><time>yesterday</time></div></div>
-        <div class="line"><span class="dot"></span><div><p>I am trying. I wish that counted for more.</p><time>2 days ago</time></div></div>
-      </div>
-    </div>
-  </section>
+  <div class="divider"></div>
 
-  <section class="section stories" id="stories">
+  <!-- 2. PROBLEM -->
+  <section class="section problem" id="problem">
     <div class="inner">
-      <div class="field-poster reveal">
-        <div class="script-ghost left">wrote the sentence anyway. almost deleted it. left it there.</div>
-        <div class="script-ghost right">details softened. names removed. the feeling stayed.</div>
-        <div class="field-ray" aria-hidden="true"></div>
-        <div class="field-star" aria-hidden="true"></div>
-        <div class="day-note one"><small>Day 07</small><p>It was not linear. There were good hours and then none.</p></div>
-        <div class="day-note two"><small>Day 14</small><p>Slept a little deeper. Still showing up.</p></div>
-        <div class="day-note three"><small>Day 21</small><p>Clarity is not loud. It stays.</p></div>
-        <div class="field-head">
-          <div class="label">Sample journey notes</div>
-          <h2 class="headline">What stayed after <em>twenty-one days.</em></h2>
-          <div class="field-divider" aria-hidden="true"></div>
-          <p class="copy">Inspired by early user emotions. Details are fictionalized for privacy.</p>
-        </div>
+      <div class="reveal">
+        <div class="eyebrow">The quiet problem</div>
+        <h2 class="section-title">You are not broken. <em>You are just not seen.</em></h2>
+        <p class="section-sub">Most people your age perform fine in public. The tiredness is not dramatic. It is the kind that sits in a room with you after everyone leaves.</p>
       </div>
-      <div class="field-grid reveal">
-        <article class="field"><blockquote>"By Day 14 I was writing things I had not even admitted in my notes app."</blockquote><div class="meta"><span>Pune</span><span>Engineering, year 2</span><span>Reached Day 21 - stayed anonymous</span></div></article>
-        <article class="field"><blockquote>"We both said yes. It was less romantic than I expected. More human. Better."</blockquote><div class="meta"><span>Delhi</span><span>Commerce, year 3</span><span>Reveal: mutual yes</span></div></article>
-        <article class="field"><blockquote>"He said yes. I said no. The gentle part was that nothing bad happened."</blockquote><div class="meta"><span>Bangalore</span><span>Psychology, final year</span><span>Reveal: stayed private</span></div></article>
+      <div class="problem-content reveal">
+        <div class="problem-quote">"What kind of tired are you that sleep does not fix?"</div>
+        <div class="problem-quote">"When did you last feel fully seen by someone who was not trying to fix you?"</div>
       </div>
     </div>
   </section>
 
-  <section class="section final" id="cta">
-    <div class="narrow reveal">
-      <h2 class="headline">Write one honest thing tonight.</h2>
-      <p class="copy">Worst case, you spend 3 minutes being real with yourself. Best case, someone understands.</p>
-      <a class="btn" href="/app?screen=s-signup">Begin tonight</a>
-      <p class="micro">Currently free during early access. Anonymous. No public profile.</p>
+  <div class="divider"></div>
+
+  <!-- 3. HOW IT WORKS -->
+  <section class="section" id="how">
+    <div class="inner">
+      <div class="reveal">
+        <div class="eyebrow">The experiment</div>
+        <h2 class="section-title">Four quiet parts. <em>Twenty-one days.</em></h2>
+        <p class="section-sub">No feed. No likes. No performance. The product is deliberately small so the writing can stay real.</p>
+      </div>
+      <div class="steps-grid reveal">
+        <div class="card">
+          <div class="step-num">01</div>
+          <div class="card-title">Answer a small emotional quiz.</div>
+          <p class="card-body">Eleven sliders about closeness, distance, trust, and how you protect yourself when things feel too real.</p>
+        </div>
+        <div class="card">
+          <div class="step-num">02</div>
+          <div class="card-title">Get quietly matched.</div>
+          <p class="card-body">Someone outside your everyday circle. Anonymous by default. You meet their thoughts before you meet their name.</p>
+        </div>
+        <div class="card">
+          <div class="step-num">03</div>
+          <div class="card-title">Write one note. Read one note.</div>
+          <p class="card-body">A prompt opens every night. You write what you can. Their reply reaches you later, without pressure to perform.</p>
+        </div>
+        <div class="card">
+          <div class="step-num">04</div>
+          <div class="card-title">Choose what becomes real.</div>
+          <p class="card-body">Day 21: both people choose a reveal level. One stay-anonymous choice keeps both identities private.</p>
+        </div>
+      </div>
     </div>
   </section>
+
+  <div class="divider"></div>
+
+  <!-- 4. PRODUCT EXPERIENCE -->
+  <section class="section screens" id="screens">
+    <div class="inner">
+      <div class="reveal">
+        <div class="eyebrow">Inside the experience</div>
+        <h2 class="section-title">What it actually <em>feels like.</em></h2>
+        <p class="section-sub">Five real screens from the product. No stock imagery. This is what opens when you sit down to write.</p>
+      </div>
+      <div class="screen-grid reveal">
+
+        <!-- Screen 1: Prompt -->
+        <div class="screen-card card">
+          <div class="screen-preview">
+            <div class="mock-eyebrow">Day 12 &middot; Tonight's prompt</div>
+            <div class="mock-title">What would you say if no one knew it was you?</div>
+            <div style="height:3px;border-radius:2px;background:rgba(251,245,255,.06);margin:12px 0">
+              <div style="height:100%;width:57%;border-radius:2px;background:linear-gradient(90deg,var(--rose),var(--purple))"></div>
+            </div>
+            <div style="font-size:9px;color:var(--ink-faint)">12 of 21 prompts completed</div>
+          </div>
+          <div class="screen-label">Nightly prompt</div>
+          <p class="screen-desc">One question opens each night. You write as much or as little as you need.</p>
+        </div>
+
+        <!-- Screen 2: Partner locked -->
+        <div class="screen-card card">
+          <div class="screen-preview">
+            <div class="mock-eyebrow">Partner's entry</div>
+            <div class="mock-locked">
+              <span class="mock-locked-icon">&#128274;</span>
+              <div class="mock-locked-text">Your partner sealed today's note.<br>It becomes visible tomorrow morning.</div>
+            </div>
+            <div style="margin-top:12px">
+              <div class="mock-eyebrow" style="margin-bottom:4px">Yesterday</div>
+              <div class="mock-text" style="border-left:2px solid rgba(212,133,154,.25);padding-left:10px;font-style:italic">"I realized I have been apologizing for taking up space..."</div>
+            </div>
+          </div>
+          <div class="screen-label">Anonymous partner</div>
+          <p class="screen-desc">You read their thoughts before you know their name. Entries unlock the next day.</p>
+        </div>
+
+        <!-- Screen 3: ECP-11 Quiz -->
+        <div class="screen-card card">
+          <div class="screen-preview">
+            <div class="mock-eyebrow">ECP-11 &middot; Emotional Connection Profile</div>
+            <div class="mock-slider">
+              <div class="mock-slider-row">
+                <span class="mock-slider-label">Closeness</span>
+                <div class="mock-slider-track"><div class="mock-slider-fill" style="width:72%"></div></div>
+              </div>
+              <div class="mock-slider-row">
+                <span class="mock-slider-label">Distance</span>
+                <div class="mock-slider-track"><div class="mock-slider-fill" style="width:45%"></div></div>
+              </div>
+              <div class="mock-slider-row">
+                <span class="mock-slider-label">Trust</span>
+                <div class="mock-slider-track"><div class="mock-slider-fill" style="width:60%"></div></div>
+              </div>
+              <div class="mock-slider-row">
+                <span class="mock-slider-label">Guarding</span>
+                <div class="mock-slider-track"><div class="mock-slider-fill" style="width:83%"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="screen-label">Emotional quiz</div>
+          <p class="screen-desc">Eleven sliders. Three minutes. Finds your emotional connection archetype.</p>
+        </div>
+
+        <!-- Screen 4: Reveal -->
+        <div class="screen-card card">
+          <div class="screen-preview">
+            <div class="mock-eyebrow">Day 21 &middot; The reveal</div>
+            <div class="mock-title" style="font-size:15px;margin-bottom:10px">Choose your reveal level</div>
+            <div class="mock-option selected"><span class="mock-radio"></span>Stay fully anonymous</div>
+            <div class="mock-option"><span class="mock-radio"></span>Share first name only</div>
+            <div class="mock-option"><span class="mock-radio"></span>Share name and email</div>
+          </div>
+          <div class="screen-label">Day 21 reveal</div>
+          <p class="screen-desc">Both people choose independently. One anonymous choice keeps both private.</p>
+        </div>
+
+        <!-- Screen 5: Silent Room -->
+        <div class="screen-card card">
+          <div class="screen-preview">
+            <div class="mock-eyebrow">Silent Room</div>
+            <div class="mock-wall-line">
+              <span class="mock-wall-dot"></span>
+              <div><span class="mock-wall-text">I keep being the easy person because I am scared of becoming heavy.</span><span class="mock-wall-time">2h ago</span></div>
+            </div>
+            <div class="mock-wall-line">
+              <span class="mock-wall-dot"></span>
+              <div><span class="mock-wall-text">Some days my room is quiet in a way that feels loud.</span><span class="mock-wall-time">5h ago</span></div>
+            </div>
+            <div class="mock-wall-line">
+              <span class="mock-wall-dot"></span>
+              <div><span class="mock-wall-text">I am trying. I wish that counted for more.</span><span class="mock-wall-time">yesterday</span></div>
+            </div>
+          </div>
+          <div class="screen-label">Silent Room wall</div>
+          <p class="screen-desc">One anonymous line. No replies. No reactions. Disappears in 7 days.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 5. SILENT ROOM -->
+  <section class="section silent-room-section" id="silent-room">
+    <div class="inner">
+      <div class="silent-grid">
+        <div class="reveal">
+          <div class="eyebrow">Secondary feature</div>
+          <h2 class="section-title">No replies. <em>Just witnessed.</em></h2>
+          <p class="section-sub">A quiet wall for one anonymous line. It disappears in 7 days. Nobody can fix it, rate it, or turn it into advice.</p>
+          <a class="btn-ghost" href="/app">Enter the Silent Room</a>
+        </div>
+        <div class="wall-card reveal">
+          <div class="wall-line"><span class="wall-dot"></span><div><span class="wall-text">I keep being the easy person because I am scared of becoming heavy.</span><span class="wall-time">2h ago</span></div></div>
+          <div class="wall-line"><span class="wall-dot"></span><div><span class="wall-text">I called home and still did not say the thing.</span><span class="wall-time">5h ago</span></div></div>
+          <div class="wall-line"><span class="wall-dot"></span><div><span class="wall-text">Some days my room is quiet in a way that feels loud.</span><span class="wall-time">yesterday</span></div></div>
+          <div class="wall-line"><span class="wall-dot"></span><div><span class="wall-text">I am trying. I wish that counted for more.</span><span class="wall-time">2 days ago</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 6. SAFETY -->
+  <section class="section safety-section" id="safety">
+    <div class="inner">
+      <div class="reveal">
+        <div class="eyebrow">Trust and safety</div>
+        <h2 class="section-title">Private by design. <em>Not therapy.</em></h2>
+        <p class="section-sub">Your words are not content. This is a writing ritual and peer connection experiment, not clinical care.</p>
+      </div>
+      <div class="safety-grid reveal">
+        <div class="card">
+          <div class="card-label">Anonymous first</div>
+          <p class="card-body">No public profile, no photos, no visible college. Your identity stays hidden until you choose otherwise on Day 21.</p>
+        </div>
+        <div class="card">
+          <div class="card-label">Mutual reveal only</div>
+          <p class="card-body">Identity details open at the level both people independently choose. One anonymous vote keeps both private.</p>
+        </div>
+        <div class="card">
+          <div class="card-label">Block and report</div>
+          <p class="card-body">Instant block, rematch request, and moderated reporting. <a href="/safety" style="color:var(--rose-light);text-decoration:underline;text-underline-offset:3px">Read the full safety page.</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 7. SAMPLE JOURNEY -->
+  <section class="section journey" id="journey">
+    <div class="inner">
+      <div class="reveal">
+        <div class="eyebrow">Sample journey</div>
+        <h2 class="section-title">What stayed after <em>twenty-one days.</em></h2>
+        <p class="section-sub">Inspired by early user emotions. Details are fictionalized for privacy.</p>
+      </div>
+      <div class="journey-grid reveal">
+        <div class="card">
+          <div class="journey-day">07</div>
+          <div class="journey-quote">"By Day 7 I was writing things I had not even admitted in my notes app."</div>
+          <div class="journey-meta">Pune &middot; Engineering, year 2<br>Still writing. Still showing up.</div>
+        </div>
+        <div class="card">
+          <div class="journey-day">14</div>
+          <div class="journey-quote">"We both said yes. It was less romantic than I expected. More human. Better."</div>
+          <div class="journey-meta">Delhi &middot; Commerce, year 3<br>Reveal: mutual yes.</div>
+        </div>
+        <div class="card">
+          <div class="journey-day">21</div>
+          <div class="journey-quote">"He said yes. I said no. The gentle part was that nothing bad happened."</div>
+          <div class="journey-meta">Bangalore &middot; Psychology, final year<br>Reveal: stayed private.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 8. FINAL CTA -->
+  <section class="section final" id="cta">
+    <div class="inner reveal">
+      <div class="eyebrow" style="justify-content:center">Tonight</div>
+      <h2 class="section-title">Write one honest thing <em>tonight.</em></h2>
+      <p class="section-sub">Worst case, you spend 3 minutes being real with yourself. Best case, someone understands.</p>
+      <a class="btn" href="/app?screen=s-signup">Begin tonight</a>
+      <p class="hero-micro" style="margin-top:var(--gap-sm)">Currently free during early access. Anonymous. No public profile.</p>
+    </div>
+  </section>
+
 </main>
-<footer class="footer"><div class="footer-inner"><div>Mentally Prepare - 2026</div><div class="footer-links"><a href="/safety">Safety</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#ritual">How it works</a><a href="https://www.instagram.com/mymentallyprepare" target="_blank" rel="noopener noreferrer">Instagram</a></div></div></footer>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>Mentally Prepare &middot; 2026</div>
+    <div class="footer-links">
+      <a href="/safety">Safety</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="#how">How it works</a>
+      <a href="https://www.instagram.com/mymentallyprepare" target="_blank" rel="noopener noreferrer">Instagram</a>
+    </div>
+  </div>
+</footer>
+
 <script>
 (function(){
-  var stars=document.getElementById('stars');var count=Math.min(320,Math.floor(innerWidth/4));
-  for(var i=0;i<count;i++){var s=document.createElement('i');s.className='star';s.style.left=Math.random()*100+'%';s.style.top=Math.random()*100+'%';s.style.opacity=(Math.random()*.45+.12).toFixed(2);s.style.transform='scale('+(Math.random()*1.6+.45).toFixed(2)+')';stars.appendChild(s);}
-  var obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:.12,rootMargin:'0px 0px -70px 0px'});
-  document.querySelectorAll('.reveal').forEach(function(el){obs.observe(el);});
-  var btn=document.getElementById('menuBtn'),menu=document.getElementById('mobileMenu');
-  btn.addEventListener('click',function(){var open=menu.classList.toggle('open');btn.setAttribute('aria-expanded',open?'true':'false');btn.textContent=open?'x':'☰';});
-  menu.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){menu.classList.remove('open');btn.setAttribute('aria-expanded','false');btn.textContent='☰';});});
-})();
-(function initHeroPlanet(){
+  // --- Star field ---
+  var starsEl=document.getElementById('stars');
+  if(starsEl&&!window.matchMedia('(prefers-reduced-motion:reduce)').matches){
+    var frag=document.createDocumentFragment();
+    for(var i=0;i<280;i++){
+      var s=document.createElement('i');
+      s.className='star';
+      s.style.left=Math.random()*100+'%';
+      s.style.top=Math.random()*100+'%';
+      var sz=Math.random()<.08?2:1;
+      s.style.width=sz+'px';s.style.height=sz+'px';
+      s.style.opacity=(.15+Math.random()*.55).toFixed(2);
+      s.style.animation='breathe '+(4+Math.random()*6).toFixed(1)+'s ease-in-out '+(Math.random()*5).toFixed(1)+'s infinite';
+      frag.appendChild(s);
+    }
+    starsEl.appendChild(frag);
+  }
+
+  // --- Hero canvas: ambient orbiting particles ---
   var canvas=document.getElementById('hero-canvas');
-  if(!canvas||!canvas.getContext) return;
-  var ctx=canvas.getContext('2d');
-  var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var w=0,h=0,dpr=1;
-  var particles=[];
-  var rafId=null;
-  var startT=performance.now();
-  var COUNT=400;
-
-  // --- Value-noise / fBM for organic surface texture ---
-  function hash2(x,y){
-    var s=Math.sin(x*127.1+y*311.7)*43758.5453;
-    return s-Math.floor(s);
-  }
-  function vnoise(x,y){
-    var xi=Math.floor(x), yi=Math.floor(y);
-    var xf=x-xi, yf=y-yi;
-    var u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
-    var a=hash2(xi,yi), b=hash2(xi+1,yi);
-    var c=hash2(xi,yi+1), d=hash2(xi+1,yi+1);
-    var ab=a+(b-a)*u, cd=c+(d-c)*u;
-    return ab+(cd-ab)*v;
-  }
-  function fbm(x,y){
-    var n=0, amp=0.5, freq=1;
-    for(var i=0;i<4;i++){ n+=vnoise(x*freq,y*freq)*amp; amp*=0.5; freq*=2; }
-    return n;
-  }
-  // Palette stops: deep purple -> magenta -> dusty rose -> pale pink-white
-  var PAL=[
-    [0.00, 45, 10, 78],
-    [0.32,192, 24,106],
-    [0.62,232,112,154],
-    [1.00,245,198,216]
-  ];
-  function paletteColor(t){
-    t=t<0?0:t>1?1:t;
-    for(var i=1;i<PAL.length;i++){
-      if(t<=PAL[i][0]){
-        var p=PAL[i-1], q=PAL[i];
-        var k=(t-p[0])/(q[0]-p[0]);
-        return [
-          (p[1]+(q[1]-p[1])*k)|0,
-          (p[2]+(q[2]-p[2])*k)|0,
-          (p[3]+(q[3]-p[3])*k)|0
-        ];
-      }
+  if(canvas&&!window.matchMedia('(prefers-reduced-motion:reduce)').matches){
+    var ctx=canvas.getContext('2d');
+    var dpr=window.devicePixelRatio||1;
+    function resize(){
+      var r=canvas.parentElement.getBoundingClientRect();
+      canvas.width=r.width*dpr;canvas.height=r.height*dpr;
+      ctx.scale(dpr,dpr);
+      canvas.style.width=r.width+'px';canvas.style.height=r.height+'px';
     }
-    return [PAL[3][1],PAL[3][2],PAL[3][3]];
-  }
-
-  // --- Offscreen noise texture (built once per resize) ---
-  var tex=document.createElement('canvas');
-  var texCtx=tex.getContext('2d');
-  var lastTexR=0;
-  function buildTexture(targetR){
-    var TW=320, TH=200;
-    tex.width=TW; tex.height=TH;
-    var img=texCtx.createImageData(TW,TH);
-    var d=img.data;
-    for(var y=0;y<TH;y++){
-      for(var x=0;x<TW;x++){
-        // Domain-warp for swirls
-        var nx=x/34, ny=y/30;
-        var wx=fbm(nx*0.6+11,ny*0.6+19)*2-1;
-        var wy=fbm(nx*0.6+71,ny*0.6+53)*2-1;
-        var n=fbm(nx+wx*1.1, ny+wy*0.9);
-        // Soft band emphasis (slightly anisotropic = gas-giant bands)
-        var b=0.5+0.5*Math.sin(ny*1.4+wx*0.6)*0.18;
-        var v=n*0.85+b*0.15;
-        // Boost contrast
-        v=(v-0.30)*1.55;
-        v=v<0?0:v>1?1:v;
-        var c=paletteColor(v);
-        var idx=(y*TW+x)*4;
-        d[idx]=c[0]; d[idx+1]=c[1]; d[idx+2]=c[2]; d[idx+3]=255;
-      }
-    }
-    texCtx.putImageData(img,0,0);
-    lastTexR=targetR;
-  }
-
-  function resize(){
-    var r=canvas.getBoundingClientRect();
-    w=Math.max(1,r.width);h=Math.max(1,r.height);
-    dpr=Math.min(window.devicePixelRatio||1,2);
-    canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
-    canvas.style.width=w+'px';canvas.style.height=h+'px';
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    var pr=Math.min(w,h)*0.28;
-    if(Math.abs(pr-lastTexR)>4 || lastTexR===0) buildTexture(pr);
-    initParticles();
-  }
-
-  function initParticles(){
-    particles.length=0;
-    var px=w*0.55, py=h*0.5, pr=Math.min(w,h)*0.28;
-    for(var i=0;i<COUNT;i++){
-      var ang=Math.random()*Math.PI*2;
-      var dr=Math.random();
-      // Cluster near planet; quadratic falloff outward
-      var dist=pr*0.95+Math.pow(dr,2.1)*Math.max(w,h)*0.75;
-      var x=px+Math.cos(ang)*dist;
-      var y=py+Math.sin(ang)*dist;
-      var sr=Math.random();
-      // Sizes: 0.5 / 1 / 1.5 / 2 — most tiny, a few bright
-      var sz = sr<0.50 ? 0.5 : sr<0.83 ? 1 : sr<0.96 ? 1.5 : 2;
-      var warm=Math.random()<0.55;
+    resize();window.addEventListener('resize',resize);
+    var particles=[];
+    for(var j=0;j<60;j++){
       particles.push({
-        x:x,y:y,
-        vx:(Math.random()-0.5)*0.045,
-        vy:(Math.random()-0.5)*0.035,
-        size:sz,
-        color:warm?'255,212,232':'215,225,255',
-        ts:0.4+Math.random()*1.6,
-        tp:Math.random()*Math.PI*2,
-        ba:0.3+Math.random()*0.6,
-        front:Math.random()<0.5
+        a:Math.random()*Math.PI*2,
+        r:80+Math.random()*160,
+        s:.0003+Math.random()*.001,
+        sz:.5+Math.random()*1.5,
+        o:.1+Math.random()*.35,
+        c:Math.random()>.5?'212,133,154':'123,94,167'
       });
     }
-  }
-
-  function drawParticle(p,t){
-    var tw=reduced?1:(0.5+0.5*Math.sin(t*p.ts+p.tp));
-    var a=p.ba*tw;
-    if(a<=0.02) return;
-    ctx.fillStyle='rgba('+p.color+','+a.toFixed(3)+')';
-    if(p.size<=1){
-      ctx.fillRect(p.x,p.y,p.size,p.size);
-    } else {
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,p.size*0.5,0,Math.PI*2);
-      ctx.fill();
-    }
-  }
-
-  function drawRing(cx,cy,pr,half){
-    var rx=pr*1.55, ry=pr*0.42, tilt=-0.32;
-    ctx.save();
-    ctx.translate(cx,cy);ctx.rotate(tilt);
-    var grad=ctx.createLinearGradient(-rx,0,rx,0);
-    grad.addColorStop(0,'rgba(255,220,240,0.32)');
-    grad.addColorStop(0.5,'rgba(255,240,250,0.92)');
-    grad.addColorStop(1,'rgba(255,220,240,0.32)');
-    ctx.lineWidth=8;ctx.strokeStyle='rgba(255,210,235,0.10)';
-    ctx.beginPath();
-    if(half==='back')ctx.ellipse(0,0,rx,ry,0,Math.PI,Math.PI*2);
-    else ctx.ellipse(0,0,rx,ry,0,0,Math.PI);
-    ctx.stroke();
-    ctx.lineWidth=2;ctx.strokeStyle=grad;
-    ctx.beginPath();
-    if(half==='back')ctx.ellipse(0,0,rx,ry,0,Math.PI,Math.PI*2);
-    else ctx.ellipse(0,0,rx,ry,0,0,Math.PI);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawPlanet(cx,cy,pr,t){
-    // Outer atmosphere halo — 40px out beyond sphere edge, warm pink-purple
-    var haloR=pr+44;
-    var halo=ctx.createRadialGradient(cx,cy,pr*0.96,cx,cy,haloR);
-    halo.addColorStop(0,'rgba(255,180,220,0.42)');
-    halo.addColorStop(0.45,'rgba(220,130,210,0.18)');
-    halo.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=halo;
-    ctx.fillRect(cx-haloR,cy-haloR,haloR*2,haloR*2);
-
-    // Subtle drift offset for the texture (slow rotation feel)
-    var driftPx = (t * 6) | 0; // ~6 px/sec horizontal scroll
-    var TW=tex.width, TH=tex.height;
-    var planetD=pr*2;
-    // Map planet to a window of the texture, then scroll it
-    var srcW=TW*0.55;  // sample portion of texture
-    var srcX=(driftPx % TW + TW) % TW;
-
-    // --- Clip to sphere & paint textured surface ---
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx,cy,pr,0,Math.PI*2);
-    ctx.clip();
-
-    // Draw the noise texture as the planet body. Two draws for seamless scroll.
-    // We stretch a TW-wide source slice across the planet circle's bbox.
-    var destX=cx-pr;
-    var destY=cy-pr;
-    // First slice
-    var s1w=Math.min(srcW, TW-srcX);
-    var d1w=planetD * (s1w/srcW);
-    ctx.drawImage(tex, srcX,0, s1w,TH, destX,destY, d1w,planetD);
-    // Wrap-around slice (if needed)
-    if(s1w<srcW){
-      var s2w=srcW-s1w;
-      var d2w=planetD * (s2w/srcW);
-      ctx.drawImage(tex, 0,0, s2w,TH, destX+d1w,destY, d2w,planetD);
-    }
-
-    // Slight band overlay using a second texture sample (adds depth, breaks any uniformity)
-    ctx.globalAlpha=0.35;
-    var srcX2=( (driftPx*0.6+TW*0.4) % TW + TW) % TW;
-    var s3w=Math.min(srcW, TW-srcX2);
-    var d3w=planetD * (s3w/srcW);
-    ctx.drawImage(tex, srcX2,0, s3w,TH, destX,destY+pr*0.05, d3w,planetD);
-    if(s3w<srcW){
-      var s4w=srcW-s3w;
-      var d4w=planetD*(s4w/srcW);
-      ctx.drawImage(tex, 0,0, s4w,TH, destX+d3w,destY+pr*0.05, d4w,planetD);
-    }
-    ctx.globalAlpha=1;
-
-    // --- Diffuse shading (multiply): brightens lit side, near-black on shadow side ---
-    var diffuse=ctx.createRadialGradient(
-      cx-pr*0.32, cy-pr*0.40, 0,
-      cx+pr*0.45, cy+pr*0.40, pr*1.7
-    );
-    diffuse.addColorStop(0.00,'rgba(255,250,252,1)');
-    diffuse.addColorStop(0.18,'rgba(252,228,238,1)');
-    diffuse.addColorStop(0.42,'rgba(180,128,200,1)');
-    diffuse.addColorStop(0.70,'rgba(60,22,80,1)');
-    diffuse.addColorStop(0.92,'rgba(12,4,28,1)');
-    diffuse.addColorStop(1.00,'rgba(3,1,8,1)');
-    ctx.globalCompositeOperation='multiply';
-    ctx.fillStyle=diffuse;
-    ctx.fillRect(cx-pr,cy-pr,pr*2,pr*2);
-
-    // --- Specular highlight: sharp white-pink dot, top-left, ~17% radius ---
-    var specR=pr*0.17;
-    var specCx=cx-pr*0.36;
-    var specCy=cy-pr*0.42;
-    var spec=ctx.createRadialGradient(specCx,specCy,0,specCx,specCy,specR);
-    spec.addColorStop(0.00,'rgba(255,250,252,1.0)');
-    spec.addColorStop(0.35,'rgba(255,220,240,0.55)');
-    spec.addColorStop(0.70,'rgba(255,190,225,0.15)');
-    spec.addColorStop(1.00,'rgba(255,180,220,0)');
-    ctx.globalCompositeOperation='lighter';
-    ctx.fillStyle=spec;
-    ctx.fillRect(cx-pr,cy-pr,pr*2,pr*2);
-
-    ctx.globalCompositeOperation='source-over';
-    ctx.restore();
-
-    // --- Rim light: thin cool purple glow on the dark edge (lower-right) ---
-    ctx.save();
-    // Soft outer rim
-    ctx.lineWidth=5;
-    ctx.strokeStyle='rgba(160,110,230,0.10)';
-    ctx.beginPath();
-    ctx.arc(cx,cy,pr+0.5,Math.PI*0.05,Math.PI*0.95);
-    ctx.stroke();
-    // Sharp inner rim
-    ctx.lineWidth=1.5;
-    var rim=ctx.createLinearGradient(cx-pr,cy-pr,cx+pr,cy+pr);
-    rim.addColorStop(0,'rgba(180,130,230,0)');
-    rim.addColorStop(0.55,'rgba(180,130,230,0)');
-    rim.addColorStop(0.78,'rgba(200,150,240,0.65)');
-    rim.addColorStop(1,'rgba(225,180,250,0.85)');
-    ctx.strokeStyle=rim;
-    ctx.beginPath();
-    ctx.arc(cx,cy,pr-0.3,0,Math.PI*2);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function frame(now){
-    var t=(now-startT)/1000;
-    var px=w*0.55, pyBase=h*0.5;
-    var pr=Math.min(w,h)*0.28;
-    var bob=reduced?0:Math.sin(t*0.45)*6;
-    var py=pyBase+bob;
-
-    ctx.globalAlpha=1;
-    ctx.clearRect(0,0,w,h);
-
-    // Background cosmic dust glow (very soft, blends)
-    var neb=ctx.createRadialGradient(px,py,0,px,py,pr*3.4);
-    neb.addColorStop(0,'rgba(190,110,210,0.18)');
-    neb.addColorStop(0.35,'rgba(140,70,180,0.08)');
-    neb.addColorStop(0.7,'rgba(80,30,130,0.02)');
-    neb.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=neb;ctx.fillRect(0,0,w,h);
-
-    if(!reduced){
-      for(var i=0;i<particles.length;i++){
-        var p=particles[i];
-        p.x+=p.vx;p.y+=p.vy;
-        if(p.x<-8)p.x=w+8;else if(p.x>w+8)p.x=-8;
-        if(p.y<-8)p.y=h+8;else if(p.y>h+8)p.y=-8;
+    var cx,cy;
+    function draw(){
+      var w=canvas.width/dpr,h=canvas.height/dpr;
+      cx=w/2;cy=h/2;
+      ctx.clearRect(0,0,w,h);
+      for(var k=0;k<particles.length;k++){
+        var p=particles[k];
+        p.a+=p.s;
+        var x=cx+Math.cos(p.a)*p.r;
+        var y=cy+Math.sin(p.a)*p.r*.6;
+        ctx.beginPath();
+        ctx.arc(x,y,p.sz,0,Math.PI*2);
+        ctx.fillStyle='rgba('+p.c+','+p.o+')';
+        ctx.fill();
       }
+      requestAnimationFrame(draw);
     }
-
-    // Back-half particles (behind planet)
-    for(var i=0;i<particles.length;i++){if(!particles[i].front)drawParticle(particles[i],t);}
-
-    // Ring back-half
-    drawRing(px,py,pr,'back');
-
-    // Planet — textured sphere with proper lighting, halo, rim
-    drawPlanet(px,py,pr,t);
-
-    // Ring front-half
-    drawRing(px,py,pr,'front');
-
-    // Moon
-    var ma=-Math.PI*0.7+t*0.4;
-    var mor=pr*1.45;
-    var mx=px+Math.cos(ma)*mor;
-    var my=py+Math.sin(ma)*mor*0.42;
-    var mr=Math.max(7,pr*0.085);
-    var mglow=ctx.createRadialGradient(mx,my,0,mx,my,mr*2.5);
-    mglow.addColorStop(0,'rgba(255,235,250,0.32)');
-    mglow.addColorStop(1,'rgba(255,235,250,0)');
-    ctx.fillStyle=mglow;
-    ctx.beginPath();ctx.arc(mx,my,mr*2.5,0,Math.PI*2);ctx.fill();
-    var m=ctx.createRadialGradient(mx-mr*0.3,my-mr*0.3,0,mx,my,mr);
-    m.addColorStop(0,'#ffffff');
-    m.addColorStop(0.3,'#eddff2');
-    m.addColorStop(0.7,'#a892c8');
-    m.addColorStop(1,'#3a2a5a');
-    ctx.fillStyle=m;
-    ctx.beginPath();ctx.arc(mx,my,mr,0,Math.PI*2);ctx.fill();
-
-    // Front-half particles (in front of planet)
-    for(var i=0;i<particles.length;i++){if(particles[i].front)drawParticle(particles[i],t);}
-    ctx.globalAlpha=1;
-
-    if(!reduced) rafId=requestAnimationFrame(frame);
+    draw();
   }
 
-  resize();
-  if(reduced) frame(performance.now());
-  else rafId=requestAnimationFrame(frame);
+  // --- Reveal animations ---
+  document.querySelectorAll('.hero .reveal').forEach(function(el){
+    el.classList.add('visible');
+  });
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});
+  },{threshold:0.05,rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('.reveal:not(.visible)').forEach(function(el){obs.observe(el);});
 
-  if(window.ResizeObserver){var ro=new ResizeObserver(resize);ro.observe(canvas);}
-  else window.addEventListener('resize',resize);
-
-  document.addEventListener('visibilitychange',function(){
-    if(document.hidden){if(rafId){cancelAnimationFrame(rafId);rafId=null;}}
-    else if(!reduced&&rafId===null){rafId=requestAnimationFrame(frame);}
+  // --- Mobile menu ---
+  var btn=document.getElementById('menuBtn'),menu=document.getElementById('mobileMenu');
+  btn.addEventListener('click',function(){
+    var open=menu.classList.toggle('open');
+    btn.setAttribute('aria-expanded',open?'true':'false');
+    btn.textContent=open?'✕':'☰';
+  });
+  menu.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click',function(){
+      menu.classList.remove('open');
+      btn.setAttribute('aria-expanded','false');
+      btn.textContent='☰';
+    });
   });
 })();
 </script>
