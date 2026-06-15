@@ -1,10 +1,56 @@
+require('dotenv').config({ quiet: true });
+
+// --- Crash reporting (Sentry). No-op without SENTRY_DSN set. ---
+// Crashes only: no tracing, no PII. Entry text never goes to third parties.
+// Console breadcrumbs disabled because our logs contain emails and user IDs.
+const Sentry = require('@sentry/node');
+const SENTRY_ENABLED = Boolean(process.env.SENTRY_DSN);
+if (SENTRY_ENABLED) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    tracesSampleRate: 0,
+    sendDefaultPii: false,
+    integrations(defaults) {
+      return defaults.filter(i => i.name !== 'Console');
+    },
+    beforeBreadcrumb(crumb) {
+      if (crumb.category === 'console') return null;
+      return crumb;
+    },
+    beforeSend(event) {
+      if (event.request) {
+        delete event.request.data;
+        delete event.request.cookies;
+        delete event.request.query_string;
+        delete event.request.headers;
+      }
+      if (event.user) {
+        delete event.user.email;
+        delete event.user.ip_address;
+        delete event.user.username;
+      }
+      return event;
+    },
+  });
+}
+
 // --- Error Logging for Startup Issues ---
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
+  if (SENTRY_ENABLED) {
+    Sentry.captureException(err);
+    Sentry.close(2000).finally(() => process.exit(1));
+    return;
+  }
   process.exit(1);
 });
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection:', reason);
+  if (SENTRY_ENABLED) {
+    Sentry.captureException(reason);
+    Sentry.close(2000).finally(() => process.exit(1));
+    return;
+  }
   process.exit(1);
 });
 // ---------------------------------------
@@ -13,8 +59,6 @@ process.on('unhandledRejection', (reason, promise) => {
 // ---------------------------------------
 
 // --- Ensure DB directory exists and is writable (test-volume.js logic) ---
-
-require('dotenv').config({ quiet: true });
 
 const path = require('path');
 const fs = require('fs');
@@ -2742,6 +2786,10 @@ process.on('SIGTERM', shutdown);
 // ---------------------------------------
 // START
 // ---------------------------------------
+if (SENTRY_ENABLED) {
+  // Captures errors thrown inside Express routes. Must come after all routes.
+  Sentry.setupExpressErrorHandler(app);
+}
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
