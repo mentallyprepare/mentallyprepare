@@ -2009,12 +2009,16 @@ function getPartnerId(match, userId) {
 const VAPID_PATH = path.join(DATA_DIR, '.vapid-keys.json');
 let vapidKeys;
 try {
-  if (fs.existsSync(VAPID_PATH)) {
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    vapidKeys = { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY };
+    console.log('  ✅ VAPID keys loaded from env vars');
+  } else if (fs.existsSync(VAPID_PATH)) {
     vapidKeys = JSON.parse(fs.readFileSync(VAPID_PATH, 'utf8'));
+    console.log('  ✅ VAPID keys loaded from file');
   } else {
     vapidKeys = webpush.generateVAPIDKeys();
     fs.writeFileSync(VAPID_PATH, JSON.stringify(vapidKeys, null, 2));
-    console.log('  ? Generated VAPID keys');
+    console.log('  ✅ Generated new VAPID keys');
   }
   if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
     throw new Error('VAPID keys missing public/private key');
@@ -2024,10 +2028,9 @@ try {
     vapidKeys.publicKey,
     vapidKeys.privateKey
   );
-  console.log('  ? Webpush VAPID keys loaded');
 } catch (e) {
   vapidKeys = null;
-  console.error('  ? VAPID setup failed:', e && e.stack ? e.stack : e);
+  console.error('  ❌ VAPID setup failed:', e && e.stack ? e.stack : e);
 }
 
 // --- Razorpay Setup ---------------------
