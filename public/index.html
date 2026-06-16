@@ -3,11 +3,85 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Mentally Prepare - 21-day anonymous emotional reset</title>
-<meta name="description" content="A private 21-day reflection journey where two people connect through honest conversations, not followers, likes, or profiles."/>
-<meta name="keywords" content="anonymous journaling, emotional connection, self discovery, meaningful conversations, loneliness, life transitions"/>
+<title>Mentally Prepare: write to one anonymous stranger for 21 nights</title>
+<meta name="description" content="For 21 nights, write one honest note to a stranger. They write back. On day 21, you both decide if you ever want to meet. Anonymous, free, 18+."/>
 <meta name="theme-color" content="#0B0614"/>
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="Mentally Prepare: write to one anonymous stranger for 21 nights"/>
+<meta property="og:description" content="For 21 nights, write one honest note to a stranger. They write back. On day 21, you both decide if you ever want to meet."/>
+<meta property="og:url" content="https://mymentallyprepare.com/"/>
 <meta property="og:image" content="https://mymentallyprepare.com/icon-512x512.png"/>
+<meta property="og:image:width" content="512"/>
+<meta property="og:image:height" content="512"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Mentally Prepare: write to one anonymous stranger for 21 nights"/>
+<meta name="twitter:description" content="For 21 nights, write one honest note to a stranger. They write back. On day 21, you both decide if you ever want to meet."/>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Mentally Prepare",
+  "url": "https://mymentallyprepare.com",
+  "logo": "https://mymentallyprepare.com/icon-512x512.png",
+  "description": "A private 21-day anonymous writing experiment where two strangers connect through honest notes."
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is Mentally Prepare a dating app?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. It is a 21-day anonymous writing experiment. You exchange honest notes with one stranger. On day 21 you both choose whether to reveal your identity or stay anonymous. Some connections become friendships, some stay private. It is not built around attraction or matching by appearance."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it anonymous?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. You have no public profile, no photo, no visible name. Your partner reads your thoughts before they know anything about you. On day 21 both people independently choose a reveal level. One 'stay anonymous' vote keeps both identities private."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it safe? Who gets matched with me?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You are matched with one person outside your everyday circle based on an 11-question emotional connection quiz. Every match can be blocked or reported instantly. The platform is 18+ only, and moderation is active. Read the full safety page at mymentallyprepare.com/safety."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How long does it take to start?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "About 3 minutes. You sign up, answer 11 short slider questions, and your first prompt opens that night. No long onboarding, no profile to build."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens on day 21?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Both you and your partner independently choose a reveal level: stay fully anonymous, share first name only, or share name and email. The reveal only happens at the level both people agree to. One anonymous vote keeps both identities private forever."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is this therapy?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Mentally Prepare is a writing ritual and peer connection experiment, not clinical care. It is not a replacement for therapy, counselling, or professional help. If you are in crisis, please reach out to a local helpline."
+      }
+    }
+  ]
+}
+</script>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
@@ -131,6 +205,22 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .hero-sub{max-width:480px;margin:var(--gap-md) 0 var(--gap-lg);color:var(--ink-secondary);font-size:clamp(14px,1.3vw,16px);line-height:1.85}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .hero-micro{margin-top:var(--gap-sm);color:var(--ink-muted);font-size:11px;line-height:1.7}
+.trust-band{margin-top:var(--gap-sm);padding:10px 0;color:var(--ink-muted);font-size:11px;letter-spacing:.04em;line-height:1.6}
+.presence-line{margin-top:12px;color:var(--ink-muted);font-size:11px;opacity:.8}
+.presence-line:empty{display:none}
+
+/* Reveal hook */
+.reveal-hook{padding:56px 24px;text-align:center}
+.reveal-hook-text{font-family:var(--display);font-style:italic;font-size:clamp(20px,3vw,30px);line-height:1.35;color:rgba(251,245,255,.6);max-width:580px;margin:0 auto}
+
+/* Quiz preview */
+.quiz-preview{margin-top:var(--gap-lg);border:1px solid var(--border);border-radius:var(--radius-card);background:var(--surface);padding:28px 24px;max-width:400px}
+.quiz-preview-label{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--rose-light);margin-bottom:14px}
+.quiz-preview-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.quiz-preview-name{font-size:12px;color:var(--ink-muted);width:70px;flex:none}
+.quiz-preview-track{flex:1;height:4px;border-radius:2px;background:rgba(251,245,255,.08);position:relative;overflow:hidden}
+.quiz-preview-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--rose),var(--purple))}
+.quiz-preview-meta{font-size:11px;color:var(--ink-muted);margin-top:16px;line-height:1.6}
 .hero-micro a{text-decoration:underline;text-underline-offset:3px}
 
 /* Phone mockup */
@@ -295,13 +385,15 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     <div class="hero-grid">
       <div>
         <div class="hero-kicker reveal"><span class="pulse"></span>Early access &middot; currently free</div>
-        <h1 class="reveal">Feel seen without <em>performing.</em></h1>
-        <p class="hero-sub reveal">A private 21-day reflection journey where two people connect through honest writing. No followers, no profiles, no performance.</p>
+        <h1 class="reveal">For 21 nights, write to a stranger you may <em>never meet.</em></h1>
+        <p class="hero-sub reveal">One honest note each night. They write back. Neither of you knows who the other is, until day 21, when you both decide if you ever want to find out.</p>
         <div class="hero-actions reveal">
           <a class="btn" href="/app?screen=s-signup">Begin tonight</a>
           <a class="btn-ghost" href="#how">How it works</a>
         </div>
-        <p class="hero-micro reveal">Anonymous. Takes 3 minutes. No public profile.<br><a href="/safety">How reports, blocking, and the 18+ rule work</a></p>
+        <div class="trust-band reveal">18+ only &middot; every match can be blocked or reported &middot; one &ldquo;stay anonymous&rdquo; keeps you anonymous forever</div>
+        <p class="hero-micro reveal">Free during early access. Anonymous. 18+. Your first note takes 3 minutes.</p>
+        <div class="presence-line reveal" id="presence-line"></div>
       </div>
       <div class="phone-wrap reveal">
         <canvas id="hero-canvas"></canvas>
@@ -319,6 +411,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- REVEAL HOOK -->
+  <section class="reveal-hook reveal">
+    <p class="reveal-hook-text">You will know their 3am thoughts before you know their name.<br>On day 21, you choose if it stays that way.</p>
   </section>
 
   <div class="divider"></div>
@@ -369,6 +466,13 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
           <div class="card-title">Choose what becomes real.</div>
           <p class="card-body">Day 21: both people choose a reveal level. One stay-anonymous choice keeps both identities private.</p>
         </div>
+      </div>
+      <div class="quiz-preview reveal">
+        <div class="quiz-preview-label">1 of 11 questions on night one</div>
+        <div class="quiz-preview-row"><span class="quiz-preview-name">Closeness</span><div class="quiz-preview-track"><div class="quiz-preview-fill" style="width:68%"></div></div></div>
+        <div class="quiz-preview-row"><span class="quiz-preview-name">Distance</span><div class="quiz-preview-track"><div class="quiz-preview-fill" style="width:42%"></div></div></div>
+        <div class="quiz-preview-row"><span class="quiz-preview-name">Trust</span><div class="quiz-preview-track"><div class="quiz-preview-fill" style="width:55%"></div></div></div>
+        <p class="quiz-preview-meta">The real ones are about closeness, distance, and trust. 3 minutes.</p>
       </div>
     </div>
   </section>
@@ -659,6 +763,22 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     entries.forEach(function(e){if(e.isIntersecting)e.target.classList.add('visible');});
   },{threshold:0.05,rootMargin:'0px 0px -40px 0px'});
   document.querySelectorAll('.reveal:not(.visible)').forEach(function(el){obs.observe(el);});
+
+  // --- Presence signal ---
+  (function(){
+    var el=document.getElementById('presence-line');
+    if(!el)return;
+    fetch('/api/presence').then(function(r){return r.json()}).then(function(d){
+      if(d.minutesAgo==null)return;
+      var m=d.minutesAgo;
+      var text;
+      if(m<1) text='Someone wrote in the Silent Room just now.';
+      else if(m<60) text='Someone wrote in the Silent Room '+Math.round(m)+' minute'+(Math.round(m)===1?'':'s')+' ago.';
+      else if(m<1440){var h=Math.round(m/60);text='Someone wrote in the Silent Room '+h+' hour'+(h===1?'':'s')+' ago.';}
+      else return;
+      el.textContent=text;
+    }).catch(function(){});
+  })();
 
   // --- Mobile menu ---
   var btn=document.getElementById('menuBtn'),menu=document.getElementById('mobileMenu');

@@ -2738,6 +2738,22 @@ registerWaitlistRoutes(app, {
   sendWaitlistConfirmation
 });
 
+// ─── Presence signal (public, privacy-safe) ─────────────────
+app.get('/api/presence', apiLimiter, (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  try {
+    const row = db.prepare(
+      "SELECT created_at FROM wall_posts WHERE flagged = 0 AND expire_at > datetime('now') ORDER BY created_at DESC LIMIT 1"
+    ).get();
+    if (!row) return res.json({});
+    const minutesAgo = (Date.now() - new Date(row.created_at + 'Z').getTime()) / 60000;
+    if (minutesAgo > 1440) return res.json({});
+    res.json({ minutesAgo: Math.round(minutesAgo) });
+  } catch {
+    res.json({});
+  }
+});
+
 registerStaticRoutes(app, {
   baseUrl: BASE_URL,
   rootDir: __dirname
