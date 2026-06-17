@@ -869,13 +869,14 @@ function startApp() {
 }
 
 function showAppShell() {
-  const landing = document.getElementById('landing');
-  const appArea = document.getElementById('app-area');
-  const active = document.querySelector('.screen.active');
+  var landing = document.getElementById('landing');
+  var appArea = document.getElementById('app-area');
+  var active = document.querySelector('.screen.active');
   if (landing) landing.style.display = 'none';
-  if (appArea) appArea.style.display = 'block';
+  if (appArea) appArea.removeAttribute('style');
   document.body.classList.add('app-active');
   setMotionMode(modeForScreen(active && active.id));
+  window.scrollTo(0, 0);
 }
 
 function getLandingTargetFromHash(hash) {
@@ -887,8 +888,8 @@ function getLandingTargetFromHash(hash) {
 }
 
 function showLanding(targetId) {
-  const landing = document.getElementById('landing');
-  const appArea = document.getElementById('app-area');
+  var landing = document.getElementById('landing');
+  var appArea = document.getElementById('app-area');
   if (landing) landing.style.display = '';
   if (appArea) appArea.style.display = 'none';
   document.body.classList.remove('app-active','focus-writing');
