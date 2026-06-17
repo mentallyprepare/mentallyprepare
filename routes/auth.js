@@ -111,6 +111,10 @@ function normalizeResetCode(value) {
   return compact.length === 6 ? compact.toUpperCase() : compact;
 }
 
+function hashResetToken(token) {
+  return nodeCrypto.createHash('sha256').update(token).digest('hex');
+}
+
 function authDebugLog(message, details) {
   if (process.env.AUTH_DEBUG_LOGS !== 'true') return;
   if (details) console.log(message, details);
@@ -452,7 +456,7 @@ function registerAuthRoutes(app, deps) {
     req.session.destroy(() => res.json({ ok: true }));
   });
 
-  app.post('/api/forgot-password', passwordResetLimiter, (req, res) => {
+  app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {
     try {
       const email = clean(req.body.email).toLowerCase();
       if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -460,23 +464,29 @@ function registerAuthRoutes(app, deps) {
       if (!user) return res.json({ ok: true, message: 'If that email exists, a reset link has been sent.' });
 
       stmts.deleteExpiredPasswordResetTokens.run(Date.now());
-      let token = generateResetCode(crypto);
-      for (let attempt = 0; stmts.getPasswordResetToken.get(token) && attempt < 8; attempt += 1) {
-        token = generateResetCode(crypto);
+      let plainToken = generateResetCode(crypto);
+      let hashed = hashResetToken(plainToken);
+      for (let attempt = 0; stmts.getPasswordResetToken.get(hashed) && attempt < 8; attempt += 1) {
+        plainToken = generateResetCode(crypto);
+        hashed = hashResetToken(plainToken);
       }
-      stmts.insertPasswordResetToken.run(token, user.id, Date.now() + 15 * 60 * 1000, Date.now());
-      const resetLink = `${BASE_URL.replace(/\/$/, '')}/app?screen=s-reset&code=${token}`;
+      stmts.insertPasswordResetToken.run(hashed, user.id, Date.now() + 15 * 60 * 1000, Date.now());
+      const resetLink = `${BASE_URL.replace(/\/$/, '')}/app?screen=s-reset&code=${plainToken}`;
       const emailHtml = `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333;">
           <h2>Password Reset</h2>
           <p>Someone requested a password reset for your Mentally Prepare account.</p>
-          <p>If this was you, use this reset code: <strong style="font-size:20px;letter-spacing:4px;">${token}</strong></p>
+          <p>If this was you, use this reset code: <strong style="font-size:20px;letter-spacing:4px;">${plainToken}</strong></p>
           <p>You can also click the link below to reset your password. This link expires in 15 minutes.</p>
           <p><a href="${resetLink}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;">Reset Password</a></p>
           <p style="font-size:12px;color:#999;margin-top:40px;">If you didn't request this, you can safely ignore this email.</p>
         </div>`;
 
-      sendEmail(user.email, 'reset your password', emailHtml).catch(e => console.error('Failed to send reset email:', e.message));
+      try {
+        await sendEmail(user.email, 'reset your password', emailHtml);
+      } catch (e) {
+        console.error('Failed to send reset email:', e.message);
+      }
       res.json({ ok: true, message: 'If that email exists, a reset link has been sent.' });
     } catch (e) {
       console.error('Forgot password error:', e);
@@ -492,7 +502,8 @@ function registerAuthRoutes(app, deps) {
       if (!/^(?:[A-Z0-9]{6}|[A-F0-9]{64})$/i.test(token)) return res.status(400).json({ error: 'Invalid reset code. Check the code or request a new one.' });
       if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
 
-      const entry = stmts.getPasswordResetToken.get(token);
+      const hashedToken = hashResetToken(token);
+      const entry = stmts.getPasswordResetToken.get(hashedToken);
       if (!entry) {
         return res.status(400).json({ error: 'Invalid reset code. Check the code or request a new one.' });
       }
@@ -504,7 +515,7 @@ function registerAuthRoutes(app, deps) {
 
       const hash = await bcrypt.hash(newPassword, 12);
       stmts.updateUserPassword.run(hash, user.id);
-      stmts.markPasswordResetTokenUsed.run(Date.now(), token);
+      stmts.markPasswordResetTokenUsed.run(Date.now(), hashedToken);
       res.json({ ok: true });
     } catch (e) {
       console.error('Reset password error:', e);
