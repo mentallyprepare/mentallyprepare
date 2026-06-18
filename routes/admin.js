@@ -133,14 +133,14 @@ function registerAdminRoutes(app, deps) {
     res.sendFile(path.join(rootDir, 'public', 'admin.html'));
   });
 
-  app.post('/admin/announce', requireAdmin, (req, res) => {
+  app.post('/admin/announce', authLimiter, requireAdmin, (req, res) => {
     const { message } = req.body;
     if (!message || !message.trim()) return res.status(400).json({ error: 'Message required' });
     console.log('[ADMIN ANNOUNCEMENT]', message);
     res.json({ ok: true });
   });
 
-  app.get('/admin/reports', requireAdmin, (req, res) => {
+  app.get('/admin/reports', authLimiter, requireAdmin, (req, res) => {
     try {
       const rows = db.prepare(`
         SELECT r.id, r.day, r.reason, r.created_at, r.updated_at, r.category, r.status
@@ -162,7 +162,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.get('/admin/users', requireAdmin, (req, res) => {
+  app.get('/admin/users', authLimiter, requireAdmin, (req, res) => {
     try {
       const rows = db.prepare(`
         SELECT
@@ -222,7 +222,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.get('/api/admin/reengagement-users', requireAdmin, (req, res) => {
+  app.get('/api/admin/reengagement-users', authLimiter, requireAdmin, (req, res) => {
     try {
       const users = db.prepare(`
         SELECT id, name, email, college, year, archetype, last_active_date, created_at
@@ -337,7 +337,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.get('/admin/stats', requireAdmin, (req, res) => {
+  app.get('/admin/stats', authLimiter, requireAdmin, (req, res) => {
     try {
       res.json(getAdminStats());
     } catch (e) {
@@ -345,7 +345,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.get('/admin/matches-debug', requireAdmin, (req, res) => {
+  app.get('/admin/matches-debug', authLimiter, requireAdmin, (req, res) => {
     try {
       const matches = db.prepare('SELECT * FROM matches ORDER BY started_at DESC').all();
       const rows = matches.map(match => {
@@ -378,7 +378,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.get('/admin/logs', requireAdmin, (req, res) => {
+  app.get('/admin/logs', authLimiter, requireAdmin, (req, res) => {
     try {
       const level = String(req.query.level || 'all').trim().toLowerCase();
       const search = String(req.query.q || '').trim();
@@ -406,7 +406,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.get('/admin/activity', requireAdmin, (req, res) => {
+  app.get('/admin/activity', authLimiter, requireAdmin, (req, res) => {
     try {
       const activity = [
         ...db.prepare(`
@@ -501,7 +501,7 @@ function registerAdminRoutes(app, deps) {
   });
 
   // POST /admin/run-matching — attempt to match every unmatched user who has completed the scan
-  app.post('/admin/run-matching', requireAdmin, (req, res) => {
+  app.post('/admin/run-matching', authLimiter, requireAdmin, (req, res) => {
     try {
       // Get all unmatched users who have an archetype
       const waiting = db.prepare(`
@@ -643,7 +643,7 @@ function registerAdminRoutes(app, deps) {
     }
   });
 
-  app.get('/admin/export', requireAdmin, (req, res) => {
+  app.get('/admin/export', authLimiter, requireAdmin, (req, res) => {
     try {
       const exportData = {
         exported_at: new Date().toISOString(),

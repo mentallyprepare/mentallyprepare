@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="format-detection" content="telephone=no">
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"/>
 <meta name="robots" content="noindex, nofollow"/>
 <title>Mentally Prepare — Anonymous 21-Day Journal</title>
 
@@ -18,7 +18,7 @@
 <meta property="og:title" content="Mentally Prepare — Anonymous 21-Day Journal"/>
 <meta property="og:description" content="A private 21-day reflection journey where two people connect through honest conversations, not followers, likes, or profiles."/>
 <meta property="og:url" content="https://mymentallyprepare.com/app"/>
-<meta property="og:image" content="https://mymentallyprepare.com/og-image.png"/>
+<meta property="og:image" content="https://mymentallyprepare.com/icon-512x512.png"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
 <meta property="og:locale" content="en_US"/>
@@ -27,7 +27,7 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:title" content="Mentally Prepare — Anonymous 21-Day Journal"/>
 <meta name="twitter:description" content="A private 21-day reflection journey where two people connect through honest conversations, not followers, likes, or profiles."/>
-<meta name="twitter:image" content="https://mymentallyprepare.com/og-image.png"/>
+<meta name="twitter:image" content="https://mymentallyprepare.com/icon-512x512.png"/>
 
 <!-- PWA & Mobile -->
 <link rel="icon" href="/favicon.ico" sizes="any"/>
@@ -44,8 +44,23 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-startup-image" href="/icon-512x512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/app.css?v=post-login-routing-20260609"/>
+<link rel="stylesheet" href="/app.css?v=blank-space-fix-20260617"/>
 <link rel="stylesheet" href="/refine.css"/>
+<script>
+(function(){
+  try {
+    if (location.pathname.indexOf('/app') !== 0) return;
+    var h = String(location.hash || '').replace(/^#/, '');
+    var landingHashes = {'how':1,'l-archetypes':1,'l-stories':1,'l-problem':1,'stories':1};
+    if (landingHashes[h]) return;
+    document.documentElement.classList.add('mp-app-route');
+  } catch(e){}
+})();
+</script>
+<style>
+html.mp-app-route #landing{display:none}
+html.mp-app-route #app-area{display:block}
+</style>
 </head>
 <body>
 
@@ -426,7 +441,7 @@
 </div>
 
 <!-- FORGOT PASSWORD -->
-<div class="screen" id="s-forgot">
+<div class="screen auth-screen" id="s-forgot">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
     <div class="moon-base" style="width:60px;height:60px;box-shadow:0 0 30px rgba(201,169,110,.4);margin-bottom:24px;"></div>
     <div class="eyebrow">Reset password</div>
@@ -444,7 +459,7 @@
 </div>
 
 <!-- RESET PASSWORD -->
-<div class="screen" id="s-reset">
+<div class="screen auth-screen" id="s-reset">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
     <div class="moon-base" style="width:60px;height:60px;box-shadow:0 0 30px rgba(201,169,110,.4);margin-bottom:24px;"></div>
     <div class="eyebrow">New password</div>
@@ -659,7 +674,7 @@
 <div class="screen quiz" id="s-scan"></div>
 
 <!-- ARCHETYPE REVEAL (full-screen beat) -->
-<div class="screen" id="s-archetype-reveal" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;text-align:center;padding:32px 24px;gap:24px;"></div>
+<div class="screen" id="s-archetype-reveal"></div>
 
 <!-- RESULT -->
 <div class="screen result" id="s-result"></div>
@@ -822,6 +837,6 @@
 
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
-<script src="/app.js?v=post-login-routing-20260609" defer></script>
+<script src="/app.js?v=blank-space-fix-20260617" defer></script>
 </body>
 </html>

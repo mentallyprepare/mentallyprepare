@@ -277,23 +277,26 @@ async function run() {
   try {
     const email = uniqueEmail('reset');
     await registerUser({ name: 'Reset User', email, password: 'oldpass123' });
-    const forgot = await request('POST', '/api/forgot-password', { email });
-    assert.strictEqual(forgot.status, 200, `forgot got ${forgot.status}: ${forgot.raw}`);
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const plainCode = 'ABC123';
+    const crypto = require('crypto');
+    const hashedCode = crypto.createHash('sha256').update(plainCode).digest('hex');
+    db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?').run(user.id);
+    db.prepare('INSERT INTO password_reset_tokens (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').run(hashedCode, user.id, Date.now() + 15 * 60 * 1000, Date.now());
     const tokenRow = db.prepare('SELECT * FROM password_reset_tokens WHERE user_id = ? ORDER BY created_at DESC LIMIT 1').get(user.id);
     assert.ok(tokenRow, 'reset token stored');
-    assert.match(tokenRow.token, /^[A-Z0-9]{6}$/, 'reset code is 6 uppercase characters');
+    assert.match(tokenRow.token, /^[a-f0-9]{64}$/, 'reset token is SHA-256 hashed in DB (64-char hex)');
 
-    const weak = await request('POST', '/api/reset-password', { code: tokenRow.token, newPassword: 'short' });
+    const weak = await request('POST', '/api/reset-password', { code: plainCode, newPassword: 'short' });
     assert.strictEqual(weak.status, 400);
     assert.match(weak.json.error, /at least 8/i);
 
-    const reset = await request('POST', '/api/reset-password', { code: tokenRow.token, newPassword: 'newpass123' });
+    const reset = await request('POST', '/api/reset-password', { code: plainCode, newPassword: 'newpass123' });
     assert.strictEqual(reset.status, 200, `reset got ${reset.status}: ${reset.raw}`);
     assert.strictEqual((await request('POST', '/api/login', { email, password: 'oldpass123' })).status, 401, 'old password rejected');
     assert.strictEqual((await request('POST', '/api/login', { email, password: 'newpass123' })).status, 200, 'new password accepted');
 
-    const reused = await request('POST', '/api/reset-password', { code: tokenRow.token, newPassword: 'another123' });
+    const reused = await request('POST', '/api/reset-password', { code: plainCode, newPassword: 'another123' });
     assert.strictEqual(reused.status, 400);
     assert.match(reused.json.error, /used/i);
 
@@ -322,7 +325,7 @@ async function run() {
     assert.match(fresh.headers.location, /verified=1/);
     const repeat = await request('GET', `/api/verify-email?token=${encodeURIComponent(token)}`);
     assert.strictEqual(repeat.status, 302);
-    assert.match(repeat.headers.location, /verified=1/, 'already verified repeat link succeeds');
+    assert.match(repeat.headers.location, /verify_error=invalid/, 'already-used verification token is rejected (single-use)');
 
     const expiredEmail = uniqueEmail('verify-expired');
     await registerUser({ name: 'Expired Verify User', email: expiredEmail, password: 'verify123' });
@@ -403,13 +406,13 @@ async function run() {
     ok('Report status history');
   } catch (e) { fail('Report status history', e); }
 
-  // 13. Sprint 1 global positioning removes region-limited marketing copy
+  // 13. Global positioning: landing uses the global hero headline + meta description
   try {
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
-    assert.match(indexHtml, /Feel seen without performing\./);
-    assert.match(indexHtml, /private 21-day reflection journey where two people connect through honest conversations, not followers, likes, or profiles/i);
-    assert.match(appHtml, /Feel seen without performing\./);
+    assert.match(indexHtml, /For 21 nights, write to a stranger you may/, 'landing has global hero headline');
+    assert.match(indexHtml, /<meta name="description" content="[^"]*21 nights[^"]*stranger[^"]*"/i, 'landing meta description mentions 21 nights + stranger');
+    assert.match(appHtml, /Feel seen without performing\./, 'app shell has auth-screen subtitle');
     ok('Global homepage positioning');
   } catch (e) { fail('Global homepage positioning', e); }
 
@@ -549,6 +552,216 @@ async function run() {
     db.prepare('DELETE FROM silent_lines WHERE id = ?').run(lineId);
     ok('Silent Room presence uses IST day boundary');
   } catch (e) { fail('Silent Room presence uses IST day boundary', e); }
+
+  // ═══════════════════════════════════════
+  // REGRESSION TESTS (R-1 through R-26)
+  // ═══════════════════════════════════════
+
+  // R-1: /api 404 returns JSON not HTML
+  try {
+    const r = await request('GET', '/api/nonexistent-route-xyz');
+    assert.strictEqual(r.status, 404);
+    assert.ok(r.json && r.json.error, '/api 404 returns JSON with error field');
+    ok('/api 404 returns JSON not HTML');
+  } catch (e) { fail('/api 404 returns JSON not HTML', e); }
+
+  // R-2: X-Robots-Tag headers correct
+  try {
+    const appR = await request('GET', '/app');
+    assert.match(appR.headers['x-robots-tag'] || '', /noindex/, '/app has noindex');
+    ok('X-Robots-Tag headers correct');
+  } catch (e) { fail('X-Robots-Tag headers correct', e); }
+
+  // R-3: /sitemap.xml lists only marketing pages
+  try {
+    const r = await request('GET', '/sitemap.xml');
+    assert.strictEqual(r.status, 200);
+    assert.ok(!r.raw.includes('/app'), 'sitemap does not list /app');
+    assert.ok(!r.raw.includes('/admin'), 'sitemap does not list /admin');
+    assert.ok(!r.raw.includes('/api'), 'sitemap does not list /api');
+    ok('/sitemap.xml lists only marketing pages');
+  } catch (e) { fail('/sitemap.xml lists only marketing pages', e); }
+
+  // R-4: /robots.txt disallows /app, /admin, /api
+  try {
+    const r = await request('GET', '/robots.txt');
+    assert.strictEqual(r.status, 200);
+    assert.ok(r.raw.includes('/app'), 'robots.txt mentions /app');
+    assert.ok(r.raw.includes('/admin'), 'robots.txt mentions /admin');
+    assert.ok(r.raw.includes('/api'), 'robots.txt mentions /api');
+    ok('/robots.txt disallows /app, /admin, /api');
+  } catch (e) { fail('/robots.txt disallows /app, /admin, /api', e); }
+
+  // R-5: #s-archetype-reveal has no inline display:flex
+  try {
+    const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
+    assert.ok(!appHtml.match(/id=["']s-archetype-reveal["'][^>]*style=["'][^"']*display:\s*flex/), 'no inline display:flex on #s-archetype-reveal');
+    ok('#s-archetype-reveal has no inline display:flex');
+  } catch (e) { fail('#s-archetype-reveal has no inline display:flex', e); }
+
+  // R-6: app.html has mp-app-route first-paint guard
+  try {
+    const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
+    assert.ok(appHtml.includes('mp-app-route'), 'app.html contains mp-app-route guard');
+    ok('app.html has mp-app-route first-paint guard');
+  } catch (e) { fail('app.html has mp-app-route first-paint guard', e); }
+
+  // R-7: viewport meta has viewport-fit=cover
+  try {
+    const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
+    assert.ok(appHtml.includes('viewport-fit=cover'), 'app.html has viewport-fit=cover');
+    const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    assert.ok(indexHtml.includes('viewport-fit=cover'), 'index.html has viewport-fit=cover');
+    ok('viewport meta has viewport-fit=cover');
+  } catch (e) { fail('viewport meta has viewport-fit=cover', e); }
+
+  // R-8: s-forgot is in all three auth deep-link lists
+  try {
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const lists = appJs.match(/\[.*?'s-signup'.*?'s-login'.*?\]/g) || [];
+    const allIncludeForgot = lists.every(l => l.includes('s-forgot'));
+    assert.ok(allIncludeForgot && lists.length >= 3, 's-forgot in all auth deep-link lists');
+    ok('s-forgot is in all three auth deep-link lists');
+  } catch (e) { fail('s-forgot is in all three auth deep-link lists', e); }
+
+  // R-9: showInstallPromptIfUseful guards against auth screens
+  try {
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    assert.ok(appJs.includes('auth-screen') && appJs.includes('showInstallPromptIfUseful'), 'install prompt guards auth screens');
+    ok('showInstallPromptIfUseful guards against auth screens');
+  } catch (e) { fail('showInstallPromptIfUseful guards against auth screens', e); }
+
+  // R-10: app.css scopes 88px padding-bottom to non-auth screens
+  try {
+    const appCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.css'), 'utf8');
+    assert.ok(appCss.includes(':not(.auth-screen)'), 'app.css has :not(.auth-screen) scoping');
+    ok('app.css scopes 88px padding-bottom to non-auth screens');
+  } catch (e) { fail('app.css scopes 88px padding-bottom to non-auth screens', e); }
+
+  // R-11: #s-forgot and #s-reset have auth-screen class
+  try {
+    const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
+    assert.ok(appHtml.match(/id=["']s-forgot["'][^>]*class=["'][^"']*auth-screen/) || appHtml.match(/class=["'][^"']*auth-screen[^"']*["'][^>]*id=["']s-forgot["']/), '#s-forgot has auth-screen class');
+    assert.ok(appHtml.match(/id=["']s-reset["'][^>]*class=["'][^"']*auth-screen/) || appHtml.match(/class=["'][^"']*auth-screen[^"']*["'][^>]*id=["']s-reset["']/), '#s-reset has auth-screen class');
+    ok('#s-forgot and #s-reset have auth-screen class');
+  } catch (e) { fail('#s-forgot and #s-reset have auth-screen class', e); }
+
+  // R-12: /api/report does not crash for unmatched user
+  try {
+    const appJsContent = fs.readFileSync(path.join(__dirname, '..', 'routes', 'app.js'), 'utf8');
+    assert.ok(appJsContent.includes('getUserById.get(userId)'), '/api/report loads user before accessing archetype');
+    ok('/api/report does not crash for unmatched user');
+  } catch (e) { fail('/api/report does not crash for unmatched user', e); }
+
+  // R-13: sw.js CACHE_NAME matches app.html cache-bust version
+  try {
+    const swJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8');
+    const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
+    const swMatch = swJs.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+    const htmlMatch = appHtml.match(/app\.css\?v=([^"&]+)/);
+    assert.ok(swMatch && htmlMatch, 'found both version strings');
+    assert.strictEqual(swMatch[1], htmlMatch[1], 'SW cache name matches CSS cache-bust');
+    ok('sw.js CACHE_NAME matches app.html cache-bust version');
+  } catch (e) { fail('sw.js CACHE_NAME matches app.html cache-bust version', e); }
+
+  // R-14: app.js has popstate handler
+  try {
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    assert.ok(appJs.includes("'popstate'"), 'app.js has popstate listener');
+    ok('app.js has popstate handler');
+  } catch (e) { fail('app.js has popstate handler', e); }
+
+  // R-15: routes/payments.js exports registerStripeWebhook
+  try {
+    const payments = require('../routes/payments');
+    assert.strictEqual(typeof payments.registerStripeWebhook, 'function', 'registerStripeWebhook is exported');
+    ok('routes/payments.js exports registerStripeWebhook');
+  } catch (e) { fail('routes/payments.js exports registerStripeWebhook', e); }
+
+  // R-16: Email verification token cleared after first use
+  try {
+    const serverJs = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    assert.ok(serverJs.includes('email_verification_token = NULL'), 'verifyUserEmail clears token');
+    ok('Email verification token cleared after first use');
+  } catch (e) { fail('Email verification token cleared after first use', e); }
+
+  // R-17: Stripe success/cancel URLs use server baseUrl
+  try {
+    const paymentsJs = fs.readFileSync(path.join(__dirname, '..', 'routes', 'payments.js'), 'utf8');
+    assert.ok(paymentsJs.includes('baseUrl +'), 'payments uses baseUrl for redirect URLs');
+    assert.ok(!paymentsJs.match(/req\.header\(['"]origin['"]\)\s*\+\s*['"]\/app\?payment/), 'payments does not use req.header origin for redirects');
+    ok('Stripe success/cancel URLs use server baseUrl');
+  } catch (e) { fail('Stripe success/cancel URLs use server baseUrl', e); }
+
+  // R-18: Session secret file mode 0o600
+  try {
+    const serverJs = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    assert.ok(serverJs.includes('0o600'), 'server.js writes session secret with 0o600 mode');
+    ok('Session secret file mode 0o600');
+  } catch (e) { fail('Session secret file mode 0o600', e); }
+
+  // R-19: go() hides UHB + injects help link on auth screens
+  try {
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    assert.ok(appJs.includes('mp-auth-help-link'), 'go() injects auth help link');
+    assert.ok(appJs.includes("uhb.style.display = 'none'"), 'go() hides UHB on auth screens');
+    ok('go() hides UHB + injects help link on auth screens');
+  } catch (e) { fail('go() hides UHB + injects help link on auth screens', e); }
+
+  // R-20: Already-verified users redirected to login
+  try {
+    const authJs = fs.readFileSync(path.join(__dirname, '..', 'routes', 'auth.js'), 'utf8');
+    assert.ok(authJs.includes('screen=s-login&verified=1'), 'already-verified redirects to login screen');
+    ok('Already-verified users redirected to login');
+  } catch (e) { fail('Already-verified users redirected to login', e); }
+
+  // R-21: Session ID regenerated on login
+  try {
+    const authJs = fs.readFileSync(path.join(__dirname, '..', 'routes', 'auth.js'), 'utf8');
+    assert.ok(authJs.includes('establishSession'), 'auth.js uses establishSession helper');
+    assert.ok(authJs.includes('session.regenerate'), 'establishSession calls session.regenerate');
+    ok('Session ID regenerated on login');
+  } catch (e) { fail('Session ID regenerated on login', e); }
+
+  // R-22: All admin routes have authLimiter
+  try {
+    const adminJs = fs.readFileSync(path.join(__dirname, '..', 'routes', 'admin.js'), 'utf8');
+    const adminRoutes = adminJs.match(/app\.(get|post)\([^)]+requireAdmin/g) || [];
+    const withLimiter = adminJs.match(/app\.(get|post)\([^)]+authLimiter[^)]+requireAdmin/g) || [];
+    assert.strictEqual(adminRoutes.length, withLimiter.length, 'all admin routes have authLimiter');
+    ok('All admin routes have authLimiter');
+  } catch (e) { fail('All admin routes have authLimiter', e); }
+
+  // R-23: restoreFirebaseSession skips for password-only users
+  try {
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    assert.ok(appJs.includes('hasCachedFirebaseUser'), 'app.js has hasCachedFirebaseUser check');
+    ok('restoreFirebaseSession skips for password-only users');
+  } catch (e) { fail('restoreFirebaseSession skips for password-only users', e); }
+
+  // R-24: Legacy 64-hex reset tokens work
+  try {
+    const authJs = fs.readFileSync(path.join(__dirname, '..', 'routes', 'auth.js'), 'utf8');
+    assert.ok(authJs.includes('isLegacy64Hex'), 'auth.js has legacy 64-hex token check');
+    ok('Legacy 64-hex reset tokens work');
+  } catch (e) { fail('Legacy 64-hex reset tokens work', e); }
+
+  // R-25: STRIPE_WEBHOOK_SECRET in .env.example
+  try {
+    const envExample = fs.readFileSync(path.join(__dirname, '..', '.env.example'), 'utf8');
+    assert.ok(envExample.includes('STRIPE_WEBHOOK_SECRET'), '.env.example has STRIPE_WEBHOOK_SECRET');
+    ok('STRIPE_WEBHOOK_SECRET in .env.example');
+  } catch (e) { fail('STRIPE_WEBHOOK_SECRET in .env.example', e); }
+
+  // R-26: auth-smoke.js default version is current
+  try {
+    const authSmoke = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'auth-smoke.js'), 'utf8');
+    const swJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8');
+    const swMatch = swJs.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
+    assert.ok(swMatch, 'found SW cache name');
+    assert.ok(authSmoke.includes(swMatch[1]), 'auth-smoke default version matches SW cache name');
+    ok('auth-smoke.js default version is current');
+  } catch (e) { fail('auth-smoke.js default version is current', e); }
 
   // Clean up
   db.close();

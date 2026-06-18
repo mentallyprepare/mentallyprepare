@@ -7,7 +7,8 @@ function registerPaymentRoutes(app, deps) {
     razorpay,
     stripe,
     stmts,
-    trackEvent
+    trackEvent,
+    baseUrl
   } = deps;
 
   app.post('/api/pay/razorpay/create', apiLimiter, requireAuth, async (req, res) => {
@@ -96,8 +97,8 @@ function registerPaymentRoutes(app, deps) {
           quantity: 1
         }],
         mode: 'payment',
-        success_url: req.header('origin') + '/app?payment=success',
-        cancel_url: req.header('origin') + '/app?payment=cancelled',
+        success_url: baseUrl + '/app?payment=success',
+        cancel_url: baseUrl + '/app?payment=cancelled',
         metadata: { product, userId: String(req.session.userId) }
       });
 
@@ -149,6 +150,39 @@ function registerPaymentRoutes(app, deps) {
   });
 }
 
+function registerStripeWebhook(app, deps) {
+  const { stripe, stmts, express, trackEvent } = deps;
+  if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return;
+  app.post(
+    '/api/pay/stripe/webhook',
+    express.raw({ type: 'application/json' }),
+    (req, res) => {
+      try {
+        const sig = req.headers['stripe-signature'];
+        let event;
+        try {
+          event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        } catch (err) {
+          return res.status(400).send('Webhook signature verification failed');
+        }
+        if (event.type === 'checkout.session.completed') {
+          const session = event.data.object;
+          const payment = stmts.getPaymentByOrder.get(session.id);
+          if (payment) {
+            stmts.updatePayment.run(session.payment_intent, 'paid', payment.id);
+            if (trackEvent) trackEvent(payment.user_id, 'paid_conversion', { provider: 'stripe', product: payment.product, paymentId: payment.id });
+          }
+        }
+        res.json({ received: true });
+      } catch (e) {
+        console.error('Stripe webhook error:', e);
+        res.status(500).send();
+      }
+    }
+  );
+}
+
 module.exports = {
-  registerPaymentRoutes
+  registerPaymentRoutes,
+  registerStripeWebhook
 };

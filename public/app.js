@@ -257,6 +257,10 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
 }
 
 async function restoreFirebaseSession() {
+  if (!hasPendingGoogleRedirectContext() && !hasCachedFirebaseUser()) {
+    authDebug('Skipping Firebase restore — no pending redirect and no cached user');
+    return false;
+  }
   const auth = await initFirebaseAuth();
   if (!auth) return false;
   if (state && state.user && state.user.id) return true;
@@ -265,6 +269,15 @@ async function restoreFirebaseSession() {
   const user = await waitForFirebaseUser(auth);
   if (!user) return false;
   return completeFirebaseLogin(user, true, getStoredGoogleRedirectContext());
+}
+function hasCachedFirebaseUser() {
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf('firebase:authUser:') === 0) return true;
+    }
+  } catch (e) {}
+  return false;
 }
 
 async function googleLogin(context) {
@@ -678,13 +691,38 @@ function go(id) {
   el.classList.add('active','entering');
   setMotionMode(modeForScreen(id));
   afterRenderMotion(el);
+  if (el.classList.contains('auth-screen')) {
+    const card = document.getElementById('pwa-install-card');
+    if (card) card.remove();
+  }
+  var uhb = document.getElementById('urgentHelpBtn');
+  if (uhb) {
+    if (el.classList.contains('auth-screen')) {
+      uhb.style.display = 'none';
+      if (!el.querySelector('.mp-auth-help-link')) {
+        var container = el.querySelector('.auth-links, .auth-switch, .auth-trust');
+        var helpLink = document.createElement('div');
+        helpLink.className = 'mp-auth-help-link';
+        helpLink.style.cssText = 'margin-top:14px;font-size:11px;text-align:center;';
+        helpLink.innerHTML = '<a href="#" onclick="showSafety();return false;" style="color:rgba(248,113,113,.72);text-decoration:underline;text-underline-offset:3px;">I need urgent help</a>';
+        if (container) {
+          container.appendChild(helpLink);
+        } else {
+          var inner = el.querySelector('div[style*="flex:1"]') || el;
+          inner.appendChild(helpLink);
+        }
+      }
+    } else {
+      uhb.style.display = '';
+    }
+  }
   window.scrollTo(0,0);
 }
 
 function openAuthScreen(id) {
   showAppShell();
   go(id);
-  if (history && history.replaceState && ['s-signup', 's-login', 's-reset'].includes(id)) {
+  if (history && history.replaceState && ['s-signup', 's-login', 's-forgot', 's-reset'].includes(id)) {
     history.replaceState(null, '', `/app?screen=${encodeURIComponent(id)}`);
   }
 }
@@ -740,6 +778,8 @@ function showInstallPromptIfUseful() {
   if (installPromptShown || isStandaloneApp() || Date.now() < getInstallDismissedUntil()) return;
   if (!document.body.classList.contains('app-active')) return;
   if (!deferredInstallPrompt && !isIosDevice()) return;
+  var active = document.querySelector('.screen.active');
+  if (active && active.classList.contains('auth-screen')) return;
   installPromptShown = true;
   const existing = document.getElementById('pwa-install-card');
   if (existing) existing.remove();
@@ -819,7 +859,7 @@ function consumeVerificationQueryNotice() {
 function consumeAuthScreenDeepLink() {
   const params = new URLSearchParams(window.location.search);
   const screen = params.get('screen');
-  const allowedScreens = ['s-signup', 's-login', 's-reset'];
+  const allowedScreens = ['s-signup', 's-login', 's-forgot', 's-reset'];
   if (!allowedScreens.includes(screen)) return false;
   const code = (params.get('code') || '').trim();
   showAppShell();
@@ -843,7 +883,7 @@ function shouldOpenAuthDeepLinkBeforeSessionRestore() {
   if (window.location.pathname.indexOf('/app') !== 0) return false;
   const params = new URLSearchParams(window.location.search);
   const screen = params.get('screen');
-  if (!['s-signup', 's-login', 's-reset'].includes(screen)) return false;
+  if (!['s-signup', 's-login', 's-forgot', 's-reset'].includes(screen)) return false;
   return !hasPendingGoogleRedirectContext();
 }
 
@@ -873,7 +913,8 @@ function showAppShell() {
   var appArea = document.getElementById('app-area');
   var active = document.querySelector('.screen.active');
   if (landing) landing.style.display = 'none';
-  if (appArea) appArea.removeAttribute('style');
+  if (appArea) appArea.style.display = 'block';
+  document.documentElement.classList.add('mp-app-route');
   document.body.classList.add('app-active');
   setMotionMode(modeForScreen(active && active.id));
   window.scrollTo(0, 0);
@@ -892,6 +933,7 @@ function showLanding(targetId) {
   var appArea = document.getElementById('app-area');
   if (landing) landing.style.display = '';
   if (appArea) appArea.style.display = 'none';
+  document.documentElement.classList.remove('mp-app-route');
   document.body.classList.remove('app-active','focus-writing');
   setMotionMode('idle');
   document.getElementById('navCta').textContent = 'Sign up';
@@ -1027,6 +1069,7 @@ function bindStaticUi() {
 // INIT
 // ═══════════════════════════════════════
 (async function init() {
+  if (typeof injectUrgentHelpButton === 'function') injectUrgentHelpButton();
   bindStaticUi();
   if (shouldOpenAuthDeepLinkBeforeSessionRestore()) {
     consumeAuthScreenDeepLink();
@@ -1055,6 +1098,17 @@ function bindStaticUi() {
   startApp();
   consumeVerificationQueryNotice();
 })();
+
+window.addEventListener('popstate', function() {
+  if (window.location.pathname.indexOf('/app') === 0) {
+    if (typeof consumeAuthScreenDeepLink === 'function' && consumeAuthScreenDeepLink()) return;
+    if (typeof handleLandingHash === 'function' && handleLandingHash()) return;
+    if (state) { if (typeof routeToScreen === 'function') routeToScreen(); }
+    else if (typeof startApp === 'function') startApp();
+  } else {
+    if (typeof showLanding === 'function') showLanding();
+  }
+});
 
 // ═══════════════════════════════════════
 // AUTH
@@ -1479,7 +1533,7 @@ function injectUrgentHelpButton() {
   document.body.appendChild(btn);
 }
 
-document.addEventListener('DOMContentLoaded', injectUrgentHelpButton);
+injectUrgentHelpButton();
 
 // ═══════════════════════════════════════
 // SCAN
@@ -1680,7 +1734,14 @@ async function loadTonightsQuestion() {
 }
 
 function renderWaiting() {
-  // Load Tonight's Question data, then render
+  var el = document.getElementById('s-waiting');
+  if (el && !el.childElementCount) {
+    el.innerHTML = '<div class="waiting-loading" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:14px;">' +
+      '<div class="moon-base" style="width:54px;height:54px;box-shadow:0 0 28px rgba(201,169,110,.35);"></div>' +
+      '<div class="eyebrow">Finding your stranger</div>' +
+      '<div style="font-family:\'Lora\',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.7;max-width:320px;">Hold still for a moment — your next prompt is on its way.</div>' +
+      '</div>';
+  }
   loadTonightsQuestion().then(function(data) {
     if (!data || data.matched) {
       // User got matched while loading
@@ -3490,22 +3551,19 @@ window.addEventListener('appinstalled', function() {
   toast('Mentally Prepare installed.');
 });
 
-if ('serviceWorker' in navigator) {
-  // Clear ALL old caches first
+if ('serviceWorker' in navigator && !window.__mpSwRegistered) {
+  window.__mpSwRegistered = true;
   caches.keys().then(names => {
     names.forEach(n => { if (n !== 'pwa-push-1') caches.delete(n); });
   });
   navigator.serviceWorker.getRegistrations().then(regs => {
-    // Unregister any old SWs, then register fresh
     Promise.all(regs.map(r => r.unregister())).then(() => {
       navigator.serviceWorker.register('/sw.js').then(reg => {
-        console.log('SW registered fresh, scope:', reg.scope);
-        // Force the new SW to activate immediately
         if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         reg.addEventListener('updatefound', () => {
           const nw = reg.installing;
           nw.addEventListener('statechange', () => {
-            if (nw.state === 'activated') console.log('New SW activated');
+            if (nw.state === 'activated') console.debug('MP SW activated');
           });
         });
       }).catch(err => console.warn('SW registration failed:', err));

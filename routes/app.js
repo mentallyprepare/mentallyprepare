@@ -898,8 +898,9 @@ function registerAppRoutes(app, deps) {
       const userId = req.session.userId;
       const { day, reason, category } = req.body;
       if (!reason || !reason.trim()) return res.status(400).json({ error: 'Reason required' });
+      const user = stmts.getUserById.get(userId);
       let match = stmts.getMatch.get(userId, userId);
-      if (!match && user.archetype) {
+      if (!match && user && user.archetype) {
         attemptMatch(userId);
         match = stmts.getMatch.get(userId, userId);
       }

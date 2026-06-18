@@ -971,7 +971,7 @@ const stmts = {
   markPasswordResetTokenUsed: db.prepare('UPDATE password_reset_tokens SET used_at = ? WHERE token = ?'),
   deleteExpiredPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE expires_at <= ?'),
   deleteUserPasswordResetTokens: db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?'),
-  verifyUserEmail: db.prepare('UPDATE users SET email_verified = 1, email_verified_at = ? WHERE id = ?'),
+  verifyUserEmail: db.prepare('UPDATE users SET email_verified = 1, email_verified_at = ?, email_verification_token = NULL, email_verification_sent_at = NULL WHERE id = ?'),
   updateVerificationToken: db.prepare('UPDATE users SET email_verification_token = ?, email_verification_sent_at = ? WHERE id = ?'),
   anonymizeDeletedUser: db.prepare(`
     UPDATE users
@@ -1322,7 +1322,7 @@ if (process.env.STRIPE_SECRET_KEY) {
 }
 if (stripe && process.env.STRIPE_WEBHOOK_SECRET) {
   const { registerStripeWebhook } = require('./routes/payments');
-  registerStripeWebhook(app, { stripe, stmts, express });
+  registerStripeWebhook(app, { stripe, stmts, express, trackEvent });
 }
 
 const FIREBASE_AUTH_HELPER_ORIGIN = 'https://mentally-prepare.firebaseapp.com';
@@ -1413,11 +1413,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Serve terms.html at /terms
-app.get('/terms', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'terms.html'));
-});
-
 app.use(express.static(path.join(__dirname, 'public'), {
   etag: true,
   lastModified: true,
@@ -1436,7 +1431,8 @@ function getSessionSecret() {
     if (fs.existsSync(SESSION_SECRET_PATH)) return fs.readFileSync(SESSION_SECRET_PATH, 'utf8').trim();
   } catch {}
   const secret = crypto.randomBytes(32).toString('hex');
-  fs.writeFileSync(SESSION_SECRET_PATH, secret);
+  try { fs.writeFileSync(SESSION_SECRET_PATH, secret, { mode: 0o600 }); } catch (e) { fs.writeFileSync(SESSION_SECRET_PATH, secret); }
+  try { fs.chmodSync(SESSION_SECRET_PATH, 0o600); } catch {}
   return secret;
 }
 
@@ -2054,7 +2050,8 @@ registerPaymentRoutes(app, {
   razorpay,
   stripe,
   stmts,
-  trackEvent
+  trackEvent,
+  baseUrl: BASE_URL
 });
 
 registerAppRoutes(app, {
@@ -2124,6 +2121,7 @@ registerSilentRoutes(app, {
 });
 registerSilentAdminRoutes(app, {
   requireAdmin,
+  authLimiter,
   db
 });
 
@@ -2762,8 +2760,12 @@ registerStaticRoutes(app, {
   rootDir: __dirname
 });
 
+// API 404 — return JSON for unmatched /api routes
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // 404 catch-all
-// 404
 app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', 'app.html'));
 });

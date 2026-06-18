@@ -311,9 +311,9 @@ async function callOpenAIModeration(content) {
 
 // ─── Silent Room admin routes ─────────────────────────────────────────────────
 function registerSilentAdminRoutes(app, deps) {
-  const { requireAdmin, db } = deps;
+  const { requireAdmin, authLimiter, db } = deps;
 
-  app.get('/admin/silent-pending', requireAdmin, (req, res) => {
+  app.get('/admin/silent-pending', authLimiter, requireAdmin, (req, res) => {
     try {
       res.json(db.prepare(`
         SELECT id, content, created_at, moderation_flag, user_id
@@ -324,7 +324,7 @@ function registerSilentAdminRoutes(app, deps) {
     } catch (e) { res.status(500).json({ error: 'Failed to load pending lines' }); }
   });
 
-  app.post('/admin/silent/approve/:id', requireAdmin, (req, res) => {
+  app.post('/admin/silent/approve/:id', authLimiter, requireAdmin, (req, res) => {
     try {
       const r = db.prepare(
         `UPDATE silent_lines SET status='approved', approved_at=datetime('now') WHERE id=? AND status='pending'`
@@ -334,7 +334,7 @@ function registerSilentAdminRoutes(app, deps) {
     } catch (e) { res.status(500).json({ error: 'Failed to approve' }); }
   });
 
-  app.post('/admin/silent/reject/:id', requireAdmin, (req, res) => {
+  app.post('/admin/silent/reject/:id', authLimiter, requireAdmin, (req, res) => {
     try {
       const r = db.prepare(
         `UPDATE silent_lines SET status='rejected' WHERE id=? AND status='pending'`
@@ -344,7 +344,7 @@ function registerSilentAdminRoutes(app, deps) {
     } catch (e) { res.status(500).json({ error: 'Failed to reject' }); }
   });
 
-  app.get('/admin/silent-flagged', requireAdmin, (req, res) => {
+  app.get('/admin/silent-flagged', authLimiter, requireAdmin, (req, res) => {
     try {
       res.json(db.prepare(
         `SELECT id, user_id, content, created_at FROM crisis_review ORDER BY created_at DESC LIMIT 50`
@@ -352,7 +352,7 @@ function registerSilentAdminRoutes(app, deps) {
     } catch (e) { res.status(500).json({ error: 'Failed to load flagged content' }); }
   });
 
-  app.post('/admin/silent/cleanup', requireAdmin, (req, res) => {
+  app.post('/admin/silent/cleanup', authLimiter, requireAdmin, (req, res) => {
     try {
       const r = db.prepare(`
         DELETE FROM silent_lines

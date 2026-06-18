@@ -115,6 +115,29 @@ function hashResetToken(token) {
   return nodeCrypto.createHash('sha256').update(token).digest('hex');
 }
 
+function establishSession(req, userId) {
+  return new Promise((resolve, reject) => {
+    if (!req.session || typeof req.session.regenerate !== 'function') {
+      if (req.session) req.session.userId = userId;
+      return resolve();
+    }
+    req.session.regenerate((regenErr) => {
+      if (regenErr) {
+        console.error('Session regenerate failed:', regenErr);
+        return reject(regenErr);
+      }
+      req.session.userId = userId;
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          console.error('Session save after regenerate failed:', saveErr);
+          return reject(saveErr);
+        }
+        resolve();
+      });
+    });
+  });
+}
+
 function authDebugLog(message, details) {
   if (process.env.AUTH_DEBUG_LOGS !== 'true') return;
   if (details) console.log(message, details);
@@ -257,20 +280,14 @@ function registerAuthRoutes(app, deps) {
         });
       }
 
-      req.session.userId = user.id;
+      await establishSession(req, user.id);
       trackEvent(user.id, 'login', { provider: GOOGLE_PROVIDER, created });
-      req.session.save((saveErr) => {
-        if (saveErr) {
-          console.error('Firebase Google session save failed:', saveErr);
-          return res.status(500).json({ error: 'Google login session could not be saved. Please try again.' });
-        }
-        authDebugLog('Backend login success', {
-          userId: user.id,
-          email,
-          provider: GOOGLE_PROVIDER
-        });
-        res.json({ ok: true, created, userId: user.id });
+      authDebugLog('Backend login success', {
+        userId: user.id,
+        email,
+        provider: GOOGLE_PROVIDER
       });
+      res.json({ ok: true, created, userId: user.id });
     } catch (e) {
       console.error('Firebase Google login error:', e);
       res.status(401).json({ error: 'Google login failed. Please try again.' });
@@ -313,9 +330,10 @@ function registerAuthRoutes(app, deps) {
         now
       );
 
-      req.session.userId = Number(result.lastInsertRowid);
-      trackEvent(req.session.userId, 'signup_completed');
-      trackEvent(req.session.userId, 'signup');
+      const newUserId = Number(result.lastInsertRowid);
+      await establishSession(req, newUserId);
+      trackEvent(newUserId, 'signup_completed');
+      trackEvent(newUserId, 'signup');
       try {
         logVerification('Email service ready', { provider: 'configured email service' });
         await withEmailTimeout(
@@ -324,7 +342,7 @@ function registerAuthRoutes(app, deps) {
         );
         logVerification('Verification email sent', { email: values.email });
       } catch (err) {
-        trackEvent(req.session.userId, 'email_send_failed', { type: 'verification' });
+        trackEvent(newUserId, 'email_send_failed', { type: 'verification' });
         console.error('Verification failed with reason', { reason: 'email_send_failed', email: values.email, error: err.message });
         return res.json({
           ok: true,
@@ -353,9 +371,8 @@ function registerAuthRoutes(app, deps) {
         return res.redirect('/app?verify_error=invalid');
       }
       if (user.email_verified) {
-        if (req.session) req.session.userId = user.id;
         logVerification('Verification already completed', { email: user.email });
-        return res.redirect('/app?verified=1');
+        return res.redirect('/app?screen=s-login&verified=1');
       }
       const sentAt = user.email_verification_sent_at ? new Date(user.email_verification_sent_at).getTime() : 0;
       if (!sentAt || Date.now() - sentAt > 24 * 60 * 60 * 1000) {
@@ -363,7 +380,7 @@ function registerAuthRoutes(app, deps) {
         return res.redirect('/app?verify_error=expired');
       }
       stmts.verifyUserEmail.run(new Date().toISOString(), user.id);
-      if (req.session) req.session.userId = user.id;
+      if (req.session) { try { await establishSession(req, user.id); } catch(e) {} }
       trackEvent(user.id, 'email_verified');
       logVerification('Verification successful', { email: user.email });
       res.redirect('/app?verified=1');
@@ -389,7 +406,11 @@ function registerAuthRoutes(app, deps) {
         trackEvent(user.id, 'email_verified', { method: 'manual_signed_link' });
         logVerification('Verification successful', { email: user.email, method: 'manual_signed_link' });
       }
-      if (req.session) req.session.userId = user.id;
+      if (req.session && typeof req.session.regenerate === 'function') {
+        req.session.regenerate((err) => {
+          if (!err) { req.session.userId = user.id; req.session.save(() => {}); }
+        });
+      }
       res.redirect('/app?verified=1');
     } catch (e) {
       console.error('Manual verify email error:', e);
@@ -434,7 +455,7 @@ function registerAuthRoutes(app, deps) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
 
-      req.session.userId = user.id;
+      await establishSession(req, user.id);
       const signupDate = new Date(user.created_at || Date.now());
       const reference = isNaN(signupDate.getTime()) ? Date.now() : signupDate.getTime();
       const dayNumber = Math.min(Math.max(Math.floor((Date.now() - reference) / (1000 * 60 * 60 * 24)) + 1, 1), 21);
@@ -502,8 +523,9 @@ function registerAuthRoutes(app, deps) {
       if (!/^(?:[A-Z0-9]{6}|[A-F0-9]{64})$/i.test(token)) return res.status(400).json({ error: 'Invalid reset code. Check the code or request a new one.' });
       if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
 
-      const hashedToken = hashResetToken(token);
-      const entry = stmts.getPasswordResetToken.get(hashedToken);
+      const isLegacy64Hex = /^[A-F0-9]{64}$/i.test(token);
+      const lookupKey = isLegacy64Hex ? token : hashResetToken(token);
+      const entry = stmts.getPasswordResetToken.get(lookupKey);
       if (!entry) {
         return res.status(400).json({ error: 'Invalid reset code. Check the code or request a new one.' });
       }
@@ -515,7 +537,7 @@ function registerAuthRoutes(app, deps) {
 
       const hash = await bcrypt.hash(newPassword, 12);
       stmts.updateUserPassword.run(hash, user.id);
-      stmts.markPasswordResetTokenUsed.run(Date.now(), hashedToken);
+      stmts.markPasswordResetTokenUsed.run(Date.now(), lookupKey);
       res.json({ ok: true });
     } catch (e) {
       console.error('Reset password error:', e);
