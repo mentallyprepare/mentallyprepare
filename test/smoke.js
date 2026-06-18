@@ -763,6 +763,33 @@ async function run() {
     ok('auth-smoke.js default version is current');
   } catch (e) { fail('auth-smoke.js default version is current', e); }
 
+  // R-27: Homepage countdown tied to 9pm IST (15:30 UTC)
+  try {
+    const idx = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    assert.ok(idx.includes('id="countdown-line"'), 'countdown-line element exists');
+    assert.ok(idx.includes('setUTCHours(15,30,0,0)'), 'countdown targets 15:30 UTC');
+    assert.ok(idx.includes('cd-label'), 'countdown uses cd-label styling');
+    ok('Homepage countdown tied to 9pm IST (15:30 UTC)');
+  } catch (e) { fail('Homepage countdown tied to 9pm IST (15:30 UTC)', e); }
+
+  // R-28: Homepage buttons use rose-purple, not gold
+  try {
+    const idx = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    assert.ok(idx.includes('--accent-purple:#6E4EA6'), 'accent-purple token defined');
+    const btnMatch = idx.match(/\.btn\{[^}]+\}/);
+    assert.ok(btnMatch, '.btn rule found');
+    assert.ok(btnMatch[0].includes('rgba(110,78,166'), '.btn uses accent-purple rgba');
+    assert.ok(!btnMatch[0].includes('rgba(224,197,143'), '.btn does not use gold rgba');
+    ok('Homepage buttons use rose-purple, not gold');
+  } catch (e) { fail('Homepage buttons use rose-purple, not gold', e); }
+
+  // R-29: Display font has tighter letter-spacing
+  try {
+    const idx = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    assert.ok(idx.includes('.section-title{') && idx.includes('letter-spacing:-.025em'), 'section-title letter-spacing tightened');
+    ok('Display font has tighter letter-spacing');
+  } catch (e) { fail('Display font has tighter letter-spacing', e); }
+
   // Clean up
   db.close();
   for (const ext of ['', '-wal', '-shm']) {

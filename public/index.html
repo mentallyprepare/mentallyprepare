@@ -108,11 +108,12 @@
   --rose:#d4859a;
   --rose-light:#ebb4c2;
   --rose-glow:rgba(212,133,154,.15);
-  --gold:#e0c58f;
-  --gold-glow:rgba(224,197,143,.12);
+  --gold:#D9B36C;
+  --gold-glow:rgba(217,179,108,.12);
   --purple:#7b5ea7;
   --purple-light:#b09fcc;
   --purple-glow:rgba(123,94,167,.15);
+  --accent-purple:#6E4EA6;
   /* Typography */
   --display:'Instrument Serif',Georgia,serif;
   --body:'Manrope',Arial,sans-serif;
@@ -132,15 +133,16 @@
 /* ===== BASE ===== */
 html{scroll-behavior:smooth;background:var(--bg);overflow-x:hidden}
 body{min-height:100vh;background:
-  radial-gradient(circle at 16% 10%,rgba(212,133,154,.12),transparent 26%),
-  radial-gradient(circle at 82% 0%,rgba(123,94,167,.14),transparent 30%),
+  radial-gradient(circle at 50% 18%,rgba(19,13,43,.9),transparent 45%),
+  radial-gradient(circle at 16% 10%,rgba(212,133,154,.10),transparent 26%),
+  radial-gradient(circle at 82% 0%,rgba(110,78,166,.12),transparent 30%),
   linear-gradient(180deg,#08050f 0%,#0c0716 42%,#07040d 100%);
   color:var(--ink);font-family:var(--body);font-weight:400;font-size:15px;line-height:1.7;overflow-x:hidden;-webkit-font-smoothing:antialiased}
 /* Noise grain overlay */
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 220 220' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 a{color:inherit;text-decoration:none}
 ::selection{background:rgba(212,133,154,.35)}
-button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:4px}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent-purple);outline-offset:4px}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 /* ===== DECORATIVE ===== */
@@ -164,7 +166,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 /* ===== SECTION RHYTHM: eyebrow -> headline -> subtext -> content ===== */
 .eyebrow{display:inline-flex;align-items:center;gap:10px;margin-bottom:var(--gap-sm);color:var(--rose-light);font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
 .eyebrow::before{content:'';width:24px;height:1px;background:currentColor;opacity:.5}
-.section-title{font-family:var(--display);font-size:clamp(32px,5vw,56px);font-weight:400;line-height:1.02;color:var(--ink);margin-bottom:var(--gap-md)}
+.section-title{font-family:var(--display);font-size:clamp(32px,5vw,56px);font-weight:400;line-height:1.02;letter-spacing:-.025em;color:var(--ink);margin-bottom:var(--gap-md)}
 .section-title em{font-style:italic;color:var(--rose-light)}
 .section-sub{color:var(--ink-secondary);font-size:clamp(14px,1.3vw,16px);line-height:1.85;max-width:540px;margin-bottom:var(--gap-lg)}
 
@@ -176,12 +178,12 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .card-body{color:var(--ink-secondary);font-size:14px;line-height:1.8}
 
 /* ===== BUTTONS ===== */
-.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 32px;border-radius:var(--radius-pill);border:1px solid rgba(224,197,143,.3);background:rgba(224,197,143,.08);color:var(--gold);font-family:var(--body);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .3s ease;box-shadow:0 0 20px rgba(224,197,143,.08),inset 0 0 20px rgba(224,197,143,.04);position:relative;overflow:hidden}
-.btn::before{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(224,197,143,.12),transparent);transition:left .6s ease}
-.btn:hover{border-color:rgba(224,197,143,.55);background:rgba(224,197,143,.14);box-shadow:0 0 30px rgba(224,197,143,.15),inset 0 0 30px rgba(224,197,143,.06);transform:translateY(-1px)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 32px;border-radius:var(--radius-pill);border:1px solid rgba(110,78,166,.4);background:linear-gradient(135deg,rgba(212,133,154,.12),rgba(110,78,166,.14));color:var(--rose-light);font-family:var(--body);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .3s ease;box-shadow:0 0 20px rgba(110,78,166,.1),inset 0 0 20px rgba(212,133,154,.04);position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(212,133,154,.14),transparent);transition:left .6s ease}
+.btn:hover{border-color:rgba(110,78,166,.6);background:linear-gradient(135deg,rgba(212,133,154,.18),rgba(110,78,166,.22));box-shadow:0 0 30px rgba(110,78,166,.18),inset 0 0 30px rgba(212,133,154,.06);transform:translateY(-1px)}
 .btn:hover::before{left:120%}
 .btn-ghost{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 28px;border-radius:var(--radius-pill);border:1px solid var(--border-hover);background:transparent;color:var(--ink-secondary);font-family:var(--body);font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:all .3s ease}
-.btn-ghost:hover{border-color:rgba(224,197,143,.35);color:var(--gold)}
+.btn-ghost:hover{border-color:rgba(110,78,166,.4);color:var(--rose-light)}
 
 /* ===== NAV ===== */
 .nav{position:fixed;top:0;left:0;right:0;z-index:30;height:64px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;background:rgba(8,5,15,.72);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
@@ -190,8 +192,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .nav-links{display:flex;gap:24px;align-items:center}
 .nav-links a{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-muted);transition:color .2s}
 .nav-links a:hover{color:var(--ink)}
-.nav-cta{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);padding:8px 20px;border:1px solid rgba(224,197,143,.3);border-radius:var(--radius-pill);background:rgba(224,197,143,.08);transition:all .3s ease}
-.nav-cta:hover{background:rgba(224,197,143,.16);border-color:rgba(224,197,143,.5);box-shadow:0 0 16px rgba(224,197,143,.1)}
+.nav-cta{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--rose-light);padding:8px 20px;border:1px solid rgba(110,78,166,.35);border-radius:var(--radius-pill);background:linear-gradient(135deg,rgba(212,133,154,.08),rgba(110,78,166,.1));transition:all .3s ease}
+.nav-cta:hover{background:linear-gradient(135deg,rgba(212,133,154,.16),rgba(110,78,166,.2));border-color:rgba(110,78,166,.55);box-shadow:0 0 16px rgba(110,78,166,.12)}
 .menu-btn{display:none;background:none;border:0;color:var(--ink);font-size:20px;cursor:pointer}
 .mobile-menu{display:none}
 
@@ -202,7 +204,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .hero-grid{width:min(1080px,100%);margin:0 auto;display:grid;grid-template-columns:1.1fr .9fr;gap:var(--gap-xl);align-items:center}
 .hero-kicker{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border:1px solid rgba(212,133,154,.25);border-radius:var(--radius-pill);background:rgba(212,133,154,.07);color:var(--rose-light);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin-bottom:var(--gap-md)}
 .pulse{width:6px;height:6px;border-radius:50%;background:var(--rose-light);animation:breathe 2.8s ease-in-out infinite}
-.hero h1{font-family:var(--display);font-size:clamp(40px,6.5vw,72px);font-weight:400;line-height:.96;color:#fff;max-width:640px}
+.hero h1{font-family:var(--display);font-size:clamp(40px,6.5vw,72px);font-weight:400;line-height:.96;letter-spacing:-.03em;color:#fff;max-width:640px}
 .hero h1 em{font-style:italic;color:var(--rose-light)}
 .hero-sub{max-width:480px;margin:var(--gap-md) 0 var(--gap-lg);color:var(--ink-secondary);font-size:clamp(14px,1.3vw,16px);line-height:1.85}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
@@ -210,6 +212,9 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .trust-band{margin-top:var(--gap-sm);padding:10px 0;color:var(--ink-muted);font-size:11px;letter-spacing:.04em;line-height:1.6}
 .presence-line{margin-top:12px;color:var(--ink-muted);font-size:11px;opacity:.8}
 .presence-line:empty{display:none}
+.countdown-line{margin-top:8px;color:var(--rose-light);font-size:12px;font-weight:600;letter-spacing:.02em;opacity:.85}
+.countdown-line:empty{display:none}
+.countdown-line .cd-label{color:var(--ink-muted);font-weight:400;font-size:11px}
 
 /* Reveal hook */
 .reveal-hook{padding:56px 24px;text-align:center}
@@ -396,6 +401,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
         <div class="trust-band reveal">18+ only &middot; every match can be blocked or reported &middot; one &ldquo;stay anonymous&rdquo; keeps you anonymous forever</div>
         <p class="hero-micro reveal">Free during early access. Anonymous. 18+. Your first note takes 3 minutes.</p>
         <div class="presence-line reveal" id="presence-line"></div>
+        <div class="countdown-line reveal" id="countdown-line"></div>
       </div>
       <div class="phone-wrap reveal">
         <canvas id="hero-canvas"></canvas>
@@ -780,6 +786,26 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
       else return;
       el.textContent=text;
     }).catch(function(){});
+  })();
+
+  // --- Countdown to 9 pm IST (15:30 UTC) ---
+  (function(){
+    var el=document.getElementById('countdown-line');
+    if(!el)return;
+    function u(){
+      var now=new Date(),t=new Date(now);
+      t.setUTCHours(15,30,0,0);
+      var d=t.getTime()-now.getTime();
+      if(d<=0){
+        el.innerHTML='&#10022; Tonight&#8217;s prompt is live &mdash; <span class="cd-label">people are writing now</span>';
+      }else{
+        var h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000),p=[];
+        if(h>0)p.push(h+' hour'+(h===1?'':'s'));
+        if(m>0||h===0)p.push(m+' min');
+        el.innerHTML='&#10022; Tonight&#8217;s prompt opens in '+p.join(' ')+' <span class="cd-label">&middot; 9 pm</span>';
+      }
+    }
+    u();setInterval(u,30000);
   })();
 
   // --- Mobile menu ---
