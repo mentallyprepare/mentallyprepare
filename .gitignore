@@ -33,3 +33,33 @@ test-email.js
 test-sendgrid-integrated.js
 daily-reminder-emails.txt
 *.code-workspace
+
+# Build artifacts
+dist/
+
+# Planning docs & reports
+docs/
+
+# Lead lists / data exports
+*.csv
+
+# IDE extensions
+*.vsix
+
+# One-off scripts & stale tests
+lib/p0-production-fixes.js
+scripts/production-engagement-analysis.js
+test/client-regressions.js
+test/p0-production-fixes.test.js
+
+# Test DB artifacts
+test/smoke-test.db
+test/smoke-test.db-wal
+test/smoke-test.db-shm
+test/mentally-prepare-sessions.db
+
+# Session DB (local dev)
+mentally-prepare-sessions.db
+
+# Claude Code dev config
+.claude/launch.json
