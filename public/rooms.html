@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#08050F">
+<title>Rooms · Mentally Prepare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@0,400;1,400&family=Lora:ital@1&family=Manrope:wght@400;500;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --rose:#f7b7c8;--rose-l:#EBB4C2;--rose-d:#9B4F66;
+    --gold:#ecc885;--gold-l:#E8D0A0;
+    --purple:#896cb5;--purple-l:#B09FCC;
+    --ink:#F8F2FF;--ink-m:rgba(248,242,255,.62);--ink-s:rgba(248,242,255,.35);
+    --line:rgba(248,242,255,.07);--card:#0E0A18;--bg:#08050F;
+    --font-display:'Instrument Serif',Georgia,serif;--font-body:'Manrope',Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--bg)}
+  body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-weight:400;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:rgba(155,79,102,.4)}
+  button{font-family:inherit}
+  a{color:var(--rose-l);text-decoration:none}
+
+  /* cosmic background */
+  #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+  .star{position:absolute;border-radius:50%;background:#fff;animation:twinkle var(--d,3s) ease-in-out infinite var(--dl,0s);will-change:opacity}
+  @keyframes twinkle{0%,100%{opacity:var(--a1,.06)}50%{opacity:var(--a2,.4)}}
+  .glow{position:fixed;border-radius:50%;filter:blur(90px);opacity:.18;z-index:0;pointer-events:none}
+  .glow.a{width:340px;height:340px;background:var(--rose-d);top:-120px;left:-100px}
+  .glow.b{width:300px;height:300px;background:var(--purple);bottom:-120px;right:-110px}
+
+  .shell{position:relative;z-index:1;max-width:520px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:16px 20px;background:rgba(8,5,15,.82);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
+  .topbar .logo{font-family:'Playfair Display',serif;font-style:italic;font-size:15px;color:var(--ink-m);flex:1}
+  .icon-btn{background:transparent;border:1px solid var(--line);color:var(--ink-s);width:38px;height:38px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0;transition:border-color .2s,color .2s}
+  .icon-btn:hover{border-color:var(--rose-d);color:var(--ink-m)}
+
+  .screen{flex:1;padding:24px 20px 8px;display:none;animation:fade .35s ease}
+  .screen.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .eyebrow{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rose);opacity:.72;margin-bottom:10px}
+  .display-h{font-family:var(--font-display);font-size:30px;line-height:1.12;color:var(--ink);font-weight:400;margin-bottom:8px}
+  .display-h em{font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.7;margin-bottom:24px;max-width:340px}
+
+  /* lobby */
+  .room-card{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s,transform .15s}
+  .room-card:hover{border-color:rgba(137,108,181,.4)}
+  .room-card:active{transform:scale(.99)}
+  .room-card .rc-name{font-family:'Playfair Display',serif;font-style:italic;font-size:19px;color:var(--ink);margin-bottom:6px}
+  .room-card .rc-sub{font-family:'Lora',serif;font-style:italic;font-size:12.5px;color:var(--ink-m);line-height:1.6}
+  .room-card .rc-arrow{position:absolute;right:18px;top:50%;transform:translateY(-50%);color:var(--ink-s);font-size:18px}
+  .room-card .rc-frozen{display:inline-block;margin-top:10px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-l);background:rgba(236,200,133,.1);border:1px solid rgba(236,200,133,.22);padding:4px 10px;border-radius:100px}
+
+  /* wall cards */
+  .wall-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:14px;position:relative;overflow:hidden}
+  .need-badge{display:inline-flex;align-items:center;gap:6px;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:5px 11px;border-radius:100px;margin-bottom:12px;border:1px solid var(--line);color:var(--ink-m)}
+  .need-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--rose-l)}
+  .wall-card .body{font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink);line-height:1.75;margin-bottom:14px;white-space:pre-wrap;word-break:break-word}
+  .react-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+  .react-btn{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--line);color:var(--ink-s);font-size:11px;padding:7px 11px;border-radius:100px;cursor:pointer;transition:all .18s}
+  .react-btn:hover{border-color:rgba(137,108,181,.4);color:var(--ink-m)}
+  .react-btn.on{border-color:rgba(212,133,154,.45);background:rgba(212,133,154,.1);color:var(--rose-l)}
+  .react-btn .n{opacity:.7;font-variant-numeric:tabular-nums}
+  .card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .comment-link{background:none;border:none;color:var(--ink-s);font-size:11.5px;cursor:pointer;padding:4px 0;letter-spacing:.02em}
+  .comment-link:hover{color:var(--rose-l)}
+  .fade-time{font-size:10px;color:var(--ink-s);letter-spacing:.04em}
+
+  /* composer */
+  .composer{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:18px}
+  .composer .label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-s);margin-bottom:10px;display:block}
+  .need-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-bottom:16px}
+  .need-opt{background:transparent;border:1px solid var(--line);border-radius:13px;padding:11px 8px;text-align:center;cursor:pointer;color:var(--ink-s);transition:all .18s}
+  .need-opt:hover{border-color:rgba(137,108,181,.4)}
+  .need-opt.on{border-color:rgba(212,133,154,.45);background:rgba(212,133,154,.08);color:var(--rose-l)}
+  .need-opt .no-ico{font-size:17px;display:block;margin-bottom:5px}
+  .need-opt .no-lbl{font-size:10.5px;line-height:1.25}
+  textarea.field{width:100%;background:rgba(8,5,15,.6);border:1px solid var(--line);border-radius:14px;padding:14px;font-size:14px;font-family:'Lora',serif;font-style:italic;color:var(--ink);outline:none;resize:vertical;min-height:96px;line-height:1.6;transition:border-color .2s}
+  textarea.field:focus{border-color:rgba(137,108,181,.5)}
+  textarea.field::placeholder{color:var(--ink-s);font-style:italic}
+  .charcount{font-size:10px;color:var(--ink-s);text-align:right;margin-top:6px}
+  .charcount.over{color:var(--rose-l)}
+
+  .btn{width:100%;background:linear-gradient(135deg,var(--rose-d),var(--purple));color:#fff;padding:15px;border-radius:100px;font-size:13px;letter-spacing:.05em;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:0 8px 32px rgba(155,79,102,.34);transition:transform .15s,opacity .2s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn:disabled{opacity:.5;cursor:default;transform:none}
+  .btn-ghost{width:100%;background:transparent;border:1px solid var(--line);color:var(--ink-s);padding:13px;border-radius:100px;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;letter-spacing:.04em;transition:border-color .2s,color .2s}
+  .btn-ghost:hover{border-color:var(--rose-d);color:var(--ink-m)}
+
+  .err{color:var(--rose-l);font-size:12px;margin-top:10px;display:none;font-family:'Lora',serif;font-style:italic}
+  .empty{text-align:center;color:var(--ink-s);font-family:'Lora',serif;font-style:italic;font-size:13px;padding:40px 10px;line-height:1.7}
+  .spinner{text-align:center;color:var(--ink-s);letter-spacing:.3em;padding:40px;font-size:16px}
+
+  /* thread */
+  .thread-origin{background:linear-gradient(160deg,rgba(137,108,181,.08),rgba(155,79,102,.05));border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:8px}
+  .nudge{font-family:'Lora',serif;font-style:italic;font-size:12.5px;color:var(--gold-l);line-height:1.65;background:rgba(236,200,133,.06);border:1px solid rgba(236,200,133,.18);border-radius:13px;padding:12px 14px;margin:16px 0}
+  .comment{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:10px;position:relative}
+  .comment .ctext{font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink);line-height:1.7;white-space:pre-wrap;word-break:break-word}
+  .comment .cfoot{display:flex;align-items:center;justify-content:space-between;margin-top:9px}
+  .comment .ctime{font-size:9.5px;color:var(--ink-s);letter-spacing:.04em}
+  .flag-btn{background:none;border:none;color:var(--ink-s);font-size:12px;cursor:pointer;opacity:.55;transition:opacity .2s,color .2s;padding:2px 4px}
+  .flag-btn:hover{opacity:1;color:var(--rose-l)}
+  .flag-btn.done{color:var(--gold-l);opacity:.8;cursor:default}
+  .section-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-s);margin:22px 0 12px}
+
+  /* crisis signpost — mirrors the journaling/wall flow */
+  .crisis-wrap{padding:8px 2px}
+  .crisis-title{font-family:var(--font-display);font-size:26px;color:var(--ink);margin:8px 0 14px}
+  .crisis-held{font-family:'Lora',serif;font-style:italic;font-size:13px;color:var(--ink-m);line-height:1.8;margin-bottom:14px}
+  .crisis-msg{font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink);line-height:1.8;margin-bottom:20px}
+  .helplines{display:flex;flex-direction:column;gap:10px}
+  .helpline{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:14px 16px;display:flex;flex-direction:column;gap:3px}
+  .helpline.primary{border-color:rgba(212,133,154,.4);background:rgba(212,133,154,.06)}
+  .helpline strong{font-family:'Playfair Display',serif;font-style:italic;font-weight:400;font-size:14px;color:var(--ink)}
+  .helpline .num{font-size:18px;color:var(--rose-l);letter-spacing:.02em}
+  .helpline .alt{font-size:11px;color:var(--ink-m)}
+  .helpline .hrs{font-size:10px;color:var(--ink-s);letter-spacing:.04em}
+
+  /* sticky crisis footer on every screen */
+  .crisis-foot{position:sticky;bottom:0;z-index:15;text-align:center;font-size:10.5px;color:var(--ink-s);padding:13px 20px max(13px,env(safe-area-inset-bottom));background:rgba(8,5,15,.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line);line-height:1.5}
+  .crisis-foot a{color:var(--gold-l)}
+
+  .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 20px;color:var(--ink-m);font-size:12px;z-index:200;opacity:0;transition:all .3s ease;pointer-events:none;max-width:340px;text-align:center;backdrop-filter:blur(16px)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div class="glow a"></div><div class="glow b"></div>
+
+<div class="shell">
+  <div class="topbar">
+    <button class="icon-btn" id="backBtn" onclick="goBack()" style="display:none">←</button>
+    <div class="logo">Rooms</div>
+    <button class="icon-btn" onclick="window.location.href='/app'" title="Back to app">✕</button>
+  </div>
+
+  <!-- LOBBY -->
+  <section class="screen on" id="s-lobby">
+    <div class="eyebrow">Anonymous · together</div>
+    <h1 class="display-h">Find the <em>room</em><br>that fits tonight</h1>
+    <p class="sub">No names, no profiles. Just walls of quiet thoughts, and people who get it. Cards fade after a while — nothing here is permanent.</p>
+    <div id="lobbyList"><div class="spinner">· · ·</div></div>
+  </section>
+
+  <!-- WALL -->
+  <section class="screen" id="s-wall">
+    <div class="eyebrow" id="wallEyebrow">Room</div>
+    <h1 class="display-h" id="wallName">—</h1>
+    <p class="sub" id="wallSub"></p>
+
+    <div class="composer" id="composer">
+      <span class="label">What do you need from this room?</span>
+      <div class="need-grid" id="needGrid"></div>
+      <textarea class="field" id="cardBody" maxlength="400" placeholder="Say the thing you've been carrying. No one will know it's you."></textarea>
+      <div class="charcount" id="cardCount">0 / 400</div>
+      <button class="btn" id="postCardBtn" onclick="submitCard()" style="margin-top:6px">Leave it on the wall</button>
+      <div class="err" id="cardErr"></div>
+    </div>
+
+    <div class="section-label">On the wall</div>
+    <div id="wallList"><div class="spinner">· · ·</div></div>
+  </section>
+
+  <!-- THREAD -->
+  <section class="screen" id="s-thread">
+    <div id="threadOrigin"></div>
+    <div class="nudge" id="threadNudge"></div>
+    <div class="section-label">Replies</div>
+    <div id="threadList"><div class="spinner">· · ·</div></div>
+    <div class="composer" style="margin-top:18px">
+      <textarea class="field" id="commentBody" maxlength="280" placeholder="Write something kind. You don't have to fix it."></textarea>
+      <div class="charcount" id="commentCount">0 / 280</div>
+      <button class="btn" id="postCommentBtn" onclick="submitComment()" style="margin-top:6px">Reply gently</button>
+      <div class="err" id="commentErr"></div>
+    </div>
+  </section>
+
+  <!-- CRISIS -->
+  <section class="screen" id="s-crisis"></section>
+
+  <div class="crisis-foot">
+    If tonight feels like too much — <strong>Tele MANAS 14416</strong>, 24×7. <a href="/safety">More help →</a>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/rooms.js"></script>
+</body>
+</html>
