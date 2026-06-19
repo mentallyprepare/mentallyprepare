@@ -2880,6 +2880,40 @@ app.use((req, res) => {
   console.log(`  ✦ Silent Room cleanup scheduled (3am IST daily)`);
 })();
 
+// Rooms: hard-delete faded cards (and their children) daily at 4am IST (22:30 UTC).
+// A 1-day grace past expiry so nothing disappears the moment it fades from the wall.
+if (process.env.ROOMS_ENABLED === 'true') {
+  (function scheduleRoomsCleanup() {
+    const now = new Date();
+    const target = new Date(now);
+    target.setUTCHours(22, 30, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    setTimeout(() => {
+      const doCleanup = db.transaction(() => {
+        const cutoff = "datetime('now', '-1 day')";
+        // FK-safe order: reports -> reactions -> comments -> cards.
+        db.prepare(`DELETE FROM room_reports WHERE comment_id IN (
+          SELECT rc.id FROM room_comments rc JOIN room_cards c ON c.id = rc.card_id
+          WHERE c.expires_at < ${cutoff})`).run();
+        db.prepare(`DELETE FROM room_reactions WHERE card_id IN (
+          SELECT id FROM room_cards WHERE expires_at < ${cutoff})`).run();
+        db.prepare(`DELETE FROM room_comments WHERE card_id IN (
+          SELECT id FROM room_cards WHERE expires_at < ${cutoff})`).run();
+        return db.prepare(`DELETE FROM room_cards WHERE expires_at < ${cutoff}`).run().changes;
+      });
+      function run() {
+        try {
+          const deleted = doCleanup();
+          if (deleted) console.log(`  ✦ Rooms: deleted ${deleted} faded cards`);
+        } catch (e) { console.error('Rooms cleanup error:', e); }
+      }
+      run();
+      setInterval(run, 24 * 60 * 60 * 1000);
+    }, target.getTime() - now.getTime());
+    console.log(`  ✦ Rooms cleanup scheduled (4am IST daily)`);
+  })();
+}
+
 // ---------------------------------------
 // GRACEFUL SHUTDOWN
 // ---------------------------------------
