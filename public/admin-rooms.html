@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Rooms moderation · Mentally Prepare</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0b0a12;color:#e8e6f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.5;padding:0 0 60px}
+  .wrap{max-width:760px;margin:0 auto;padding:20px}
+  h1{font-size:20px;font-weight:600;margin-bottom:4px}
+  .muted{color:#8b88a0;font-size:12px}
+  .bar{display:flex;align-items:center;gap:10px;margin:18px 0;flex-wrap:wrap}
+  button{font-family:inherit;cursor:pointer;border-radius:9px;border:1px solid #2a2840;background:#171527;color:#e8e6f0;padding:9px 14px;font-size:13px;transition:border-color .15s}
+  button:hover{border-color:#4a4570}
+  button:disabled{opacity:.5;cursor:default}
+  button.primary{background:linear-gradient(135deg,#9B4F66,#896cb5);border:none;color:#fff}
+  button.danger{border-color:#7a3a4a;color:#f7b7c8}
+  button.ok{border-color:#3a6b4a;color:#9be3b0}
+  input{font-family:inherit;background:#171527;border:1px solid #2a2840;color:#e8e6f0;border-radius:9px;padding:10px 12px;font-size:14px;width:100%}
+  .card{background:#13111f;border:1px solid #232138;border-radius:13px;padding:15px;margin-bottom:12px}
+  .ctext{font-size:14px;color:#fff;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin-bottom:10px}
+  .meta{font-size:11px;color:#8b88a0;display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+  .tag{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:100px;border:1px solid #2a2840}
+  .tag.held{color:#f7b7c8;border-color:#7a3a4a;background:rgba(247,183,200,.07)}
+  .tag.reported{color:#ecc885;border-color:#7a6a3a;background:rgba(236,200,133,.07)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .section{margin-top:28px}
+  .section h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#8b88a0;margin-bottom:12px}
+  .freeze-room{display:flex;align-items:center;gap:10px;background:#13111f;border:1px solid #232138;border-radius:11px;padding:12px 14px;margin-bottom:8px}
+  .freeze-room .name{flex:1;font-size:13px}
+  .empty{color:#8b88a0;font-size:13px;padding:20px;text-align:center}
+  #login{max-width:340px;margin:80px auto;text-align:center}
+  #login input{margin:14px 0}
+  .err{color:#f7b7c8;font-size:12px;margin-top:8px;display:none}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#171527;border:1px solid #2a2840;border-radius:10px;padding:10px 18px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="login">
+  <h1>Rooms moderation</h1>
+  <p class="muted">Enter the admin key.</p>
+  <input id="key" type="password" placeholder="admin key" onkeydown="if(event.key==='Enter')login()">
+  <button class="primary" style="width:100%" onclick="login()">Unlock</button>
+  <div class="err" id="loginErr">Wrong key, or server unreachable.</div>
+</div>
+
+<div class="wrap" id="dash" style="display:none">
+  <h1>Rooms moderation</h1>
+  <p class="muted">Held + reported comments. Clear the queue, freeze a room if it gets loud.</p>
+  <div class="bar">
+    <button onclick="loadReports()">↻ Refresh</button>
+    <span class="muted" id="lastLoad"></span>
+  </div>
+
+  <div id="reports"><div class="empty">Loading…</div></div>
+
+  <div class="section">
+    <h2>Kill switch — freeze a room</h2>
+    <p class="muted" style="margin-bottom:12px">Freezing blocks all new cards and comments in that room immediately. Existing cards stay visible.</p>
+    <div id="freezeRooms"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let ADMIN_KEY = '';
+const ROOMS = [
+  { slug: 'night', name: 'Night Thoughts' },
+  { slug: 'studies', name: 'Studies' },
+  { slug: 'lonely', name: 'Loneliness' },
+];
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2400);}
+
+function adminFetch(url, opts = {}) {
+  return fetch(url, { ...opts, headers: { 'x-admin-key': ADMIN_KEY, 'Content-Type': 'application/json', ...(opts.headers || {}) } })
+    .then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || 'Request failed'); return d; });
+}
+
+function login() {
+  const key = document.getElementById('key').value.trim();
+  const err = document.getElementById('loginErr'); err.style.display = 'none';
+  if (!key) return;
+  ADMIN_KEY = key;
+  fetch('/admin/rooms-reports', { headers: { 'x-admin-key': ADMIN_KEY } })
+    .then((r) => {
+      if (r.status === 401) { ADMIN_KEY = ''; err.style.display = 'block'; return; }
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('dash').style.display = 'block';
+      renderFreeze();
+      loadReports();
+    })
+    .catch(() => { err.textContent = 'Cannot reach server. Is it running?'; err.style.display = 'block'; });
+}
+
+async function loadReports() {
+  const el = document.getElementById('reports');
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const rows = await adminFetch('/admin/rooms-reports');
+    document.getElementById('lastLoad').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    if (!rows.length) { el.innerHTML = '<div class="empty">Queue is clear. Nothing to review.</div>'; return; }
+    el.innerHTML = rows.map((c) => `
+      <div class="card" data-id="${c.id}">
+        <div class="ctext">${esc(c.body)}</div>
+        <div class="meta">
+          ${c.is_held ? '<span class="tag held">hidden</span>' : ''}
+          ${c.report_count > 0 ? `<span class="tag reported">${c.report_count} report${c.report_count === 1 ? '' : 's'}</span>` : ''}
+          <span>comment #${c.id}</span>
+          <span>on card #${c.card_id}</span>
+          <span>${esc(c.created_at)}</span>
+        </div>
+        <div class="row">
+          <button class="ok" onclick="restore(${c.id})">Keep (restore)</button>
+          <button class="danger" onclick="removeComment(${c.id})">Remove</button>
+        </div>
+      </div>`).join('');
+  } catch (e) { el.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+async function restore(id) {
+  try { await adminFetch('/admin/rooms/comments/' + id + '/restore', { method: 'POST' }); toast('Restored to the wall.'); loadReports(); }
+  catch (e) { toast(e.message); }
+}
+async function removeComment(id) {
+  if (!confirm('Remove this comment for good?')) return;
+  try { await adminFetch('/admin/rooms/comments/' + id + '/remove', { method: 'POST' }); toast('Removed.'); loadReports(); }
+  catch (e) { toast(e.message); }
+}
+
+function renderFreeze() {
+  document.getElementById('freezeRooms').innerHTML = ROOMS.map((r) => `
+    <div class="freeze-room">
+      <span class="name">${esc(r.name)} <span class="muted">/${esc(r.slug)}</span></span>
+      <button class="danger" onclick="freeze('${r.slug}', true)">Freeze</button>
+      <button class="ok" onclick="freeze('${r.slug}', false)">Unfreeze</button>
+    </div>`).join('');
+}
+async function freeze(slug, frozen) {
+  try {
+    const r = await adminFetch('/admin/rooms/' + slug + '/freeze', { method: 'POST', body: JSON.stringify({ frozen }) });
+    toast((r.frozen ? 'Froze ' : 'Unfroze ') + slug + '.');
+  } catch (e) { toast(e.message); }
+}
+</script>
+</body>
+</html>

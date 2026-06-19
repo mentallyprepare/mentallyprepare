@@ -14,6 +14,18 @@ function registerStaticRoutes(app, { baseUrl, rootDir }) {
     res.sendFile(path.join(rootDir, 'public', 'safety.html'));
   });
 
+  // Rooms (anonymous topic walls) — only reachable when the feature is on.
+  if (process.env.ROOMS_ENABLED === 'true') {
+    app.get('/rooms', (req, res) => {
+      res.set('X-Robots-Tag', 'noindex, nofollow');
+      res.sendFile(path.join(rootDir, 'public', 'rooms.html'));
+    });
+    app.get('/admin-rooms', (req, res) => {
+      res.set('X-Robots-Tag', 'noindex, nofollow');
+      res.sendFile(path.join(rootDir, 'public', 'admin-rooms.html'));
+    });
+  }
+
   app.get('/waitlist', (req, res) => {
     res.redirect(301, '/');
   });

@@ -202,6 +202,7 @@ const { registerTonightsQuestionRoutes } = require('./routes/tonights-question')
 const { registerPaymentRoutes } = require('./routes/payments');
 const { registerSilentRoutes, registerSilentAdminRoutes } = require('./routes/silent');
 const { registerWallRoutes } = require('./routes/wall');
+const { registerRoomsRoutes, registerRoomsAdminRoutes } = require('./routes/rooms');
 const { runBackup } = require('./scripts/backup');
 // ---------------------------------------------------------------
 const webpush = require('web-push');
@@ -801,6 +802,75 @@ if (process.env.WALL_ENABLED === 'true') {
     db.prepare('INSERT INTO wall_questions (prompt, active) VALUES (?, 1)').run(
       'What are you carrying that no one knows about?'
     );
+  }
+}
+
+// ─── Rooms Schema ───
+// Anonymous topic walls with a support-need selector, reactions, and free-text
+// peer comments under a moderation floor. Mirrors the Wall pattern.
+if (process.env.ROOMS_ENABLED === 'true') {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS rooms (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug       TEXT UNIQUE NOT NULL,
+      name       TEXT NOT NULL,
+      subtitle   TEXT,
+      is_active  INTEGER NOT NULL DEFAULT 1,
+      is_frozen  INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS room_cards (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_id      INTEGER NOT NULL REFERENCES rooms(id),
+      author_id    INTEGER NOT NULL REFERENCES users(id),
+      support_need TEXT NOT NULL,
+      body         TEXT NOT NULL,
+      is_held      INTEGER NOT NULL DEFAULT 0,
+      is_seed      INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      expires_at   TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_room_cards_room ON room_cards(room_id, expires_at);
+
+    CREATE TABLE IF NOT EXISTS room_comments (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      card_id      INTEGER NOT NULL REFERENCES room_cards(id),
+      author_id    INTEGER NOT NULL REFERENCES users(id),
+      body         TEXT NOT NULL,
+      is_held      INTEGER NOT NULL DEFAULT 0,
+      report_count INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_room_comments_card ON room_comments(card_id);
+
+    CREATE TABLE IF NOT EXISTS room_reactions (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      card_id    INTEGER NOT NULL REFERENCES room_cards(id),
+      user_id    INTEGER NOT NULL REFERENCES users(id),
+      kind       TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (card_id, user_id, kind)
+    );
+
+    CREATE TABLE IF NOT EXISTS room_reports (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      comment_id  INTEGER NOT NULL REFERENCES room_comments(id),
+      reporter_id INTEGER NOT NULL REFERENCES users(id),
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (comment_id, reporter_id)
+    );
+  `);
+
+  // Seed the three rooms once, so no one ever meets an empty list.
+  const roomCount = db.prepare('SELECT COUNT(*) as count FROM rooms').get();
+  if (roomCount.count === 0) {
+    const seedRoom = db.prepare(
+      'INSERT INTO rooms (slug, name, subtitle) VALUES (?, ?, ?)'
+    );
+    seedRoom.run('night', 'Night Thoughts', 'for racing thoughts that get loud after dark');
+    seedRoom.run('studies', 'Studies', 'exams, pressure, the fear of falling behind');
+    seedRoom.run('lonely', 'Loneliness', 'feeling alone, even with people around');
   }
 }
 
@@ -2135,6 +2205,23 @@ if (process.env.WALL_ENABLED === 'true') {
     HELPLINES,
     getCrisisPayload,
     trackEvent
+  });
+}
+
+// ─── Rooms Routes ────────────────────────────────────────────
+if (process.env.ROOMS_ENABLED === 'true') {
+  registerRoomsRoutes(app, {
+    apiLimiter,
+    requireAuth,
+    db,
+    scanForSafety,
+    getCrisisPayload,
+    trackEvent
+  });
+  registerRoomsAdminRoutes(app, {
+    requireAdmin,
+    authLimiter,
+    db
   });
 }
 
