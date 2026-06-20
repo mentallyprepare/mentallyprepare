@@ -557,6 +557,10 @@ function registerAppRoutes(app, deps) {
       };
       res.json({
         user: safeUser,
+        features: {
+          wall: process.env.WALL_ENABLED === 'true',
+          rooms: process.env.ROOMS_ENABLED === 'true'
+        },
         match: matchData,
         entries: entriesData,
         partnerEntries,

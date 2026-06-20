@@ -27,6 +27,7 @@ function normalizeState(data) {
   data.user = data.user || {};
   data.user.pushPreferences = Object.assign({}, defaultPushPreferences, data.user.pushPreferences || {});
   data.user.pushSubscribed = !!data.user.pushSubscribed;
+  data.features = data.features || {};
   data.entries = Array.isArray(data.entries) ? data.entries : [];
   data.partnerEntries = Array.isArray(data.partnerEntries) ? data.partnerEntries : [];
   data.comments = Array.isArray(data.comments) ? data.comments : [];
@@ -3103,6 +3104,9 @@ function renderTQTabs(active) {
     { id:'silent', ico:'S', lbl:'Silent Room' },
     { id:'profile', ico:'P', lbl:'Profile' }
   ];
+  if (state && state.features && state.features.rooms) {
+    tabs.splice(2, 0, { id:'rooms', ico:'R', lbl:'Rooms' });
+  }
   return '<div class="tabs app-bottom-tabs">' + tabs.map(function(t) {
     var isOn = t.id === active || (active === 'tonight' && t.id === 'today') || (active === 'entries' && t.id === 'journey');
     return '<button class="tab' + (isOn ? ' on' : '') + '" type="button" data-app-tab="' + t.id + '" aria-pressed="' + (isOn ? 'true' : 'false') + '"><div class="tab-ico">' + t.ico + '</div><div class="tab-lbl">' + t.lbl + '</div></button>';
@@ -3118,6 +3122,9 @@ function renderTabs(active) {
     { id:'journey', ico:'J', lbl:'Journey' },
     { id:'profile', ico:'P', lbl:'Profile' }
   ];
+  if (state && state.features && state.features.rooms) {
+    tabs.splice(2, 0, { id:'rooms', ico:'R', lbl:'Rooms' });
+  }
   return `<div class="tabs app-bottom-tabs">${tabs.map(t =>
     `<button class="tab${t.id===normalized?' on':''}" type="button" data-app-tab="${t.id}" aria-pressed="${t.id===normalized?'true':'false'}"><div class="tab-ico">${t.ico}</div><div class="tab-lbl">${t.lbl}</div></button>`
   ).join('')}</div>`;
@@ -3141,6 +3148,10 @@ function navigateAppTab(tab) {
   }
   if (tab === 'wall') {
     renderWall();
+    return;
+  }
+  if (tab === 'rooms') {
+    window.location.href = '/rooms';
     return;
   }
   if (tab === 'profile') {
