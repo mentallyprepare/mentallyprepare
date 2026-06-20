@@ -50,6 +50,9 @@ function toast(msg) {
 function timeLeft(expiresAt) {
   const ms = new Date(expiresAt.replace(' ', 'T') + 'Z').getTime() - Date.now();
   if (ms <= 0) return 'fading';
+  const days = Math.floor(ms / 86400000);
+  if (days >= 30) return '';                 // long-lived seed openers — no countdown
+  if (days >= 2) return `fades in ${days}d`;
   const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
   return h >= 1 ? `fades in ${h}h` : `fades in ${m}m`;
 }
