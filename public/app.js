@@ -3098,15 +3098,12 @@ function renderAbout() {
 // UTILITIES
 // ═══════════════════════════════════════
 function renderTQTabs(active) {
-  var tabs = [
-    { id:'today', ico:'T', lbl:'Today' },
-    { id:'wall', ico:'W', lbl:'Wall' },
-    { id:'silent', ico:'S', lbl:'Silent Room' },
-    { id:'profile', ico:'P', lbl:'Profile' }
-  ];
-  if (state && state.features && state.features.rooms) {
-    tabs.splice(2, 0, { id:'rooms', ico:'R', lbl:'Rooms' });
-  }
+  var feat = (state && state.features) || {};
+  var tabs = [{ id:'today', ico:'T', lbl:'Today' }];
+  if (feat.wall) tabs.push({ id:'wall', ico:'W', lbl:'Wall' });
+  if (feat.rooms) tabs.push({ id:'rooms', ico:'R', lbl:'Rooms' });
+  tabs.push({ id:'silent', ico:'S', lbl:'Silent Room' });
+  tabs.push({ id:'profile', ico:'P', lbl:'Profile' });
   return '<div class="tabs app-bottom-tabs">' + tabs.map(function(t) {
     var isOn = t.id === active || (active === 'tonight' && t.id === 'today') || (active === 'entries' && t.id === 'journey');
     return '<button class="tab' + (isOn ? ' on' : '') + '" type="button" data-app-tab="' + t.id + '" aria-pressed="' + (isOn ? 'true' : 'false') + '"><div class="tab-ico">' + t.ico + '</div><div class="tab-lbl">' + t.lbl + '</div></button>';
