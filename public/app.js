@@ -1098,6 +1098,7 @@ function bindStaticUi() {
   // Auto-start app for logged-in users
   startApp();
   consumeVerificationQueryNotice();
+  maybeShowRoomsInvite();
 })();
 
 window.addEventListener('popstate', function() {
@@ -3754,6 +3755,51 @@ function maybeShowNotificationNudge(source) {
     if (entryCount > 1) return;
   }
   setTimeout(function() { renderNotificationPermissionModal(source || 'after_reflection'); }, 900);
+}
+
+// One-time, quiet invite to Rooms. Shown once per device to logged-in users,
+// only when the feature is on. Dismiss and we don't nag again.
+const ROOMS_INVITE_SEEN_KEY = 'mp-rooms-invite-seen';
+
+function maybeShowRoomsInvite() {
+  if (!state || !state.user) return;
+  if (!state.user.emailVerified) return;            // not the existing batch yet
+  if (!state.features || !state.features.rooms) return;
+  try { if (localStorage.getItem(ROOMS_INVITE_SEEN_KEY)) return; } catch (e) { return; }
+  setTimeout(renderRoomsInviteModal, 1200);
+}
+
+function markRoomsInviteSeen() {
+  try { localStorage.setItem(ROOMS_INVITE_SEEN_KEY, '1'); } catch (e) {}
+}
+
+function renderRoomsInviteModal() {
+  if (document.getElementById('roomsInviteModal')) return;
+  // Set the flag the moment it shows — truly once, no nagging on reload.
+  markRoomsInviteSeen();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'mp-modal-overlay';
+  overlay.id = 'roomsInviteModal';
+  overlay.innerHTML = `
+    <div class="mp-modal-card">
+      <div class="mp-modal-kicker">Rooms</div>
+      <h3 class="mp-modal-title">there’s somewhere new to sit tonight</h3>
+      <p class="mp-modal-copy">some things are hard to write to one person. so there’s a new corner of Mentally Prepare called Rooms. you put down a single true line about how tonight feels, and a few strangers can quietly let you know they’re here. no names. no feed. it fades by morning.</p>
+      <p class="mp-modal-copy">right now there are three: Night Thoughts, Studies, and Loneliness. go sit in whichever one fits.</p>
+      <div class="mp-modal-actions">
+        <button class="prompt-small-btn ghost" type="button" id="roomsInviteLater">maybe later</button>
+        <button class="prompt-small-btn" type="button" id="roomsInviteOpen">open Rooms</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = function () { overlay.remove(); };
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+  document.getElementById('roomsInviteLater').addEventListener('click', close);
+  document.getElementById('roomsInviteOpen').addEventListener('click', function () {
+    window.location.href = '/rooms';
+  });
 }
 
 function renderSettingsIfOpen() {
