@@ -1,6 +1,6 @@
 const path = require('path');
 
-function registerStaticRoutes(app, { baseUrl, rootDir }) {
+function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
 
   app.get('/privacy', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'privacy.html'));
@@ -20,7 +20,7 @@ function registerStaticRoutes(app, { baseUrl, rootDir }) {
       res.set('X-Robots-Tag', 'noindex, nofollow');
       res.sendFile(path.join(rootDir, 'public', 'rooms.html'));
     });
-    app.get('/admin-rooms', (req, res) => {
+    app.get('/admin-rooms', requireAdmin, (req, res) => {
       res.set('X-Robots-Tag', 'noindex, nofollow');
       res.sendFile(path.join(rootDir, 'public', 'admin-rooms.html'));
     });

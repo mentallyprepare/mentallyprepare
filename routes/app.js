@@ -729,6 +729,7 @@ function registerAppRoutes(app, deps) {
     try {
       const userId = req.session.userId;
       const user = stmts.getUserById.get(userId);
+      if (!user) return res.json(buildPartnerWritingStatus({ userId, partnerId: null, match: null, currentDay: 1, visiblePartnerEntries: [], switchCount: 0 }));
       let match = stmts.getMatch.get(userId, userId);
       if (!match && user.archetype) {
         attemptMatch(userId);
@@ -1254,7 +1255,8 @@ function registerAppRoutes(app, deps) {
         stmts.updatePushPrefs.run(JSON.stringify(cleanPushPreferences(preferences)), req.session.userId);
       }
       console.log('Push subscription saved', { userId: req.session.userId });
-      res.json({ ok: true, preferences: parsePushPreferences(stmts.getUserById.get(req.session.userId).push_preferences) });
+      const updated = stmts.getUserById.get(req.session.userId);
+      res.json({ ok: true, preferences: parsePushPreferences(updated ? updated.push_preferences : null) });
     } catch (e) {
       console.error('Push subscribe error:', e);
       res.status(500).json({ error: 'Failed to save subscription' });

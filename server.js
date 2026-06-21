@@ -221,9 +221,14 @@ const DEFAULT_FIREBASE_WEB_CONFIG = {
 
 function parseFirebaseServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-    if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
-    return parsed;
+    try {
+      const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      if (parsed.private_key) parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
+      return parsed;
+    } catch (e) {
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:', e.message);
+      return null;
+    }
   }
   if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
     return {
@@ -2844,7 +2849,8 @@ app.get('/api/presence', apiLimiter, (req, res) => {
 
 registerStaticRoutes(app, {
   baseUrl: BASE_URL,
-  rootDir: __dirname
+  rootDir: __dirname,
+  requireAdmin
 });
 
 // API 404 — return JSON for unmatched /api routes
@@ -2890,16 +2896,14 @@ if (process.env.ROOMS_ENABLED === 'true') {
     if (target <= now) target.setDate(target.getDate() + 1);
     setTimeout(() => {
       const doCleanup = db.transaction(() => {
-        const cutoff = "datetime('now', '-1 day')";
-        // FK-safe order: reports -> reactions -> comments -> cards.
         db.prepare(`DELETE FROM room_reports WHERE comment_id IN (
           SELECT rc.id FROM room_comments rc JOIN room_cards c ON c.id = rc.card_id
-          WHERE c.expires_at < ${cutoff})`).run();
+          WHERE c.expires_at < datetime('now', '-1 day'))`).run();
         db.prepare(`DELETE FROM room_reactions WHERE card_id IN (
-          SELECT id FROM room_cards WHERE expires_at < ${cutoff})`).run();
+          SELECT id FROM room_cards WHERE expires_at < datetime('now', '-1 day'))`).run();
         db.prepare(`DELETE FROM room_comments WHERE card_id IN (
-          SELECT id FROM room_cards WHERE expires_at < ${cutoff})`).run();
-        return db.prepare(`DELETE FROM room_cards WHERE expires_at < ${cutoff}`).run().changes;
+          SELECT id FROM room_cards WHERE expires_at < datetime('now', '-1 day'))`).run();
+        return db.prepare(`DELETE FROM room_cards WHERE expires_at < datetime('now', '-1 day')`).run().changes;
       });
       function run() {
         try {

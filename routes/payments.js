@@ -111,34 +111,6 @@ function registerPaymentRoutes(app, deps) {
     }
   });
 
-  app.post('/api/pay/stripe/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-    try {
-      if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return res.status(503).send();
-
-      const sig = req.headers['stripe-signature'];
-      let event;
-      try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-      } catch (err) {
-        return res.status(400).send('Webhook signature verification failed');
-      }
-
-      if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        const payment = stmts.getPaymentByOrder.get(session.id);
-        if (payment) {
-          stmts.updatePayment.run(session.payment_intent, 'paid', payment.id);
-          if (trackEvent) trackEvent(payment.user_id, 'paid_conversion', { provider: 'stripe', product: payment.product, paymentId: payment.id });
-        }
-      }
-
-      res.json({ received: true });
-    } catch (e) {
-      console.error('Stripe webhook error:', e);
-      res.status(500).send();
-    }
-  });
-
   app.get('/api/pay/history', apiLimiter, requireAuth, (req, res) => {
     try {
       const payments = stmts.getUserPayments.all(req.session.userId)

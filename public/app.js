@@ -344,8 +344,14 @@ function showAppError() {
   }
 }
 
-window.addEventListener('error', function() { showAppError(); });
-window.addEventListener('unhandledrejection', function() { showAppError(); });
+window.addEventListener('error', function(e) {
+  if (e && e.message && /ResizeObserver|Script error/i.test(e.message)) return;
+  showAppError();
+});
+window.addEventListener('unhandledrejection', function(e) {
+  if (e && e.reason && /AbortError|NotAllowedError|cancelled|cancel/i.test(String(e.reason))) return;
+  showAppError();
+});
 
 // ═══════════════════════════════════════
 // DATA
@@ -689,6 +695,7 @@ function go(id) {
   }
   if (prev === el) return;
   if (prev) prev.classList.remove('active','entering');
+  if (id !== 's-waiting' && id !== 's-journal') clearInterval(matchPollTimer);
   el.classList.add('active','entering');
   setMotionMode(modeForScreen(id));
   afterRenderMotion(el);
@@ -895,8 +902,8 @@ function typingDots() { return '<div class="typing-dots"><span></span><span></sp
 // ═══════════════════════════════════════
 function startApp() {
   showAppShell();
-  document.getElementById('navCta').textContent = '← Back to Home';
-  document.getElementById('navCta').onclick = function() { showLanding(); };
+  var navCta = document.getElementById('navCta');
+  if (navCta) { navCta.textContent = '← Back to Home'; navCta.onclick = function() { showLanding(); }; }
   const navLoginBtn = document.getElementById('navLoginBtn');
   if (navLoginBtn) navLoginBtn.style.display = 'none';
   // Close mobile menu if open
@@ -937,8 +944,8 @@ function showLanding(targetId) {
   document.documentElement.classList.remove('mp-app-route');
   document.body.classList.remove('app-active','focus-writing');
   setMotionMode('idle');
-  document.getElementById('navCta').textContent = 'Sign up';
-  document.getElementById('navCta').onclick = startSignup;
+  var navCta = document.getElementById('navCta');
+  if (navCta) { navCta.textContent = 'Sign up'; navCta.onclick = startSignup; }
   const navLoginBtn = document.getElementById('navLoginBtn');
   if (navLoginBtn) {
     navLoginBtn.style.display = '';
@@ -1483,7 +1490,7 @@ function showSafety() {
   }
   if (overlay) overlay.classList.add('show');
 }
-function closeSafety() { document.getElementById('safety-overlay').classList.remove('show'); }
+function closeSafety() { var o = document.getElementById('safety-overlay'); if (o) o.classList.remove('show'); }
 
 function renderEmailVerification() {
   const email = state && state.user ? state.user.email : 'your email';
@@ -2198,7 +2205,8 @@ function setMood(m, el) {
 
 function updateWordCount(el) {
   const n = el.value.trim().split(/\s+/).filter(Boolean).length;
-  document.getElementById('ww').textContent = n + ' word' + (n!==1?'s':'');
+  var ww = document.getElementById('ww');
+  if (ww) ww.textContent = n + ' word' + (n!==1?'s':'');
   // Word milestones
   const milestoneEl = document.getElementById('word-milestone');
   if (milestoneEl) {
@@ -3575,8 +3583,8 @@ if ('serviceWorker' in navigator && !window.__mpSwRegistered) {
           });
         });
       }).catch(err => console.warn('SW registration failed:', err));
-    });
-  });
+    }).catch(err => console.warn('SW unregister failed:', err));
+  }).catch(err => console.warn('SW getRegistrations failed:', err));
 }
 
 // Pause animations when tab is hidden
