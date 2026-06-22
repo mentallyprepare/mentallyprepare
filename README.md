@@ -24,14 +24,19 @@ Anonymous 21-day journaling webapp for college students, built with Node.js, Exp
 4. Run `npm start`
 5. Open `http://localhost:8080`
 
-## Railway notes
-- This service can run in Railway's Dockerfile mode with the repo-root `Dockerfile`
-- Set `SESSION_SECRET` as a permanent Railway variable
-- Mount a persistent volume at `/data/db`
-- Keep `DATA_DIR=/data/db`
-- Do not set `PORT` manually in Railway; Railway provides it automatically
-- Verify `/api/ready` after deploy
-- For Google login on the custom domain, add `https://mymentallyprepare.com/__/auth/handler` to the Google Cloud OAuth client, then set `FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN=true` in Railway.
+## Railway deployment
+- Deploys via `railway.toml` → Dockerfile (Node 20-slim + native deps)
+- Set `SESSION_SECRET`, `ADMIN_PASSWORD`, Firebase vars, optional SMTP/payment keys
+- Mount a persistent volume at `/data/db` and keep `DATA_DIR=/data/db`
+- Do not set `PORT` — Railway injects it automatically
+- Verify after deploy: `/api/ready`, `/api/health`
 
-## Deployment manifest
-If you deploy from a curated file list, make sure `routes/`, `lib/`, `email-service.js`, and `email-templates.js` are included. See `webapp-files.txt`.
+### Firebase / Google login
+- Firebase Auth → Authorized domains must include `mentally-prepare.firebaseapp.com`, `mymentallyprepare.com`, and `mentallyprepare-production.up.railway.app`
+- Google Cloud OAuth redirect URIs must include `https://mentally-prepare.firebaseapp.com/__/auth/handler` and `https://mymentallyprepare.com/__/auth/handler`
+- Once the custom-domain redirect URI is approved, set `FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN=true` in Railway
+
+### Data persistence
+- SQLite database: `DATA_DIR/mentally-prepare.db`
+- Session secret fallback: `DATA_DIR/.session-secret`
+- Daily backups run at 4am IST; S3 backup optional (set `BACKUP_S3_*` vars)

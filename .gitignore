@@ -63,3 +63,14 @@ mentally-prepare-sessions.db
 
 # Claude Code dev config
 .claude/launch.json
+
+# Codex / Vite dev logs
+codex-*.log
+vite-*.log
+
+# Stale deploy configs (Railway uses railway.toml + Dockerfile only)
+Procfile
+app.json
+
+# Standalone reminder script (superseded by server.js cron)
+send-daily-reminders.js
