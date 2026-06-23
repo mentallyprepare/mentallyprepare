@@ -129,7 +129,7 @@ function registerAdminRoutes(app, deps) {
     return templates[status] || (partnerWaiting ? templates.partner_waiting : templates.missed_today);
   }
 
-  app.get('/admin', authLimiter, requireAdmin, (req, res) => {
+  app.get('/admin', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'admin.html'));
   });
 

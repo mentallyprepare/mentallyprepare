@@ -20,7 +20,7 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
       res.set('X-Robots-Tag', 'noindex, nofollow');
       res.sendFile(path.join(rootDir, 'public', 'rooms.html'));
     });
-    app.get('/admin-rooms', requireAdmin, (req, res) => {
+    app.get('/admin-rooms', (req, res) => {
       res.set('X-Robots-Tag', 'noindex, nofollow');
       res.sendFile(path.join(rootDir, 'public', 'admin-rooms.html'));
     });
