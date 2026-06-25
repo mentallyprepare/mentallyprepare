@@ -547,7 +547,7 @@ html.mp-app-route #app-area{display:block}
   <div class="slide">
     <div class="slide-visual" style="padding:24px 0 16px;flex-direction:column;gap:14px;align-items:flex-start;">
       <div class="input-block"><label class="input-label">Your name</label><input class="input-field" type="text" id="inp-name" placeholder="e.g. Anushka"/></div>
-      <div class="input-block"><label class="input-label">Your college</label><input class="input-field" type="text" id="inp-college" list="college-list" placeholder="e.g. Miranda House, Delhi"/><datalist id="college-list"><option value="University of Delhi"></option><option value="Miranda House, Delhi"></option><option value="Shri Ram College of Commerce"></option><option value="Lady Shri Ram College"></option><option value="Hindu College"></option><option value="St. Stephen's College"></option><option value="My college is not listed"></option></datalist><div class="field-help">College helps us avoid matching you with someone from the same college.</div></div>
+      <div class="input-block"><label class="input-label">Your college</label><input class="input-field" type="text" id="inp-college" list="college-list" placeholder="e.g. your university or college"/><datalist id="college-list"><option value="University of Delhi"></option><option value="Miranda House, Delhi"></option><option value="Shri Ram College of Commerce"></option><option value="Lady Shri Ram College"></option><option value="Hindu College"></option><option value="St. Stephen's College"></option><option value="My college is not listed"></option></datalist><div class="field-help">College helps us avoid matching you with someone from the same college.</div></div>
       <div class="input-block"><label class="input-label">Your year</label>
         <div class="year-row" id="year-row">
           <button class="year-btn" onclick="pickYear(this)">1st</button>
@@ -555,6 +555,7 @@ html.mp-app-route #app-area{display:block}
           <button class="year-btn" onclick="pickYear(this)">3rd</button>
           <button class="year-btn" onclick="pickYear(this)">4th</button>
           <button class="year-btn" onclick="pickYear(this)">5th+</button>
+          <button class="year-btn" onclick="pickYear(this)">N/A</button>
         </div>
       </div>
       <div class="input-block"><label class="input-label">Email</label><input class="input-field" type="email" id="inp-email" placeholder="you@college.edu"/><div class="field-help">Email is used for login, verification, and password reset.</div></div>

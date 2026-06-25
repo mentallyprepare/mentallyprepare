@@ -1223,10 +1223,10 @@ function renderGoogleProfileBasics() {
       <div style="font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:8px;">One last detail</div>
       <div style="font-family:'Playfair Display',serif;font-size:30px;font-weight:400;line-height:1.05;margin-bottom:10px;">Complete your <em style="font-style:italic;color:var(--rose-l);">college basics.</em></div>
       <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;">Google filled your name and email. We only need college and year so matching can avoid your own college.</p>
-      <div class="input-block"><label class="input-label">Your college</label><input class="input-field" type="text" id="profile-college" list="college-list" placeholder="e.g. Miranda House, Delhi" value="${escapeHtml(existingCollege)}"/><div class="field-help">This stays private unless you choose to reveal it later.</div></div>
+      <div class="input-block"><label class="input-label">Your college</label><input class="input-field" type="text" id="profile-college" list="college-list" placeholder="e.g. your university or college" value="${escapeHtml(existingCollege)}"/><div class="field-help">This stays private unless you choose to reveal it later.</div></div>
       <div class="input-block"><label class="input-label">Your year</label>
         <div class="year-row" id="profile-year-row">
-          ${['1st','2nd','3rd','4th','5th+'].map(y => `<button class="year-btn ${existingYear === y ? 'on' : ''}" onclick="pickProfileYear(this)">${y}</button>`).join('')}
+          ${['1st','2nd','3rd','4th','5th+','N/A'].map(y => `<button class="year-btn ${existingYear === y ? 'on' : ''}" onclick="pickProfileYear(this)">${y}</button>`).join('')}
         </div>
       </div>
       <button class="btn btn-next" onclick="saveGoogleProfileBasics()" style="background:linear-gradient(135deg,var(--gold),var(--rose-d));">Continue</button>
@@ -1267,7 +1267,7 @@ function renderEditProfile() {
       <div class="input-block"><label class="input-label">Your college</label><input class="input-field" type="text" id="edit-college" list="college-list" value="${escapeHtml(state.user.college || '')}" ${isLocked ? 'disabled' : ''}/></div>
       <div class="input-block"><label class="input-label">Your year</label>
         <div class="year-row" id="edit-year-row">
-          ${['1st','2nd','3rd','4th','5th+'].map(y => `<button class="year-btn ${existingYear === y ? 'on' : ''}" onclick="pickProfileYear(this)" ${isLocked ? 'disabled' : ''}>${y}</button>`).join('')}
+          ${['1st','2nd','3rd','4th','5th+','N/A'].map(y => `<button class="year-btn ${existingYear === y ? 'on' : ''}" onclick="pickProfileYear(this)" ${isLocked ? 'disabled' : ''}>${y}</button>`).join('')}
         </div>
       </div>
       ${isLocked

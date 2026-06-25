@@ -27,7 +27,7 @@ function registerAppRoutes(app, deps) {
     vapidKeys,
     IS_PROD
   } = deps;
-  const YEARS = new Set(['1st', '2nd', '3rd', '4th', '5th', '5th+']);
+  const YEARS = new Set(['1st', '2nd', '3rd', '4th', '5th', '5th+', 'N/A']);
 
   function clean(value) {
     return String(value || '').trim().replace(/\s+/g, ' ');
@@ -277,14 +277,14 @@ function registerAppRoutes(app, deps) {
 
     let status = 'active';
     let friendlyTitle = 'Your anonymous partner';
-    let friendlyMessage = 'Notes open after midnight IST.';
-    let unsealMessage = 'Notes open after midnight IST.';
+    let friendlyMessage = 'Notes open tomorrow morning.';
+    let unsealMessage = 'Notes open tomorrow morning.';
 
     if (todayPartnerEntry && nextUnsealAt) {
       status = 'wrote_today_sealed';
       friendlyTitle = 'They wrote tonight.';
-      friendlyMessage = 'Their note opens after midnight IST.';
-      unsealMessage = 'Your partner has written. It will open after midnight IST.';
+      friendlyMessage = 'Their note opens tomorrow morning.';
+      unsealMessage = 'Your partner has written. It will open tomorrow morning.';
     } else if (todayPartnerEntry) {
       status = 'opened';
       friendlyTitle = 'A note from your partner opened.';

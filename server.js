@@ -718,6 +718,7 @@ ensureColumn('reports', 'reported_user_id', 'INTEGER');
 ensureColumn('reports', 'entry_day', 'INTEGER');
 ensureColumn('reports', 'category', "TEXT DEFAULT 'entry'");
 ensureColumn('reports', 'status', "TEXT DEFAULT 'open'");
+ensureColumn('users', 'timezone', 'TEXT');
 
 db.prepare(`
   CREATE TABLE IF NOT EXISTS report_status_history (
@@ -1204,9 +1205,9 @@ const stmts = {
   getPaymentByOrder: db.prepare('SELECT * FROM payments WHERE provider_order_id = ?'),
   getUserPayments: db.prepare('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC'),
 
-  getAllPushUsers: db.prepare('SELECT id, push_subscription, push_preferences, last_active_date, created_at, push_last_sent_at, push_last_sent_type FROM users WHERE push_subscription IS NOT NULL'),
+  getAllPushUsers: db.prepare('SELECT id, push_subscription, push_preferences, last_active_date, created_at, push_last_sent_at, push_last_sent_type, timezone FROM users WHERE push_subscription IS NOT NULL'),
   getActiveMatchUsers: db.prepare(`
-    SELECT u.id, u.push_subscription, u.push_preferences, u.last_active_date, u.created_at, u.push_last_sent_at, u.push_last_sent_type, m.started_at, m.id as match_id
+    SELECT u.id, u.push_subscription, u.push_preferences, u.last_active_date, u.created_at, u.push_last_sent_at, u.push_last_sent_type, u.timezone, m.started_at, m.id as match_id
     FROM users u
     JOIN matches m ON (m.user1_id = u.id OR m.user2_id = u.id)
     WHERE u.push_subscription IS NOT NULL
@@ -1661,8 +1662,7 @@ function scanForSafety(text) {
   const piiFlags = [];
   let pii = CONTENT_FLAGS.some(kw => lower.includes(kw));
   if (pii) piiFlags.push('personal_identifier_keyword');
-  // Regex for +91-format phone numbers (10 digits, with or without spaces/dashes)
-  const phoneRegex = /(?:\+91[- ]?)?(?:[6-9][0-9]{9})|(?:[0-9]{3}[- ]?[0-9]{3}[- ]?[0-9]{4})/g;
+  const phoneRegex = /(?:\+\d{1,3}[- ]?)?\(?\d{2,4}\)?[- ]?\d{3,4}[- ]?\d{3,4}\b/g;
   if (phoneRegex.test(text)) { pii = true; piiFlags.push('phone_or_whatsapp'); }
 
   const emailRegex = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
