@@ -10,28 +10,6 @@ async function api(method, path, body) {
   return data;
 }
 
-// ── Ad-funnel tracking + pending scan (test-before-signup) ──
-const META_PIXEL_ID = ''; // TODO: set real Meta pixel ID before ad launch
-const PENDING_SCAN_KEY = 'mp_pending_scan';
-let mpTestStartedFired = false;
-function mpTrack(eventName, standard) {
-  try {
-    if (typeof fbq === 'function' && META_PIXEL_ID) fbq(standard ? 'track' : 'trackCustom', eventName);
-    else console.log('[track]', eventName);
-  } catch {}
-}
-function getPendingScan() {
-  try {
-    const p = JSON.parse(localStorage.getItem(PENDING_SCAN_KEY) || 'null');
-    if (p && p.archetype && p.scores && Array.isArray(p.answers) && p.answers.length === 11) return p;
-  } catch {}
-  return null;
-}
-function clearPendingScan() { try { localStorage.removeItem(PENDING_SCAN_KEY); } catch {} }
-function isTestEntry() {
-  return new URLSearchParams(window.location.search).get('src') === 'test' || window.location.hash === '#test';
-}
-
 let state = null;
 const defaultPushPreferences = {
   enabled: true,
@@ -1118,13 +1096,7 @@ function bindStaticUi() {
   }
   if (!loggedIn) {
     if (window.location.pathname.indexOf('/app') === 0) {
-      if (isTestEntry()) {
-        showAppShell();
-        if (getPendingScan()) { renderScanPartial(); go('s-scan-partial'); }
-        else { mpTrack('LandingPageView'); go('s-scan-intro'); }
-      } else {
-        startApp();
-      }
+      startApp();
     }
     consumeVerificationQueryNotice();
     return;
@@ -1392,14 +1364,15 @@ async function register() {
     showAppShell();
     toast(result.message || 'Account created. You can continue now.', 3600);
     setAuthStatus('register-status', 'Account created. Starting your scan...', 'success');
-    routeToScreen();
+    injectVerificationPendingNotice('s-scan-intro');
+    go('s-scan-intro');
   } catch (e) {
     await loadState().catch(() => {});
     if (state && state.user && !state.user.emailVerified) {
       showAppShell();
       toast('Account created. Verify your email when you get a chance.', 3600);
       setAuthStatus('register-status', 'Account created. Verify your email when you can.', 'success');
-      routeToScreen();
+      go('s-scan-intro');
       return;
     }
     setAuthStatus('register-status', e.message || 'Signup failed. Please try again.', 'error');
@@ -1445,18 +1418,9 @@ async function logout() {
 }
 
 function routeToScreen() {
-  if (state && state.user && archetypes[state.user.archetype]) clearPendingScan();
   const destination = getPostAuthDestination(state);
   if (destination.action === 'google-profile-basics') { renderGoogleProfileBasics(); go(destination.screen); return; }
-  if (destination.action === 'scan') {
-    if (getPendingScan()) {
-      completePendingScanAfterAuth().then(function(done) {
-        if (!done) { injectVerificationPendingNotice('s-scan-intro'); go('s-scan-intro'); }
-      });
-      return;
-    }
-    injectVerificationPendingNotice('s-scan-intro'); go(destination.screen); return;
-  }
+  if (destination.action === 'scan') { injectVerificationPendingNotice('s-scan-intro'); go(destination.screen); return; }
   if (destination.action === 'waiting') { renderWaiting(); go(destination.screen); return; }
   if (destination.action === 'reveal') {
     if (!handleRevealFlow()) { renderSealed(); go('s-sealed'); }
@@ -1634,7 +1598,6 @@ function renderScan() {
 }
 
 function pickScanSlider(val) {
-  if (!mpTestStartedFired) { mpTestStartedFired = true; mpTrack('TestStarted'); }
   scanAnswers[scanIndex] = parseInt(val);
   const labels = ['','Strongly disagree','Disagree','Slightly disagree','Neutral','Slightly agree','Agree','Strongly agree'];
   const lbl = document.getElementById('slider-label');
@@ -1679,13 +1642,6 @@ function calculateScoresLocal() {
 async function submitScan() {
   if (scanAnswers.some(v => v === null)) { toast('Please answer every scan question before continuing.'); return; }
   calculateScoresLocal();
-  mpTrack('TestCompleted');
-  if (!state || !state.user || !state.user.id) {
-    try { localStorage.setItem(PENDING_SCAN_KEY, JSON.stringify({ scores: localScores, archetype: localArchetype, answers: scanAnswers.slice(), ts: Date.now() })); } catch {}
-    renderScanPartial();
-    go('s-scan-partial');
-    return;
-  }
   try {
     const { matched } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype, answers: scanAnswers });
     await loadState();
@@ -1715,54 +1671,6 @@ function renderCosmicOrb(archKey) {
     <div class="cosmic-orb-body"></div>
     <div class="cosmic-orb-ring"><div class="orbit-dot"></div></div>
   </div>`;
-}
-
-const partialArchetypeCopy = {
-  protector:    { label: 'Protector',    line: 'You often create emotional safety by staying prepared, responsible, and in control.' },
-  connector:    { label: 'Connector',    line: 'You often create emotional safety through closeness, reassurance, and being genuinely known.' },
-  performer:    { label: 'Performer',    line: 'You often create emotional safety by staying capable, composed, and impressive, especially when it\'s hardest.' },
-  disconnector: { label: 'Disconnector', line: 'You often create emotional safety through distance, quiet, and time alone to come back to yourself.' }
-};
-
-function renderScanPartial() {
-  const pending = getPendingScan();
-  const archKey = (pending && pending.archetype) || localArchetype;
-  const info = partialArchetypeCopy[archKey] || partialArchetypeCopy.connector;
-  const el = document.getElementById('s-scan-partial');
-  if (!el) return;
-  el.innerHTML = `
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
-      <div class="moon-base" style="width:72px;height:72px;box-shadow:0 0 50px rgba(201,169,110,.55),0 0 100px rgba(201,169,110,.2);animation:float 5s ease-in-out infinite;margin-bottom:24px;"></div>
-      <h1 style="font-family:'Playfair Display',serif;font-size:30px;font-weight:400;line-height:1.15;margin-bottom:14px;">You may be a<br/><em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${info.label} 🌑</em></h1>
-      <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:26px;max-width:320px;">${info.line}</p>
-      <div class="scan-partial-locked">
-        <div class="scan-partial-lock-row"><span>🔒</span><span class="scan-lock-blur">Your strengths</span></div>
-        <div class="scan-partial-lock-row"><span>🔒</span><span class="scan-lock-blur">Your growth areas</span></div>
-        <div class="scan-partial-lock-row"><span>🔒</span><span class="scan-lock-blur">Your matching pattern</span></div>
-      </div>
-      <p style="font-family:'Playfair Display',serif;font-size:16px;color:var(--gold-l);margin:22px 0 14px;">Your full result is ready.</p>
-      <button class="btn" onclick="mpTrack('SignupStarted');startSignup()">Unlock my full result</button>
-      <p style="font-size:10px;color:var(--ink-s);margin-top:14px;">Free. Takes ten seconds.</p>
-      <p style="font-size:10px;color:var(--ink-s);margin-top:6px;font-style:italic;">This is a pattern, not a label. Patterns shift.</p>
-    </div>`;
-  mpTrack('ResultViewed');
-}
-
-async function completePendingScanAfterAuth() {
-  const pending = getPendingScan();
-  if (!pending) return false;
-  try {
-    const { matched } = await api('POST', '/scan', { scores: pending.scores, archetype: pending.archetype, answers: pending.answers });
-    clearPendingScan();
-    mpTrack('CompleteRegistration', true);
-    await loadState();
-    renderArchetypeReveal(matched);
-    go('s-archetype-reveal');
-    return true;
-  } catch (e) {
-    clearPendingScan();
-    return false;
-  }
 }
 
 function renderConstellationCorners() {
