@@ -2816,7 +2816,6 @@ registerAdminRoutes(app, {
   isEntryUnlocked,
   attachWaitingEntriesToMatch,
   findUserByIdentifier,
-  complementary,
   deleteUserDataTx,
   deleteMatchData,
   sendWaitlistAccepted,
@@ -2826,6 +2825,7 @@ registerAdminRoutes(app, {
 
 registerWaitlistRoutes(app, {
   apiLimiter,
+  authLimiter,
   db,
   requireAdmin,
   sendWaitlistConfirmation

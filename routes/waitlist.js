@@ -1,5 +1,5 @@
-function registerWaitlistRoutes(app, { db, requireAdmin }) {
-  app.get('/admin/waitlist', requireAdmin, (req, res) => {
+function registerWaitlistRoutes(app, { db, requireAdmin, authLimiter }) {
+  app.get('/admin/waitlist', authLimiter, requireAdmin, (req, res) => {
     try {
       const entries = db.prepare('SELECT * FROM waitlist ORDER BY created_at DESC').all();
       res.json(entries);

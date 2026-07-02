@@ -388,6 +388,9 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 .p-ey{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:.6;margin-bottom:4px}
 .p-name{font-family:'Playfair Display',serif;font-size:15px;font-style:italic;color:var(--ink)}
 .p-status{font-size:11px;color:var(--ink-s);margin-top:3px}
+.partner-waiting{opacity:.85}
+.waiting-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--rose-l,#c084fc);margin-right:6px;vertical-align:middle;animation:pulse-dot 2s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:.4}50%{opacity:1}}
 
 /* ── Past Entries ── */
 .past-header{padding:24px 24px 0}

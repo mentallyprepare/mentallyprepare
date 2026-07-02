@@ -2328,10 +2328,18 @@ function renderSealed() {
   const sealedCopy = ps.hasPartner
     ? (ps.unsealMessage || 'Nothing has to be solved right now.')
     : 'You showed up today. That matters.';
-  const partnerLine = ps.hasPartner
-    ? (ps.partnerHasWrittenToday ? "They wrote tonight." : "They haven't written yet. You can write first, they'll get it at midnight.")
-    : 'Waiting for match';
-  const nextLine = ps.nextUnsealAt ? ("Their next note unseals at " + formatUnsealAt(ps.nextUnsealAt)) : "Come back tomorrow for the next small step";
+  let partnerCardHtml = '';
+  if (!ps.hasPartner) {
+    partnerCardHtml = `<div class="partner-card"><div class="p-moon">🌑</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">Waiting for match</div></div></div>`;
+  } else if (ps.partnerHasWrittenToday && ps.nextUnsealAt) {
+    partnerCardHtml = `<div class="partner-card"><div class="p-moon">${matchArch.emoji}</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text">They wrote tonight. Their note unseals at ${formatUnsealAt(ps.nextUnsealAt)}</div></div></div>`;
+  } else if (ps.partnerHasWrittenToday) {
+    partnerCardHtml = `<div class="partner-card"><div class="p-moon">${matchArch.emoji}</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text">They wrote tonight.</div></div></div>`;
+  } else if (ps.status === 'never_wrote') {
+    partnerCardHtml = `<div class="partner-card partner-waiting"><div class="p-moon">${matchArch.emoji}</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text"><span class="waiting-dot"></span>Your partner hasn't started yet. Some people take a few days.</div></div></div>`;
+  } else {
+    partnerCardHtml = `<div class="partner-card partner-waiting"><div class="p-moon">${matchArch.emoji}</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text"><span class="waiting-dot"></span>They haven't written yet tonight. Your note is sealed — it'll be here when they show up.</div></div></div>`;
+  }
 
   document.getElementById('s-sealed').innerHTML = `
     <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day ${day} of 21</div></div>
@@ -2346,10 +2354,7 @@ function renderSealed() {
       <div class="sealed-txt">${escapeHtml(lastEntry.text)}</div>
       <div class="unseals">Partner notes open after midnight IST</div>
     </div>` : ''}
-    <div class="partner-card">
-      <div class="p-moon">${matchArch.emoji}</div>
-      <div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text">${escapeHtml(partnerLine)} · ${escapeHtml(nextLine)}</div></div>
-    </div>
+    ${partnerCardHtml}
     <div id="partner-status-module"></div>
     <div id="switch-banner-area"></div>
     <div style="height:40px;"></div>

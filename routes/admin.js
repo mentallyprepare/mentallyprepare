@@ -17,7 +17,6 @@ function registerAdminRoutes(app, deps) {
     isEntryUnlocked,
     attachWaitingEntriesToMatch,
     findUserByIdentifier,
-    complementary,
     deleteUserDataTx,
     deleteMatchData,
     sendWaitlistAccepted,
@@ -131,13 +130,6 @@ function registerAdminRoutes(app, deps) {
 
   app.get('/admin', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'admin.html'));
-  });
-
-  app.post('/admin/announce', authLimiter, requireAdmin, (req, res) => {
-    const { message } = req.body;
-    if (!message || !message.trim()) return res.status(400).json({ error: 'Message required' });
-    console.log('[ADMIN ANNOUNCEMENT]', message);
-    res.json({ ok: true });
   });
 
   app.get('/admin/reports', authLimiter, requireAdmin, (req, res) => {
@@ -582,9 +574,13 @@ function registerAdminRoutes(app, deps) {
       const user = findUserByIdentifier(req.body.user_id);
       if (!user) return res.status(404).json({ error: 'User not found' });
       deleteUserDataTx(user.id, 'admin_removed');
-      stmts.insertAnalyticsEvent.run(null, 'admin_remove_user', JSON.stringify({
-        target_anonymised_id: crypto.createHash('sha256').update(String(user.id)).digest('hex').slice(0, 16)
-      }));
+      try {
+        stmts.insertAnalyticsEvent.run(null, 'admin_remove_user', JSON.stringify({
+          target_anonymised_id: crypto.createHash('sha256').update(String(user.id)).digest('hex').slice(0, 16)
+        }));
+      } catch (e) {
+        console.warn('admin_remove_user analytics skipped:', e.message);
+      }
       res.json({ ok: true });
     } catch (e) {
       res.status(e.statusCode || 500).json({ error: e.message || 'Failed to remove user' });
