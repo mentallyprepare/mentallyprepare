@@ -1942,10 +1942,59 @@ function getISTDayIndex(value = new Date()) {
   return Math.floor((date.getTime() + IST_OFFSET_MS) / DAY_MS);
 }
 
-function getCurrentJourneyDayIST(startedAt, now = new Date(), { cap = true } = {}) {
+// ── Region timezone map & DST-safe helpers (i18n backend section 2a) ──
+// Anchor timezones for each region's midnight seal. Section 2a keeps every
+// caller on region='IN', so IN behavior is byte-identical to the previous
+// IST_OFFSET_MS arithmetic. AMERICAS and EUROPE become live once callsites
+// and the scheduler are wired in 2b and 2c.
+const REGION_TZ = {
+  IN: 'Asia/Kolkata',
+  AMERICAS: 'America/New_York',
+  EUROPE: 'Europe/Berlin'
+};
+
+function regionTz(region) {
+  return REGION_TZ[region] || REGION_TZ.IN;
+}
+
+// Days-since-epoch integer in the region's local calendar, DST-safe via Intl.
+function regionDayIndex(region, value = new Date()) {
+  const date = value instanceof Date ? value : parseDateAsUTC(value);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: regionTz(region),
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(date);
+  const y = +parts.find(p => p.type === 'year').value;
+  const m = +parts.find(p => p.type === 'month').value;
+  const d = +parts.find(p => p.type === 'day').value;
+  return Math.floor(Date.UTC(y, m - 1, d) / DAY_MS);
+}
+
+// UTC ms of the first instant of the next local day in the region. DST-safe.
+// Binary-searches the day-index transition; for IN the result equals the old
+// arithmetic (dayIdx+1)*DAY_MS - IST_OFFSET_MS byte-for-byte.
+function regionNextMidnightMs(region, now = new Date()) {
+  const startMs = (now instanceof Date ? now : parseDateAsUTC(now)).getTime();
+  const startIdx = regionDayIndex(region, new Date(startMs));
+  let lo = startMs;
+  let hi = startMs + 48 * 60 * 60 * 1000;
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (regionDayIndex(region, new Date(mid)) > startIdx) hi = mid;
+    else lo = mid;
+  }
+  return hi;
+}
+
+// Uncapped 1-based journey day in the region. Callers apply their own cap.
+function getCurrentJourneyDay(startedAt, region = 'IN', now = new Date()) {
   const started = parseDateAsUTC(startedAt);
   if (Number.isNaN(started.getTime())) return 1;
-  const day = Math.max(getISTDayIndex(now) - getISTDayIndex(started) + 1, 1);
+  return Math.max(regionDayIndex(region, now) - regionDayIndex(region, started) + 1, 1);
+}
+
+function getCurrentJourneyDayIST(startedAt, now = new Date(), { cap = true } = {}) {
+  const day = getCurrentJourneyDay(startedAt, 'IN', now);
   return cap ? Math.min(day, 21) : day;
 }
 
@@ -1954,9 +2003,7 @@ function getMatchDay(startedAt) {
 }
 
 function getNextUnsealAtIST(now = new Date()) {
-  const date = now instanceof Date ? now : parseDateAsUTC(now);
-  const nextIstMidnightUtcMs = (getISTDayIndex(date) + 1) * DAY_MS - IST_OFFSET_MS;
-  return new Date(nextIstMidnightUtcMs).toISOString();
+  return new Date(regionNextMidnightMs('IN', now)).toISOString();
 }
 
 function isEntryUnlocked(entry, match, now = new Date()) {
