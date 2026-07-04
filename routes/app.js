@@ -398,7 +398,9 @@ function registerAppRoutes(app, deps) {
         profilePhoto: rawUser.profile_photo || null,
         authProvider: rawUser.auth_provider || 'password',
         pushPreferences: parsePushPreferences(rawUser.push_preferences),
-        pushSubscribed: !!rawUser.push_subscription
+        pushSubscribed: !!rawUser.push_subscription,
+        region: rawUser.region || 'IN',
+        timezone: rawUser.timezone || null
       };
 
       const match = stmts.getMatch.get(userId, userId);
