@@ -61,7 +61,7 @@ function normalizeState(data) {
     status: data.match ? 'unknown' : 'waiting',
     friendlyTitle: data.match ? 'Your anonymous partner' : 'We are still looking for the right anonymous match.',
     friendlyMessage: data.match ? 'You can keep writing while the room settles.' : 'You can write tonight while we search.',
-    unsealMessage: 'Notes open after midnight IST.',
+    unsealMessage: 'Notes open after midnight.',
     switchesRemaining: 0
   };
   if (data.match) {
@@ -2220,7 +2220,7 @@ function renderJournal() {
     </div>
     <div id="daily-note-container"></div>
     ${renderPromptChooser()}
-    <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until midnight IST</div></div>
+    <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until midnight</div></div>
     <div class="prompt-block reveal-on-scroll">
       <div class="eyebrow">${state.specialDay ? '✦ ' + state.specialDay.title : 'Tonight\'s small step'}</div>
       <div class="prompt-text">${escapeHtml(prompt)}</div>
@@ -2405,9 +2405,9 @@ function startCountdown() {
 }
 
 function formatUnsealAt(value) {
-  if (!value) return 'midnight IST';
+  if (!value) return 'midnight';
   const date = new Date(value);
-  if (isNaN(date.getTime())) return 'midnight IST';
+  if (isNaN(date.getTime())) return 'midnight';
   return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' }) + ' IST';
 }
 
@@ -2444,7 +2444,7 @@ function renderSealed() {
     ${lastEntry ? `<div class="sealed-card">
       <div class="sealed-card-top"><div class="sealed-card-lbl">Your entry · Day ${lastEntry.day} · ${lastEntry.mood}</div><div class="sealed-card-badge">🔒 sealed</div></div>
       <div class="sealed-txt">${escapeHtml(lastEntry.text)}</div>
-      <div class="unseals">Partner notes open after midnight IST</div>
+      <div class="unseals">Partner notes open after midnight</div>
     </div>` : ''}
     ${partnerCardHtml}
     <div id="partner-status-module"></div>
@@ -2672,7 +2672,7 @@ function renderProfile() {
         <div style="flex:1;">
           <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:.6;margin-bottom:4px;">${matchArch.name}</div>
           <div style="font-family:'Playfair Display',serif;font-size:16px;font-style:italic;color:var(--ink);margin-bottom:3px;">Anonymous</div>
-          <div style="font-size:11px;color:var(--ink-s);">Different college · Writes every night</div>
+          <div style="font-size:11px;color:var(--ink-s);">Outside your circle · Writes every night</div>
         </div>
         <div style="font-size:16px;color:var(--ink-s);">›</div>
       </button>
@@ -2861,7 +2861,7 @@ function partnerStatusHtml(ps, compact) {
   const meta = ps.hasPartner ? (totalCount === 0 ? 'Your first notes open after midnight' : `${visibleCount} of ${totalCount} note${totalCount === 1 ? '' : 's'} unsealed`) : 'waiting room';
   const activity = ps.activityLabel ? `<span>${escapeHtml(ps.activityLabel)}</span>` : '';
   const wroteToday = ps.hasPartner ? `<span>${ps.partnerHasWrittenToday ? 'They wrote tonight.' : "They haven't written yet. You can write first, they'll get it at midnight."}</span>` : '';
-  const nextOpen = ps.nextUnsealAt ? `<span>Their next note unseals at ${escapeHtml(formatUnsealAt(ps.nextUnsealAt))}</span>` : '<span>Unseals after midnight IST</span>';
+  const nextOpen = ps.nextUnsealAt ? `<span>Their next note unseals at ${escapeHtml(formatUnsealAt(ps.nextUnsealAt))}</span>` : '<span>Unseals after midnight</span>';
   const reminderAction = ps.canRemindPartner ? '<button class="prompt-small-btn ghost" type="button" data-send-reminder>Send gentle reminder</button>' : '';
   const rescueActions = Array.isArray(ps.rescueActions) && ps.rescueActions.length ? `
     <div class="partner-rescue-actions" aria-label="Partner rescue options">
@@ -3192,7 +3192,7 @@ function renderAbout() {
       <div class="sec-ey">Why it works</div>
       <div class="about-card"><div class="about-card-h"><div class="about-card-ico">🌒</div><div class="about-card-title">Opposite types, on purpose</div></div><div class="about-card-p">You're matched with someone who connects differently. That tension is the growth.</div></div>
       <div class="about-card"><div class="about-card-h"><div class="about-card-ico">🔒</div><div class="about-card-title">Anonymous until Day 21</div></div><div class="about-card-p">No profile pictures. No names. Just words — raw, honest, and unfiltered.</div></div>
-      <div class="about-card"><div class="about-card-h"><div class="about-card-ico">🌙</div><div class="about-card-title">Midnight ritual</div></div><div class="about-card-p">Partner notes open after midnight IST. The ritual creates intimacy without same-night pressure.</div></div>
+      <div class="about-card"><div class="about-card-h"><div class="about-card-ico">🌙</div><div class="about-card-title">Midnight ritual</div></div><div class="about-card-p">Partner notes open after midnight. The ritual creates intimacy without same-night pressure.</div></div>
       <div class="about-card"><div class="about-card-h"><div class="about-card-ico">✦</div><div class="about-card-title">Consent-based reveal</div></div><div class="about-card-p">Both must say yes to reveal. One no keeps it anonymous forever. Zero rejection risk.</div></div>
     </div>
     <div class="builder-card"><div class="builder-avatar">✦</div><div><div class="builder-name">Built by Anushka Kumar</div><div class="builder-sub">HP Dreams Unlocked Top 40 · HPAIR Harvard Delegate · IIT Kharagpur</div></div></div>
@@ -3385,7 +3385,7 @@ function showEntryDetail(idx) {
                }
              </div>
              <button class="report-btn" id="entryReportBtn" type="button">⚑ Report this entry</button>`
-          : `<div class="edc-partner-text" style="filter:blur(4px);user-select:none;">Nothing has opened yet.</div><div class="edc-partner-note">${escapeHtml((state.partnerStatus && state.partnerStatus.unsealMessage) || 'Your partner’s note will appear here after midnight IST if they wrote today.')}</div>`
+          : `<div class="edc-partner-text" style="filter:blur(4px);user-select:none;">Nothing has opened yet.</div><div class="edc-partner-note">${escapeHtml((state.partnerStatus && state.partnerStatus.unsealMessage) || 'Your partner’s note will appear here after midnight if they wrote today.')}</div>`
         }
       </div>
     </div>`;
