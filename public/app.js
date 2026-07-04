@@ -246,6 +246,7 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
       const storedHints = redirectContext && redirectContext.hints ? redirectContext.hints : {};
       const hints = Object.assign({}, storedHints, getSignupGoogleProfileHints());
       authDebug('ID token sent to backend');
+      const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
       await api('POST', '/auth/firebase/google', {
         idToken,
         displayName: firebaseUser.displayName || '',
@@ -253,7 +254,8 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
         photoURL: firebaseUser.photoURL || '',
         name: hints.name || '',
         college: hints.college,
-        year: hints.year
+        year: hints.year,
+        timezone
       });
       authDebug('Backend login success');
       const loggedIn = await loadState();
@@ -1386,7 +1388,8 @@ async function register() {
   try {
     setAuthStatus('register-status', 'Creating your private room...', 'loading');
     setButtonLoading('registerSubmitBtn', true, 'Creating account...');
-    const result = await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven, ageConfirmed: ageChecked });
+    const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
+    const result = await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven, ageConfirmed: ageChecked, timezone });
     await loadState();
     // Make sure app area is visible
     showAppShell();

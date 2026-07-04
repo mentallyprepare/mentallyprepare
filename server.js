@@ -719,6 +719,7 @@ ensureColumn('reports', 'entry_day', 'INTEGER');
 ensureColumn('reports', 'category', "TEXT DEFAULT 'entry'");
 ensureColumn('reports', 'status', "TEXT DEFAULT 'open'");
 ensureColumn('users', 'timezone', 'TEXT');
+ensureColumn('users', 'region', "TEXT NOT NULL DEFAULT 'IN'");
 
 db.prepare(`
   CREATE TABLE IF NOT EXISTS report_status_history (
@@ -1034,9 +1035,10 @@ const stmts = {
       name, email, password, college, college_normalized, year, gender,
       match_gender_pref, match_year_pref, consent_given, consent_date,
       consent_age_confirmed, consent_policy_version, email_verified,
-      email_verification_token, email_verification_sent_at, last_active_date
+      email_verification_token, email_verification_sent_at, last_active_date,
+      region, timezone
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `),
   updateUserScan: db.prepare('UPDATE users SET archetype = ?, scores = ? WHERE id = ?'),
   updateUserActivity: db.prepare('UPDATE users SET last_active_date = ? WHERE id = ?'),
@@ -1100,9 +1102,9 @@ const stmts = {
       match_gender_pref, match_year_pref, consent_given, consent_date,
       consent_age_confirmed, consent_policy_version, email_verified,
       email_verified_at, last_active_date, firebase_uid, profile_photo,
-      auth_provider, last_login_at
+      auth_provider, last_login_at, region, timezone
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `),
   updateLoginEmailTime: db.prepare('UPDATE users SET login_email_sent_at = ? WHERE id = ?'),
   deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),

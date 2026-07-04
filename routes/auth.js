@@ -23,6 +23,21 @@ function clean(value) {
   return String(value || '').trim().replace(/\s+/g, ' ');
 }
 
+function sanitizeTimezone(tz) {
+  const s = String(tz || '').trim();
+  if (!s || s.length > 64) return null;
+  if (!/^[A-Za-z_]+\/[A-Za-z_0-9+/-]+$/.test(s)) return null;
+  return s;
+}
+
+function deriveRegion(timezone) {
+  const tz = sanitizeTimezone(timezone);
+  if (!tz) return 'IN';
+  if (tz.startsWith('America/')) return 'AMERICAS';
+  if (tz.startsWith('Europe/')) return 'EUROPE';
+  return 'IN';
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -246,6 +261,8 @@ function registerAuthRoutes(app, deps) {
         const college = safeGoogleProfile(req.body.college) || 'Not provided';
         const year = YEARS.has(clean(req.body.year)) ? clean(req.body.year) : '3rd';
         const passwordHash = await bcrypt.hash(googlePlaceholderPassword({ uid: firebaseUid, email, crypto }), 12);
+        const timezone = sanitizeTimezone((req.body && req.body.timezone) || req.headers['x-timezone']);
+        const region = deriveRegion(timezone);
         const result = stmts.insertFirebaseUser.run(
           displayName || 'Google user',
           email,
@@ -266,7 +283,9 @@ function registerAuthRoutes(app, deps) {
           firebaseUid,
           photoUrl || null,
           GOOGLE_PROVIDER,
-          now
+          now,
+          region,
+          timezone
         );
         user = stmts.getUserById.get(Number(result.lastInsertRowid));
         created = true;
@@ -309,6 +328,8 @@ function registerAuthRoutes(app, deps) {
       const hash = await bcrypt.hash(values.password, 12);
       const now = new Date().toISOString();
       const token = crypto.randomBytes(32).toString('hex');
+      const timezone = sanitizeTimezone((req.body && req.body.timezone) || req.headers['x-timezone']);
+      const region = deriveRegion(timezone);
       logVerification('Verification token created', { email: values.email });
       const result = stmts.insertUser.run(
         values.name,
@@ -327,7 +348,9 @@ function registerAuthRoutes(app, deps) {
         0,
         token,
         now,
-        now
+        now,
+        region,
+        timezone
       );
 
       const newUserId = Number(result.lastInsertRowid);
