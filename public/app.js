@@ -2137,9 +2137,13 @@ function goToJournal() {
     renderTodayFromState();
     loadState().then((ok) => {
       const active = document.querySelector('.screen.active');
-      if (ok && state && state.match && active && (active.id === 's-journal' || active.id === 's-sealed')) {
-        renderTodayFromState();
-      }
+      if (!ok || !state || !state.match || !active) return;
+      if (active.id !== 's-journal' && active.id !== 's-sealed') return;
+      // Never clobber unsaved typing — re-render resets the textarea to the
+      // last manually saved draft.
+      const area = document.getElementById('journal-draft');
+      if (area && area.value.trim() !== (sessionStorage.getItem('mp-draft') || '').trim()) return;
+      renderTodayFromState();
     });
     return;
   }
