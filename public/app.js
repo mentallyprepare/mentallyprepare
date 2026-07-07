@@ -2125,13 +2125,28 @@ async function devSetup() {
 // ═══════════════════════════════════════
 // JOURNAL
 // ═══════════════════════════════════════
+function renderTodayFromState() {
+  const todayDone = state.entries.find(e => e.day === state.match.day);
+  if (todayDone) { renderSealed(); go('s-sealed'); }
+  else { renderJournal(); go('s-journal'); }
+}
+
 function goToJournal() {
+  // Render immediately from in-memory state; refresh in the background.
+  if (state && state.match) {
+    renderTodayFromState();
+    loadState().then((ok) => {
+      const active = document.querySelector('.screen.active');
+      if (ok && state && state.match && active && (active.id === 's-journal' || active.id === 's-sealed')) {
+        renderTodayFromState();
+      }
+    });
+    return;
+  }
   loadState().then((ok) => {
     if (!ok || !state) { go('s-splash'); return; }
     if (!state.match) { renderWaiting(); go('s-waiting'); return; }
-    const todayDone = state.entries.find(e => e.day === state.match.day);
-    if (todayDone) { renderSealed(); go('s-sealed'); }
-    else { renderJournal(); go('s-journal'); }
+    renderTodayFromState();
   });
 }
 
