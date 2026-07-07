@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'blank-space-fix-20260617';
+const CACHE_NAME = 'mp-20260707';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',
@@ -45,14 +45,14 @@ self.addEventListener('fetch', event => {
   // API calls — network only
   if (url.pathname.startsWith('/api/')) return;
 
-  // App shell and code must always come from the network. Old cached JS kept
-  // showing the removed partner-switch failure copy for returning users.
+  // HTML shells and the SW itself must always be fresh. Versioned js/css
+  // (?v=) are immutable and safe to serve from the HTTP cache — the old
+  // stale-JS bug is now prevented by bumping ?v= on deploy, not by no-store.
   if (
     request.mode === 'navigate' ||
     url.pathname.endsWith('.html') ||
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css') ||
-    url.pathname === '/app'
+    url.pathname === '/app' ||
+    url.pathname === '/sw.js'
   ) {
     event.respondWith(fetch(request, { cache: 'no-store' }));
     return;

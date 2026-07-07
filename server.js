@@ -188,6 +188,7 @@ const bcrypt = require('bcryptjs');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const helmet = require('helmet');
+const compression = require('compression');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const admin = require('firebase-admin');
@@ -1467,8 +1468,17 @@ function setStaticCacheHeaders(res, filePath) {
     res.setHeader('Cache-Control', 'no-store');
     return;
   }
+  // Versioned assets (?v=...) are immutable — cache-bust by bumping the query
+  // string in app.html on any deploy that changes app.js/app.css.
+  const url = (res.req && (res.req.originalUrl || res.req.url)) || '';
+  if (/[?&]v=/.test(url) && /\.(js|css)$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return;
+  }
   res.setHeader('Cache-Control', 'public, max-age=3600');
 }
+
+app.use(compression());
 
 // --- HTTPS redirect (production) — BEFORE static files ---
 if (IS_PROD) {
