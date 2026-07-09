@@ -1579,6 +1579,21 @@ const authLimiter = rateLimit({
   validate: { xForwardedForHeader: false }
 });
 
+// The admin dashboard fires ~19 API calls per load; counting successful
+// authenticated requests locked the founder out with 429s. This limiter
+// only counts FAILED requests (401/403 from requireAdmin), so a wrong-key
+// attacker still gets 20 attempts / 15 min / IP while correct-key dashboard
+// traffic is unthrottled.
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  skipSuccessfulRequests: true,
+  message: { error: 'Too many attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false }
+});
+
 registerAuthRoutes(app, {
   authLimiter,
   bcrypt,
@@ -2867,7 +2882,7 @@ registerAdminRoutes(app, {
   stmts,
   requireAdmin,
   getBufferedLogs,
-  authLimiter,
+  authLimiter: adminLimiter,
   getAdminStats,
   getMatchDay,
   getCurrentJourneyDayIST,
@@ -2884,7 +2899,7 @@ registerAdminRoutes(app, {
 
 registerWaitlistRoutes(app, {
   apiLimiter,
-  authLimiter,
+  authLimiter: adminLimiter,
   db,
   requireAdmin,
   sendWaitlistConfirmation
