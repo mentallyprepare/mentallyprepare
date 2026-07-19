@@ -1,5 +1,14 @@
 const rateLimit = require('express-rate-limit');
 const nodeCrypto = require('crypto');
+const tokens = require('../lib/tokens');
+
+// Native clients authenticate with bearer tokens. Attached to every successful
+// auth response as `auth: { accessToken, refreshToken, expiresIn }`. The web
+// client ignores the field and keeps using its cookie session.
+function authTokens(userId) {
+  const pair = tokens.issueTokenPair(userId);
+  return pair ? { auth: pair } : {};
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const YEARS = new Set(['1st', '2nd', '3rd', '4th', '5th', '5th+']);
@@ -306,7 +315,7 @@ function registerAuthRoutes(app, deps) {
         email,
         provider: GOOGLE_PROVIDER
       });
-      res.json({ ok: true, created, userId: user.id });
+      res.json({ ok: true, created, userId: user.id, ...authTokens(user.id) });
     } catch (e) {
       console.error('Firebase Google login error:', e);
       res.status(401).json({ error: 'Google login failed. Please try again.' });
@@ -371,10 +380,11 @@ function registerAuthRoutes(app, deps) {
           ok: true,
           emailVerificationRequired: true,
           emailDeliveryFailed: true,
-          message: 'We could not send the email. Please try again. You can continue while verification is pending.'
+          message: 'We could not send the email. Please try again. You can continue while verification is pending.',
+          ...authTokens(newUserId)
         });
       }
-      res.json({ ok: true, emailVerificationRequired: true, message: 'Account created. Please verify your email when it arrives. You can continue now.' });
+      res.json({ ok: true, emailVerificationRequired: true, message: 'Account created. Please verify your email when it arrives. You can continue now.', ...authTokens(newUserId) });
     } catch (e) {
       console.error('Register error:', e);
       res.status(500).json({ error: 'Registration failed' });
@@ -482,7 +492,7 @@ function registerAuthRoutes(app, deps) {
       const signupDate = new Date(user.created_at || Date.now());
       const reference = isNaN(signupDate.getTime()) ? Date.now() : signupDate.getTime();
       const dayNumber = Math.min(Math.max(Math.floor((Date.now() - reference) / (1000 * 60 * 60 * 24)) + 1, 1), 21);
-      res.json({ ok: true, emailVerificationRequired: !user.email_verified });
+      res.json({ ok: true, emailVerificationRequired: !user.email_verified, ...authTokens(user.id) });
 
       const lastSent = user.login_email_sent_at ? new Date(user.login_email_sent_at).getTime() : 0;
       if (user.email_verified && Date.now() - lastSent > 24 * 60 * 60 * 1000 && sendLoginWelcome) {
@@ -498,6 +508,26 @@ function registerAuthRoutes(app, deps) {
 
   app.post('/api/logout', (req, res) => {
     req.session.destroy(() => res.json({ ok: true }));
+  });
+
+  // Native clients swap a refresh token for a fresh pair. Access tokens are
+  // deliberately short-lived relative to refresh, so a leaked access token
+  // ages out on its own.
+  app.post('/api/auth/token/refresh', authLimiter, (req, res) => {
+    const provided = (req.body && req.body.refreshToken) || tokens.bearerFromRequest(req);
+    const result = tokens.verifyToken(provided, { type: 'refresh' });
+    if (!result.valid) {
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+    // Same rule as requireAuth: re-check the account every time, so deletion
+    // and suspension revoke immediately rather than at token expiry.
+    const user = stmts.getUserById.get(result.payload.sub);
+    if (!user || user.account_status === 'deleted') {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    const pair = tokens.issueTokenPair(user.id);
+    if (!pair) return res.status(503).json({ error: 'Token signing unavailable' });
+    res.json({ ok: true, auth: pair });
   });
 
   app.post('/api/forgot-password', passwordResetLimiter, async (req, res) => {

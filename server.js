@@ -192,6 +192,8 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const admin = require('firebase-admin');
 
+const tokens = require('./lib/tokens');
+
 const { registerStaticRoutes } = require('./routes/static');
 const { registerWaitlistRoutes } = require('./routes/waitlist');
 const { registerAdminRoutes } = require('./routes/admin');
@@ -1684,11 +1686,44 @@ if (sessionStore) {
 
 app.use(session(sessionConfig));
 
+// Mobile bearer tokens share the session secret, so rotating one rotates both.
+tokens.configure(sessionConfig.secret);
+
 function requireAuth(req, res, next) {
-  if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
-  const user = stmts.getUserById.get(req.session.userId);
+  let userId = req.session && req.session.userId;
+
+  // Native clients cannot ride browser cookies, so they send
+  // `Authorization: Bearer <token>` instead. Web is untouched: this path only
+  // runs when there is no cookie session.
+  if (!userId) {
+    const bearer = tokens.bearerFromRequest(req);
+    if (bearer) {
+      const result = tokens.verifyToken(bearer, { type: 'access' });
+      if (result.valid) {
+        userId = result.payload.sub;
+        // Publish it where the existing read-sites expect it, but
+        // non-enumerably: express-session serialises via JSON.stringify, which
+        // skips non-enumerable props, so this never persists a cookie session
+        // for a mobile client.
+        if (req.session) {
+          Object.defineProperty(req.session, 'userId', {
+            value: userId,
+            enumerable: false,
+            configurable: true,
+            writable: true
+          });
+        }
+      }
+    }
+  }
+
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+  // Re-load every request: a stolen token stops working the moment the account
+  // is deleted or suspended. The signature being stateless is not enough.
+  const user = stmts.getUserById.get(userId);
   if (!user || user.account_status === 'deleted') {
-    if (req.session) req.session.destroy(() => {});
+    if (req.session && typeof req.session.destroy === 'function') req.session.destroy(() => {});
     return res.status(401).json({ error: 'Not authenticated' });
   }
   next();
