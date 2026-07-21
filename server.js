@@ -1368,6 +1368,35 @@ function isFirebaseAuthHelperPath(req) {
   return req.path.startsWith('/__/auth/') || req.path === '/__/firebase/init.json';
 }
 
+const MOBILE_WEB_ORIGINS = new Set(
+  (process.env.MOBILE_WEB_ORIGINS || 'https://mobile.opsh.io')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+);
+
+// The Expo web build is hosted separately from the API. Allow only its
+// configured origins to make credentialed API calls and answer preflights
+// before the request reaches the route handlers.
+app.use('/api', (req, res, next) => {
+  const origin = String(req.headers.origin || '').replace(/\/$/, '');
+  if (!origin) return next();
+
+  const requestOrigin = `${req.protocol}://${req.get('host')}`.replace(/\/$/, '');
+  if (origin === requestOrigin) return next();
+  if (!MOBILE_WEB_ORIGINS.has(origin)) {
+    return res.status(403).json({ error: 'Origin not allowed' });
+  }
+
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Vary', 'Origin');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  return next();
+});
+
 const appSecurityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
@@ -1544,7 +1573,10 @@ const sessionConfig = {
   cookie: {
     secure: IS_PROD,
     httpOnly: true,
-    sameSite: 'strict',
+    // The production Expo web app is on mobile.opsh.io, so its session cookie
+    // must be permitted on cross-site API requests. CORS above restricts which
+    // browser origins can read credentialed responses.
+    sameSite: IS_PROD ? 'none' : 'lax',
     maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
   }
 };
