@@ -193,6 +193,7 @@ const rateLimit = require('express-rate-limit');
 const admin = require('firebase-admin');
 
 const tokens = require('./lib/tokens');
+const registerShelfRoutes = require('./routes/shelf');
 
 const { registerStaticRoutes } = require('./routes/static');
 const { registerWaitlistRoutes } = require('./routes/waitlist');
@@ -882,6 +883,25 @@ if (process.env.ROOMS_ENABLED === 'true') {
     seedRoom.run('lonely', 'Loneliness', 'feeling alone, even with people around');
   }
 }
+
+// The Shelf. Per user, at most one row per kind. Unconditional (unlike Rooms/
+// Wall which gate on env flags) — the mobile app depends on it.
+// See mentally-prepare-mobile/docs/proposal-shelf-contract.md.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS shelf_items (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind        TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    detail      TEXT,
+    external_id TEXT,
+    artwork_url TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (user_id, kind)
+  );
+  CREATE INDEX IF NOT EXISTS idx_shelf_user ON shelf_items(user_id);
+`);
 
 const SERVER_START_MS = Date.now();
 const APP_VERSION = '1.2.3';
@@ -2393,6 +2413,18 @@ registerAppRoutes(app, {
   IS_PROD,
   sendMatchFoundNotification
 });
+// Register the shelf
+registerShelfRoutes(app, {
+  apiLimiter,
+  requireAuth,
+  stmts,
+  db,
+  scanForSafety,
+  getMatch: stmts.getMatch,
+  getMatchDay,
+  getPartnerId,
+});
+
 // Register waiting-entry route
 registerWaitingEntryRoute(app, {
   apiLimiter,
