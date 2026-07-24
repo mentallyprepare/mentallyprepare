@@ -1396,6 +1396,16 @@ const MOBILE_WEB_ORIGINS = new Set(
     .filter(Boolean)
 );
 
+// Expo Web runs on one of these local origins during development. They are
+// loopback-only and safe to allow alongside the configured hosted client;
+// without them the browser blocks the API preflight before /api/login runs.
+for (const origin of [
+  'http://localhost:8081',
+  'http://localhost:19006',
+  'http://127.0.0.1:8081',
+  'http://127.0.0.1:19006'
+]) MOBILE_WEB_ORIGINS.add(origin);
+
 // The Expo web build is hosted separately from the API. Allow only its
 // configured origins to make credentialed API calls and answer preflights
 // before the request reaches the route handlers.
