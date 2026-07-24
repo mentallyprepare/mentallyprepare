@@ -3280,6 +3280,11 @@ function navigateAppTab(tab) {
     return;
   }
   if (tab === 'profile') {
+    // Guard before navigating: renderProfile() bails early without a user and
+    // redirects to the scan when there's no archetype. An unconditional
+    // go('s-profile') here overrode that redirect and showed a blank screen.
+    if (!state || !state.user) { go('s-splash'); return; }
+    if (!state.user.archetype) { injectVerificationPendingNotice('s-scan-intro'); go('s-scan-intro'); return; }
     renderProfile();
     go('s-profile');
   }
