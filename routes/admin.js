@@ -14,6 +14,9 @@ function registerAdminRoutes(app, deps) {
     getMatchDay,
     getCurrentJourneyDayIST,
     getNextUnsealAtIST,
+    getCurrentJourneyDay,
+    getNextUnsealAt,
+    getMatchRegion,
     isEntryUnlocked,
     attachWaitingEntriesToMatch,
     findUserByIdentifier,
@@ -344,7 +347,8 @@ function registerAdminRoutes(app, deps) {
         const user1Entries = db.prepare('SELECT day, created_at FROM entries WHERE user_id = ? AND match_id = ? ORDER BY day DESC').all(match.user1_id, match.id);
         const user2Entries = db.prepare('SELECT day, created_at FROM entries WHERE user_id = ? AND match_id = ? ORDER BY day DESC').all(match.user2_id, match.id);
         const currentDay = getMatchDay(match.started_at);
-        const unlockedDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
+        const matchRegion = getMatchRegion(match);
+        const unlockedDay = getCurrentJourneyDay(match.started_at, matchRegion);
         const user1Visible = user2Entries.filter(e => isEntryUnlocked(e, match)).length;
         const user2Visible = user1Entries.filter(e => isEntryUnlocked(e, match)).length;
         return {
@@ -360,10 +364,11 @@ function registerAdminRoutes(app, deps) {
           user2WroteToday: user2Entries.some(e => Number(e.day) === Number(currentDay)),
           entriesVisibleToUser1: user1Visible,
           entriesVisibleToUser2: user2Visible,
-          nextUnsealAt: getNextUnsealAtIST()
+          region: matchRegion,
+          nextUnsealAt: getNextUnsealAt(matchRegion)
         };
       });
-      res.json({ ok: true, generatedAt: new Date().toISOString(), timezone: 'Asia/Kolkata', matches: rows });
+      res.json({ ok: true, generatedAt: new Date().toISOString(), matches: rows });
     } catch (e) {
       console.error('Match debug admin error:', e);
       res.status(500).json({ error: 'Failed to load match debug data' });

@@ -10,6 +10,9 @@ function registerAppRoutes(app, deps) {
     getMatchDay,
     getCurrentJourneyDayIST,
     getNextUnsealAtIST,
+    getCurrentJourneyDay,
+    getNextUnsealAt,
+    getMatchRegion,
     isEntryUnlocked,
     prompts,
     getAdaptivePrompt,
@@ -272,7 +275,7 @@ function registerAppRoutes(app, deps) {
     const canSwitch = canSwitchByQuiet && switchesRemaining > 0;
     const waitingForPartner = !!myTodayEntry && !todayPartnerEntry;
     const nextUnsealAt = todayPartnerEntry && !isEntryUnlocked(todayPartnerEntry, match)
-      ? getNextUnsealAtIST()
+      ? getNextUnsealAt(getMatchRegion(match))
       : null;
 
     let status = 'active';
@@ -428,7 +431,7 @@ function registerAppRoutes(app, deps) {
       if (match) {
         const partnerId = getPartnerId(match, userId);
         const day = getMatchDay(match.started_at);
-        const unlockedJourneyDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
+        const unlockedJourneyDay = getCurrentJourneyDay(match.started_at, getMatchRegion(match));
         const partner = parseUser(stmts.getUserById.get(partnerId));
 
         // Get special day info
@@ -744,7 +747,7 @@ function registerAppRoutes(app, deps) {
       if (!partner) return res.json(buildPartnerWritingStatus({ userId, partnerId: null, match: null, currentDay: 1, visiblePartnerEntries: [], switchCount: user ? user.switch_count : 0 }));
 
       const currentDay = getMatchDay(match.started_at);
-      const unlockedJourneyDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
+      const unlockedJourneyDay = getCurrentJourneyDay(match.started_at, getMatchRegion(match));
       const visiblePartnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, unlockedJourneyDay)
         .filter((e) => isEntryUnlocked(e, match))
         .map((e) => ({ day: e.day, created_at: e.created_at }));
@@ -885,7 +888,7 @@ function registerAppRoutes(app, deps) {
       const match = stmts.getMatch.get(userId, userId);
       if (!match) return res.status(400).json({ error: 'No match found' });
 
-      const currentDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
+      const currentDay = getCurrentJourneyDay(match.started_at, getMatchRegion(match));
       if (day >= currentDay) return res.status(400).json({ error: 'That entry is still sealed' });
 
       const partnerId = getPartnerId(match, userId);
@@ -1004,7 +1007,7 @@ function registerAppRoutes(app, deps) {
       const match = stmts.getMatch.get(userId, userId);
       if (!match) return res.status(400).json({ error: 'No match found' });
 
-      const currentDay = getCurrentJourneyDayIST(match.started_at, new Date(), { cap: false });
+      const currentDay = getCurrentJourneyDay(match.started_at, getMatchRegion(match));
       if (day >= currentDay) return res.status(400).json({ error: 'That entry is still sealed' });
 
       const partnerId = getPartnerId(match, userId);

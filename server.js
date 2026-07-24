@@ -2211,9 +2211,25 @@ function getNextUnsealAtIST(now = new Date()) {
   return new Date(regionNextMidnightMs('IN', now)).toISOString();
 }
 
+// Both partners in a match always share a region (matching is region-pooled),
+// so user1's region is the match's seal anchor. Defaults to IN for legacy rows.
+function getMatchRegion(match) {
+  if (!match) return 'IN';
+  try {
+    const u = stmts.getUserById.get(match.user1_id);
+    return (u && u.region) || 'IN';
+  } catch {
+    return 'IN';
+  }
+}
+
+function getNextUnsealAt(region = 'IN', now = new Date()) {
+  return new Date(regionNextMidnightMs(region, now)).toISOString();
+}
+
 function isEntryUnlocked(entry, match, now = new Date()) {
   if (!entry || !match) return false;
-  const unlockedJourneyDay = getCurrentJourneyDayIST(match.started_at, now, { cap: false });
+  const unlockedJourneyDay = getCurrentJourneyDay(match.started_at, getMatchRegion(match), now);
   return Number(entry.day) < unlockedJourneyDay;
 }
 
@@ -2395,6 +2411,9 @@ registerAppRoutes(app, {
   getISTDate,
   getCurrentJourneyDayIST,
   getNextUnsealAtIST,
+  getCurrentJourneyDay,
+  getNextUnsealAt,
+  getMatchRegion,
   isEntryUnlocked,
   prompts,
   getAdaptivePrompt,
@@ -3079,6 +3098,9 @@ registerAdminRoutes(app, {
   getMatchDay,
   getCurrentJourneyDayIST,
   getNextUnsealAtIST,
+  getCurrentJourneyDay,
+  getNextUnsealAt,
+  getMatchRegion,
   isEntryUnlocked,
   attachWaitingEntriesToMatch,
   findUserByIdentifier,
