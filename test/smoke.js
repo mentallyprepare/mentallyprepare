@@ -9,11 +9,19 @@ const Database = require('better-sqlite3');
 
 const PORT = 9876;
 const DB_PATH = path.join(__dirname, 'smoke-test.db');
+const SESSION_DB_PATH = path.join(__dirname, 'mentally-prepare-sessions.db');
 
 // Clean up any previous test DB
 for (const ext of ['', '-wal', '-shm']) {
   try { fs.unlinkSync(DB_PATH + ext); } catch {}
+  try { fs.unlinkSync(SESSION_DB_PATH + ext); } catch {}
 }
+
+// Start with the legacy connect-sqlite3 schema to verify the replacement store
+// can reuse production session databases without logging everyone out.
+const legacySessionDb = new Database(SESSION_DB_PATH);
+legacySessionDb.exec('CREATE TABLE sessions (sid PRIMARY KEY, expired, sess)');
+legacySessionDb.close();
 
 // Configure env before requiring server
 process.env.PORT = PORT;
@@ -218,6 +226,10 @@ async function run() {
     assert.strictEqual(r.status, 200, `register got ${r.status}: ${r.raw}`);
     cookie = extractCookie(r.headers);
     assert.ok(cookie, 'session cookie set');
+    const sessionDb = new Database(SESSION_DB_PATH, { readonly: true });
+    const persistedSessions = sessionDb.prepare('SELECT COUNT(*) AS count FROM sessions').get().count;
+    sessionDb.close();
+    assert.ok(persistedSessions > 0, 'session persisted through better-sqlite3 store');
     ok('POST /api/register');
   } catch (e) { fail('POST /api/register', e); }
 
@@ -653,16 +665,16 @@ async function run() {
     ok('/api/report does not crash for unmatched user');
   } catch (e) { fail('/api/report does not crash for unmatched user', e); }
 
-  // R-13: sw.js CACHE_NAME matches app.html cache-bust version
+  // R-13: sw.js CACHE_NAME includes the app.html CSS cache-bust version
   try {
     const swJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8');
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
     const swMatch = swJs.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
     const htmlMatch = appHtml.match(/app\.css\?v=([^"&]+)/);
     assert.ok(swMatch && htmlMatch, 'found both version strings');
-    assert.strictEqual(swMatch[1], htmlMatch[1], 'SW cache name matches CSS cache-bust');
-    ok('sw.js CACHE_NAME matches app.html cache-bust version');
-  } catch (e) { fail('sw.js CACHE_NAME matches app.html cache-bust version', e); }
+    assert.strictEqual(swMatch[1], `mp-${htmlMatch[1]}`, 'SW cache name includes the CSS cache-bust version');
+    ok('sw.js CACHE_NAME includes app.html cache-bust version');
+  } catch (e) { fail('sw.js CACHE_NAME includes app.html cache-bust version', e); }
 
   // R-14: app.js has popstate handler
   try {
@@ -753,15 +765,15 @@ async function run() {
     ok('STRIPE_WEBHOOK_SECRET in .env.example');
   } catch (e) { fail('STRIPE_WEBHOOK_SECRET in .env.example', e); }
 
-  // R-26: auth-smoke.js default version is current
+  // R-26: auth-smoke.js default app.js version is current
   try {
     const authSmoke = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'auth-smoke.js'), 'utf8');
-    const swJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8');
-    const swMatch = swJs.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
-    assert.ok(swMatch, 'found SW cache name');
-    assert.ok(authSmoke.includes(swMatch[1]), 'auth-smoke default version matches SW cache name');
-    ok('auth-smoke.js default version is current');
-  } catch (e) { fail('auth-smoke.js default version is current', e); }
+    const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
+    const scriptMatch = appHtml.match(/app\.js\?v=([^"&]+)/);
+    assert.ok(scriptMatch, 'found app.js cache-bust version');
+    assert.ok(authSmoke.includes(`'${scriptMatch[1]}'`), 'auth-smoke default version matches app.js cache-bust');
+    ok('auth-smoke.js default app.js version is current');
+  } catch (e) { fail('auth-smoke.js default app.js version is current', e); }
 
   // R-27: Homepage countdown tied to 9pm IST (15:30 UTC)
   try {

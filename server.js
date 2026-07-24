@@ -186,7 +186,6 @@ if (IS_PROD && DATA_DIR === __dirname) {
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
 const helmet = require('helmet');
 const compression = require('compression');
 const crypto = require('crypto');
@@ -1539,6 +1538,103 @@ app.use(express.static(path.join(__dirname, 'public'), {
 // Persist session secret
 const SESSION_SECRET_PATH = path.join(DATA_DIR, '.session-secret');
 const SESSION_DB_NAME = 'mentally-prepare-sessions.db';
+const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+
+function parseStoredSession(value) {
+  return JSON.parse(value, (key, parsedValue) => {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') return undefined;
+    return parsedValue;
+  });
+}
+
+class BetterSQLiteSessionStore extends session.Store {
+  constructor(dbPath) {
+    super();
+    this.db = new Database(dbPath);
+    this.db.pragma('journal_mode = WAL');
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid TEXT PRIMARY KEY,
+        expired INTEGER NOT NULL,
+        sess TEXT NOT NULL
+      )
+    `);
+    this.getStmt = this.db.prepare('SELECT sess, expired FROM sessions WHERE sid = ?');
+    this.setStmt = this.db.prepare(`
+      INSERT INTO sessions (sid, sess, expired)
+      VALUES (?, ?, ?)
+      ON CONFLICT(sid) DO UPDATE SET sess = excluded.sess, expired = excluded.expired
+    `);
+    this.destroyStmt = this.db.prepare('DELETE FROM sessions WHERE sid = ?');
+    this.clearStmt = this.db.prepare('DELETE FROM sessions');
+    this.clearExpiredStmt = this.db.prepare('DELETE FROM sessions WHERE expired <= ?');
+    this.lengthStmt = this.db.prepare('SELECT COUNT(*) AS count FROM sessions WHERE expired > ?');
+    this.cleanupTimer = setInterval(() => {
+      try { this.clearExpiredStmt.run(Date.now()); } catch (error) {
+        console.error('Session cleanup failed:', error && error.message ? error.message : error);
+      }
+    }, 15 * 60 * 1000);
+    this.cleanupTimer.unref();
+  }
+
+  get(sid, callback) {
+    try {
+      const row = this.getStmt.get(sid);
+      if (!row) return callback(null, null);
+      if (row.expired <= Date.now()) {
+        this.destroyStmt.run(sid);
+        return callback(null, null);
+      }
+      return callback(null, parseStoredSession(row.sess));
+    } catch (error) {
+      return callback(error);
+    }
+  }
+
+  set(sid, sessionData, callback = () => {}) {
+    try {
+      const cookieExpiry = sessionData && sessionData.cookie && sessionData.cookie.expires;
+      const parsedExpiry = cookieExpiry ? new Date(cookieExpiry).getTime() : NaN;
+      const expiresAt = Number.isFinite(parsedExpiry) ? parsedExpiry : Date.now() + SESSION_MAX_AGE_MS;
+      this.setStmt.run(sid, JSON.stringify(sessionData), expiresAt);
+      callback(null);
+    } catch (error) {
+      callback(error);
+    }
+  }
+
+  touch(sid, sessionData, callback = () => {}) {
+    this.set(sid, sessionData, callback);
+  }
+
+  destroy(sid, callback = () => {}) {
+    try {
+      this.destroyStmt.run(sid);
+      callback(null);
+    } catch (error) {
+      callback(error);
+    }
+  }
+
+  length(callback) {
+    try {
+      this.clearExpiredStmt.run(Date.now());
+      callback(null, this.lengthStmt.get(Date.now()).count);
+    } catch (error) {
+      callback(error);
+    }
+  }
+
+  clear(callback = () => {}) {
+    try {
+      this.clearStmt.run();
+      callback(null);
+    } catch (error) {
+      callback(error);
+    }
+  }
+}
+
 function getSessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
   if (IS_PROD) {
@@ -1555,10 +1651,7 @@ function getSessionSecret() {
 
 function createSessionStore() {
   try {
-    return new SQLiteStore({
-      db: SESSION_DB_NAME,
-      dir: DATA_DIR
-    });
+    return new BetterSQLiteSessionStore(path.join(DATA_DIR, SESSION_DB_NAME));
   } catch (e) {
     console.error('Session store unavailable:', e && e.stack ? e.stack : e);
     console.warn('Falling back to in-memory sessions. Logins will reset on restart until SQLite session storage is working again.');
@@ -1577,7 +1670,7 @@ const sessionConfig = {
     // must be permitted on cross-site API requests. CORS above restricts which
     // browser origins can read credentialed responses.
     sameSite: IS_PROD ? 'none' : 'lax',
-    maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
+    maxAge: SESSION_MAX_AGE_MS
   }
 };
 

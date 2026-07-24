@@ -57,9 +57,13 @@ test/smoke-test.db
 test/smoke-test.db-wal
 test/smoke-test.db-shm
 test/mentally-prepare-sessions.db
+test/mentally-prepare-sessions.db-wal
+test/mentally-prepare-sessions.db-shm
 
 # Session DB (local dev)
 mentally-prepare-sessions.db
+mentally-prepare-sessions.db-wal
+mentally-prepare-sessions.db-shm
 
 # Claude Code dev config
 .claude/launch.json
