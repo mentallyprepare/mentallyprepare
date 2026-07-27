@@ -1669,9 +1669,19 @@ class BetterSQLiteSessionStore extends session.Store {
 
 function getSessionSecret() {
   if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  // In production, refuse to boot without an explicit secret. The old
+  // behavior silently generated one into a file on the data volume; if that
+  // volume was ever replaced (a fresh Railway volume, a region move), the
+  // secret vanished and every user was logged out with no warning. Failing
+  // fast turns a silent, user-facing outage into a loud, fixable boot error.
   if (IS_PROD) {
-    console.warn(`SESSION_SECRET is not set. Falling back to ${SESSION_SECRET_PATH}. Set SESSION_SECRET in Railway for a permanent secret.`);
+    throw new Error(
+      'SESSION_SECRET is required in production. Set it as an environment ' +
+      'variable in Railway. Refusing to start with a volatile file-based ' +
+      'secret that would log out all users if the volume is replaced.'
+    );
   }
+  // Local/dev only: persist a generated secret so restarts keep you logged in.
   try {
     if (fs.existsSync(SESSION_SECRET_PATH)) return fs.readFileSync(SESSION_SECRET_PATH, 'utf8').trim();
   } catch {}
