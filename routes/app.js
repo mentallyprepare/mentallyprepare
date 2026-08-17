@@ -1203,15 +1203,36 @@ function registerAppRoutes(app, deps) {
 
   app.delete('/api/account', apiLimiter, requireAuth, async (req, res) => {
     try {
-      const { password } = req.body;
-      if (!password) return res.status(400).json({ error: 'Password confirmation required to delete account' });
-
+      const { password, confirm } = req.body;
       const userId = req.session.userId;
       const user = stmts.getUserById.get(userId);
       if (!user) return res.status(404).json({ error: 'User not found' });
 
-      const passwordValid = await bcrypt.compare(password, user.password);
-      if (!passwordValid) return res.status(401).json({ error: 'Incorrect password. Account not deleted.' });
+      // Google-only users have no password to compare against — the previous
+      // bcrypt.compare(anything, null) always failed and locked them out of
+      // deleting their own account. For those users, require a typed phrase
+      // instead. Users with a password (including merged accounts that also
+      // have Google) still verify with the password.
+      const providers = String(user.auth_provider || 'password');
+      const hasPassword = providers.includes('password') && !!user.password;
+
+      if (hasPassword) {
+        if (!password) return res.status(400).json({ error: 'Password confirmation required to delete account' });
+        const passwordValid = await bcrypt.compare(password, user.password);
+        if (!passwordValid) return res.status(401).json({ error: 'Incorrect password. Account not deleted.' });
+      } else {
+        // Google-only path: accept a typed confirmation phrase. Matches the
+        // web app's typed-DELETE confirmation, so a stray tap can't wipe an
+        // account. Case-insensitive to match the mobile safety UX.
+        const phrase = String(confirm || '').trim().toUpperCase();
+        if (phrase !== 'DELETE') {
+          return res.status(400).json({
+            error: 'Type DELETE to confirm. Your account was not deleted.',
+            requiresConfirmation: true,
+            method: 'typed_phrase',
+          });
+        }
+      }
 
       if (trackEvent) trackEvent(userId, 'account_deleted');
       deleteUserDataTx(userId, 'user_requested');
