@@ -546,7 +546,35 @@ async function run() {
     ok('Entry not visible to partner until next day');
   } catch (e) { fail('Entry not visible to partner until next day', e); }
 
-  // I-3. Silent Room presence count uses IST day boundary
+  // I-3. Mobile /api/me exposes partner presence, never partner journal text
+  try {
+    const tokens = require('../lib/tokens');
+    const { lastInsertRowid: mobileUserId } = db.prepare("INSERT INTO users (name, email, password, college, college_normalized, year, gender, match_gender_pref, match_year_pref, archetype, scores, consent_given, consent_date, last_active_date, switch_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), date('now'), 0, datetime('now'))").run(
+      'Mobile Reader', uniqueEmail('mobile-reader'), 'pw', 'Mobile U', 'mobile-u', '2nd', 'female', 'any', 'any', 'protector', '{}'
+    );
+    const { lastInsertRowid: partnerUserId } = db.prepare("INSERT INTO users (name, email, password, college, college_normalized, year, gender, match_gender_pref, match_year_pref, archetype, scores, consent_given, consent_date, last_active_date, switch_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), date('now'), 0, datetime('now'))").run(
+      'Private Writer', uniqueEmail('private-writer'), 'pw', 'Partner U', 'partner-u', '2nd', 'male', 'any', 'any', 'connector', '{}'
+    );
+    const { lastInsertRowid: privateMatchId } = db.prepare("INSERT INTO matches (user1_id, user2_id, started_at) VALUES (?, ?, datetime('now', '-2 days'))").run(mobileUserId, partnerUserId);
+    db.prepare("INSERT INTO entries (user_id, match_id, day, text, mood, prompt) VALUES (?, ?, 1, 'partner private words', 'Okay', 'test')").run(partnerUserId, privateMatchId);
+    const accessToken = tokens.signToken({ sub: mobileUserId, type: 'access' });
+    const mobileMe = await request('GET', '/api/me', null, {
+      Authorization: `Bearer ${accessToken}`
+    });
+    assert.strictEqual(mobileMe.status, 200, `mobile /api/me got ${mobileMe.status}: ${mobileMe.raw}`);
+    assert.strictEqual(mobileMe.json.partnerEntries.length, 1, 'mobile receives partner presence');
+    assert.deepStrictEqual(
+      Object.keys(mobileMe.json.partnerEntries[0]).sort(),
+      ['created_at', 'day'],
+      'mobile partner entry contains metadata only'
+    );
+    assert.ok(!mobileMe.raw.includes('partner private words'), 'partner journal text never crosses mobile response');
+    clearMatchesForUser(db, mobileUserId);
+    db.prepare('DELETE FROM users WHERE id IN (?, ?)').run(mobileUserId, partnerUserId);
+    ok('Bearer /api/me projects partner presence without journal text');
+  } catch (e) { fail('Bearer /api/me partner privacy projection', e); }
+
+  // I-4. Silent Room presence count uses IST day boundary
   try {
     const anyUser = db.prepare('SELECT id FROM users LIMIT 1').get();
     assert.ok(anyUser, 'need at least one user for silent_lines FK');

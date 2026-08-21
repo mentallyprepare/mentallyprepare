@@ -1731,6 +1731,7 @@ tokens.configure(sessionConfig.secret);
 
 function requireAuth(req, res, next) {
   let userId = req.session && req.session.userId;
+  req.authTransport = userId ? 'session' : null;
 
   // Native clients cannot ride browser cookies, so they send
   // `Authorization: Bearer <token>` instead. Web is untouched: this path only
@@ -1741,6 +1742,7 @@ function requireAuth(req, res, next) {
       const result = tokens.verifyToken(bearer, { type: 'access' });
       if (result.valid) {
         userId = result.payload.sub;
+        req.authTransport = 'bearer';
         // Publish it where the existing read-sites expect it, but
         // non-enumerably: express-session serialises via JSON.stringify, which
         // skips non-enumerable props, so this never persists a cookie session

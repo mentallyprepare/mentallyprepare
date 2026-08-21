@@ -560,6 +560,16 @@ function registerAppRoutes(app, deps) {
         day1Prompt: prompts[0],
         savedEntry: waitingEntry ? waitingEntry.text : ''
       };
+      // The native app only renders partner-presence skies. Do not send the
+      // partner's private journal text (or mood) across the mobile boundary.
+      // Cookie-authenticated web clients keep the existing response until the
+      // web journey migrates to a similarly narrow projection.
+      const partnerEntriesForClient = req.authTransport === 'bearer'
+        ? partnerEntries.map((entry) => ({
+            day: entry.day,
+            created_at: entry.created_at
+          }))
+        : partnerEntries;
       res.json({
         user: safeUser,
         features: {
@@ -568,7 +578,7 @@ function registerAppRoutes(app, deps) {
         },
         match: matchData,
         entries: entriesData,
-        partnerEntries,
+        partnerEntries: partnerEntriesForClient,
         partnerStatus,
         streak,
         reveal: revealData,
