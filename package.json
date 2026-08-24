@@ -13,6 +13,7 @@
     "smoke:api": "node scripts/api-smoke.js",
     "smoke:auth": "node scripts/auth-smoke.js",
     "backup": "node scripts/backup.js",
+    "audit:storage": "node scripts/storage-audit.js",
     "test": "node test/smoke.js"
   },
   "dependencies": {
