@@ -209,6 +209,8 @@ const { registerRoomsRoutes, registerRoomsAdminRoutes } = require('./routes/room
 const { runBackup } = require('./scripts/backup');
 // ---------------------------------------------------------------
 const webpush = require('web-push');
+const { sendExpoPush } = require('./lib/native-push');
+const { selectNotificationCopy } = require('./lib/notification-copy');
 const { BASE_URL } = require('./lib/config');
 const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome, sendMatchFoundNotification, sendDailyPromptReminder, sendPartnerWroteReminder, sendPartnerStillWriting } = require('./email-service');
 const cron = require('node-cron');
@@ -421,6 +423,21 @@ db.exec(`
     deleted_reason TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS native_push_devices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    expo_push_token TEXT NOT NULL UNIQUE,
+    platform TEXT NOT NULL CHECK(platform IN ('android', 'ios')),
+    timezone TEXT,
+    active INTEGER NOT NULL DEFAULT 1,
+    failure_count INTEGER NOT NULL DEFAULT 0,
+    last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_native_push_devices_user_active
+    ON native_push_devices(user_id, active);
 
   CREATE TABLE IF NOT EXISTS matches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1103,6 +1120,40 @@ const stmts = {
   updatePushSub: db.prepare("UPDATE users SET push_subscription = ?, push_subscription_updated_at = datetime('now') WHERE id = ?"),
   updatePushPrefs: db.prepare("UPDATE users SET push_preferences = ?, updated_at = datetime('now') WHERE id = ?"),
   markPushSent: db.prepare("UPDATE users SET push_last_sent_at = datetime('now'), push_last_sent_type = ? WHERE id = ?"),
+  upsertNativePushDevice: db.prepare(`
+    INSERT INTO native_push_devices (user_id, expo_push_token, platform, timezone)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(expo_push_token) DO UPDATE SET
+      user_id = excluded.user_id,
+      platform = excluded.platform,
+      timezone = excluded.timezone,
+      active = 1,
+      failure_count = 0,
+      last_seen_at = datetime('now'),
+      updated_at = datetime('now')
+  `),
+  getNativePushDevicesByUser: db.prepare(`
+    SELECT id, expo_push_token, platform
+    FROM native_push_devices
+    WHERE user_id = ? AND active = 1
+    ORDER BY last_seen_at DESC
+  `),
+  hasNativePushDevice: db.prepare(`
+    SELECT 1 AS found
+    FROM native_push_devices
+    WHERE user_id = ? AND active = 1
+    LIMIT 1
+  `),
+  disableNativePushDevice: db.prepare(`
+    UPDATE native_push_devices
+    SET active = 0, updated_at = datetime('now')
+    WHERE user_id = ? AND expo_push_token = ?
+  `),
+  disableNativePushDeviceByToken: db.prepare(`
+    UPDATE native_push_devices
+    SET active = 0, failure_count = failure_count + 1, updated_at = datetime('now')
+    WHERE expo_push_token = ?
+  `),
   updateFirebaseUserLogin: db.prepare(`
     UPDATE users
     SET firebase_uid = COALESCE(firebase_uid, ?),
@@ -1229,12 +1280,25 @@ const stmts = {
   getPaymentByOrder: db.prepare('SELECT * FROM payments WHERE provider_order_id = ?'),
   getUserPayments: db.prepare('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC'),
 
-  getAllPushUsers: db.prepare('SELECT id, push_subscription, push_preferences, last_active_date, created_at, push_last_sent_at, push_last_sent_type, timezone FROM users WHERE push_subscription IS NOT NULL'),
+  getAllPushUsers: db.prepare(`
+    SELECT id, push_subscription, push_preferences, last_active_date, created_at,
+           push_last_sent_at, push_last_sent_type, timezone
+    FROM users
+    WHERE push_subscription IS NOT NULL
+       OR EXISTS (
+         SELECT 1 FROM native_push_devices d
+         WHERE d.user_id = users.id AND d.active = 1
+       )
+  `),
   getActiveMatchUsers: db.prepare(`
     SELECT u.id, u.push_subscription, u.push_preferences, u.last_active_date, u.created_at, u.push_last_sent_at, u.push_last_sent_type, u.timezone, m.started_at, m.id as match_id
     FROM users u
     JOIN matches m ON (m.user1_id = u.id OR m.user2_id = u.id)
     WHERE u.push_subscription IS NOT NULL
+       OR EXISTS (
+         SELECT 1 FROM native_push_devices d
+         WHERE d.user_id = u.id AND d.active = 1
+       )
   `),
 
   // Reactions
@@ -2334,6 +2398,7 @@ function deleteUserOwnedData(userId) {
   runDeleteIfPossible('DELETE FROM daily_notes WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM sealed_room_picks WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM tonights_question_entries WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM native_push_devices WHERE user_id = ?', [userId]);
 }
 
 const deleteUserDataTx = db.transaction((userId, reason = 'admin_removed') => {
@@ -2667,7 +2732,7 @@ app.get('/api/partner-wrote-today', apiLimiter, requireAuth, (req, res) => {
 // 9pm IST = 15:30 UTC — daily prompt reminder
 const DEFAULT_PUSH_PREFERENCES = {
   enabled: true,
-  morningReminder: true,
+  morningReminder: false,
   eveningReminder: true,
   dailyReflection: true,
   streakReminder: true,
@@ -2709,7 +2774,31 @@ function recentlySent(row, type, hours) {
 }
 
 async function sendGentlePush(row, type, body, url = '/app') {
-  if (!vapidKeys || !row || !row.push_subscription || recentlySent(row, type, 6)) return false;
+  if (!row || recentlySent(row, type, 6)) return false;
+  const dateSeed = new Date().toISOString().slice(0, 10);
+  const copy = selectNotificationCopy(type, `${row.id}:${dateSeed}`);
+  const devices = stmts.getNativePushDevicesByUser.all(row.id);
+  let nativeSent = false;
+  for (const device of devices) {
+    const result = await sendExpoPush({
+      token: device.expo_push_token,
+      title: copy.title,
+      body: copy.body,
+      data: { route: copy.route, type }
+    });
+    if (result.ok) {
+      nativeSent = true;
+    } else if (result.terminal) {
+      stmts.disableNativePushDeviceByToken.run(device.expo_push_token);
+    }
+  }
+  if (nativeSent) {
+    stmts.markPushSent.run(type, row.id);
+    console.log('Native push notification sent', { userId: row.id, type });
+    return true;
+  }
+
+  if (!vapidKeys || !row.push_subscription) return false;
   let subscription;
   try {
     subscription = JSON.parse(row.push_subscription);
@@ -2721,8 +2810,8 @@ async function sendGentlePush(row, type, body, url = '/app') {
 
   try {
     await webpush.sendNotification(subscription, JSON.stringify({
-      title: 'Mentally Prepare',
-      body: body || PUSH_COPY[type] || PUSH_COPY.evening,
+      title: copy.title,
+      body: copy.body,
       url,
       tag: `mp-${type}`
     }));

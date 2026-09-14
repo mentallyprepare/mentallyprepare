@@ -13,7 +13,7 @@
     "smoke:api": "node scripts/api-smoke.js",
     "smoke:auth": "node scripts/auth-smoke.js",
     "backup": "node scripts/backup.js",
-    "test": "node test/smoke.js"
+    "test": "node test/smoke.js && node test/native-push.test.js"
   },
   "dependencies": {
     "@sentry/node": "^10.57.0",
