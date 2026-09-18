@@ -182,6 +182,20 @@ if (IS_PROD && DATA_DIR === __dirname) {
   console.warn('No Railway volume mount detected. SQLite data may be stored on ephemeral disk.');
 }
 
+// Encryption at rest for journal entries. Same shape as SESSION_SECRET: prod
+// refuses to boot without the key rather than silently writing plaintext, and
+// silently rendering old ciphertext rows as gibberish if the key ever went
+// missing. Dev without the key still writes plaintext — the migration script
+// and the backward-compat decrypt() together let both formats co-exist.
+if (IS_PROD && !entryCrypto.hasKey()) {
+  throw new Error(
+    'ENTRIES_ENCRYPTION_KEY is required in production. Set it as an environment ' +
+    'variable in Railway. Generate one with: ' +
+    "node -e \"console.log(require('./lib/entry-crypto').generateKey())\". " +
+    'Refusing to start with plaintext journal writes in production.'
+  );
+}
+
 // --- Now require other modules ---
 const express = require('express');
 const bcrypt = require('bcryptjs');
@@ -193,6 +207,8 @@ const rateLimit = require('express-rate-limit');
 const admin = require('firebase-admin');
 
 const tokens = require('./lib/tokens');
+const entryCrypto = require('./lib/entry-crypto');
+const { encrypt: encryptEntry, decrypt: decryptEntry } = entryCrypto;
 const registerShelfRoutes = require('./routes/shelf');
 
 const { registerStaticRoutes } = require('./routes/static');
@@ -1043,13 +1059,13 @@ function handleReadinessText(req, res) {
         insertMatch.run(m.id, m.user1_id, m.user2_id, m.started_at);
       }
       for (const e of (data.entries || [])) {
-        insertEntry.run(e.id, e.user_id, e.match_id, e.day, e.text, e.mood, e.prompt, e.created_at);
+        insertEntry.run(e.id, e.user_id, e.match_id, e.day, encryptEntry(e.text), e.mood, e.prompt, e.created_at);
       }
       for (const r of (data.reveals || [])) {
         insertReveal.run(r.id, r.match_id, r.user_id, r.choice, r.created_at);
       }
       for (const c of (data.comments || [])) {
-        insertComment.run(c.id, c.user_id, c.match_id, c.day, c.text, c.created_at);
+        insertComment.run(c.id, c.user_id, c.match_id, c.day, encryptEntry(c.text), c.created_at);
       }
     });
     migrate();
@@ -2080,7 +2096,7 @@ const EMOTIONAL_THEMES = {
 function detectThemes(entries) {
   const themeCounts = {};
   const recentEntries = entries.slice(0, 3);
-  const combinedText = recentEntries.map(e => e.text).join(' ').toLowerCase();
+  const combinedText = recentEntries.map(e => decryptEntry(e.text)).join(' ').toLowerCase();
 
   for (const [theme, config] of Object.entries(EMOTIONAL_THEMES)) {
     const count = config.keywords.reduce((sum, kw) => {
@@ -2124,7 +2140,10 @@ function getMoodInsights(entries) {
   const earlierAvg = earlier.reduce((s, m) => s + m.value, 0) / earlier.length;
   const trend = recentAvg > earlierAvg + 0.3 ? 'rising' : recentAvg < earlierAvg - 0.3 ? 'dipping' : 'steady';
 
-  const totalWords = entries.reduce((sum, e) => sum + (e.text ? e.text.trim().split(/\s+/).length : 0), 0);
+  const totalWords = entries.reduce((sum, e) => {
+    const plain = decryptEntry(e.text);
+    return sum + (plain ? plain.trim().split(/\s+/).length : 0);
+  }, 0);
 
   return {
     moodTrend, dominantMood,
@@ -2354,11 +2373,14 @@ function attachWaitingEntriesToMatch(matchId, userIds) {
   for (const userId of userIds) {
     const waitingEntry = stmts.getWaitingEntry.get(userId);
     if (!waitingEntry) continue;
+    // waitingEntry.text may be ciphertext or plaintext depending on when it
+    // was written; decrypt then re-encrypt so the sealed row is always in
+    // whatever the current encryption state is, no double-encryption.
     stmts.upsertEntry.run(
       userId,
       matchId,
       1,
-      waitingEntry.text,
+      encryptEntry(decryptEntry(waitingEntry.text)),
       waitingEntry.mood || '??',
       waitingEntry.prompt || prompts[0]
     );

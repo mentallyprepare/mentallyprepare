@@ -14,7 +14,7 @@
     "smoke:auth": "node scripts/auth-smoke.js",
     "backup": "node scripts/backup.js",
     "migrate": "node scripts/migrate.js",
-    "test": "node test/migrations.test.js && node test/smoke.js && node test/native-push.test.js"
+    "test": "node test/entry-crypto.test.js && node test/migrations.test.js && node test/smoke.js && node test/native-push.test.js"
   },
   "dependencies": {
     "@sentry/node": "^10.57.0",

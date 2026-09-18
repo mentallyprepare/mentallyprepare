@@ -1,6 +1,7 @@
 // ─── Tonight's Question — Routes for unmatched/waiting users ───
 // Provides a nightly rotating community writing experience
 // so users stay engaged until a match is found.
+const { encrypt: encryptEntry, decrypt: decryptEntry } = require('../lib/entry-crypto');
 
 function registerTonightsQuestionRoutes(app, deps) {
   const {
@@ -57,9 +58,9 @@ function registerTonightsQuestionRoutes(app, deps) {
         matched: false,
         prompt,
         promptIndex,
-        myEntry: myEntry ? { text: myEntry.text, mood: myEntry.mood, created_at: myEntry.created_at } : null,
+        myEntry: myEntry ? { text: decryptEntry(myEntry.text), mood: myEntry.mood, created_at: myEntry.created_at } : null,
         whispers: whispers.map(w => ({
-          text: w.text,
+          text: decryptEntry(w.text),
           mood: w.mood,
           created_at: w.created_at
         })),
@@ -95,7 +96,7 @@ function registerTonightsQuestionRoutes(app, deps) {
       }
       const promptIndex = getTonightsPromptIndex();
 
-      stmts.upsertTonightsEntry.run(userId, promptIndex, text.trim(), mood || '🌓');
+      stmts.upsertTonightsEntry.run(userId, promptIndex, encryptEntry(text.trim()), mood || '🌓');
       stmts.updateUserActivity.run(new Date().toISOString(), userId);
 
       res.json({
@@ -122,7 +123,7 @@ function registerTonightsQuestionRoutes(app, deps) {
         entries: entries.map(e => ({
           promptIndex: e.prompt_index,
           prompt: prompts[e.prompt_index] || '',
-          text: e.text,
+          text: decryptEntry(e.text),
           mood: e.mood,
           created_at: e.created_at
         }))
