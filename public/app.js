@@ -562,6 +562,7 @@ let promptChoiceOffset = 0;
 let motionRaf = null;
 let lastMotionY = -1;
 let typingFocusTimer = null;
+const moonBreathePhase = (-(Math.random() * 7)).toFixed(1) + 's'; // randomized breathing phase, stable within a session
 const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 const isLowMotionDevice = prefersReducedMotion || isCoarsePointer || window.innerWidth < 760 || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
@@ -1100,7 +1101,21 @@ function bindStaticUi() {
 // ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
+// The Living Night: sky color follows the IST clock. No re-render — the 1.2s
+// background transition lives in CSS.
+function updateSky() {
+  var sky = '#0B0820';
+  try {
+    var t = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+    // 23:30 IST onwards: the sky deepens for the last half hour before entries seal.
+    if (parseInt(t.slice(0, 2), 10) * 60 + parseInt(t.slice(3, 5), 10) >= 1410) sky = '#050311';
+  } catch (e) {}
+  document.documentElement.style.setProperty('--sky', sky);
+}
+
 (async function init() {
+  updateSky();
+  setInterval(updateSky, 600000);
   if (typeof injectUrgentHelpButton === 'function') injectUrgentHelpButton();
   bindStaticUi();
   if (shouldOpenAuthDeepLinkBeforeSessionRestore()) {
@@ -2161,6 +2176,7 @@ function renderJournal() {
   const matchArch = state.match.partner ? archetypes[state.match.partner.archetype] : null;
   const prompt = state.match.currentPrompt;
   const draft = sessionStorage.getItem('mp-draft') || '';
+  const partnerSealedToday = !!(state.partnerStatus && state.partnerStatus.partnerHasWrittenToday);
   const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const today = new Date();
@@ -2242,7 +2258,11 @@ function renderJournal() {
     </div>
     <div id="daily-note-container"></div>
     ${renderPromptChooser()}
-    <div class="moon-block reveal-on-scroll"><div class="moon-base moon-sm"></div><div class="cd" id="cd">—</div><div class="cd-sub">until midnight</div></div>
+    <div class="moon-block reveal-on-scroll">
+      <div class="moon-base moon-sm" id="presence-moon" style="animation-delay:${moonBreathePhase}"></div>
+      <div class="presence-line">${partnerSealedToday ? 'your match sealed something for you tonight' : 'your match hasn\'t written yet'}</div>
+      <div class="cd" id="cd">—</div><div class="cd-sub">until midnight</div>
+    </div>
     <div class="prompt-block reveal-on-scroll">
       <div class="eyebrow">${state.specialDay ? '✦ ' + state.specialDay.title : 'Tonight\'s small step'}</div>
       <div class="prompt-text">${escapeHtml(prompt)}</div>
@@ -2299,6 +2319,13 @@ function renderJournal() {
       try { await api('POST', '/nudge/dismiss', { nudgeId: id }); btn.closest('.nudge-banner').remove(); } catch(e) {}
     });
   });
+  // Warm the moon a frame after render so the glow blooms via the CSS transition.
+  if (partnerSealedToday) {
+    requestAnimationFrame(function() { requestAnimationFrame(function() {
+      var moon = document.getElementById('presence-moon');
+      if (moon) moon.classList.add('present');
+    }); });
+  }
   startCountdown();
   initScrollReveal('#s-journal');
   // Load and render the daily note card asynchronously

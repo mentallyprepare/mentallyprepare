@@ -233,6 +233,28 @@ async function run() {
     ok('POST /api/register');
   } catch (e) { fail('POST /api/register', e); }
 
+  // 2b. Native push registration is bound to the authenticated user and can
+  // be removed without affecting another device.
+  try {
+    const token = 'ExpoPushToken[smoke_test_device]';
+    const saved = await request('POST', '/api/push/native/subscribe', {
+      token,
+      platform: 'android',
+      timezone: 'Asia/Kolkata'
+    }, { cookie });
+    assert.strictEqual(saved.status, 200, `native subscribe got ${saved.status}: ${saved.raw}`);
+
+    const prefs = await request('GET', '/api/push/preferences', null, { cookie });
+    assert.strictEqual(prefs.status, 200);
+    assert.strictEqual(prefs.json.nativeSubscribed, true);
+
+    const removed = await request('POST', '/api/push/native/unsubscribe', { token }, { cookie });
+    assert.strictEqual(removed.status, 200, `native unsubscribe got ${removed.status}: ${removed.raw}`);
+    const row = db.prepare('SELECT active FROM native_push_devices WHERE expo_push_token = ?').get(token);
+    assert.strictEqual(row.active, 0);
+    ok('Native push registration lifecycle');
+  } catch (e) { fail('Native push registration lifecycle', e); }
+
   // 3. Save a waiting entry (Day 1, pre-match)
   try {
     const r = await request('POST', '/api/waiting-entry', {
@@ -399,6 +421,11 @@ async function run() {
     const reportedRow = db.prepare('SELECT * FROM users WHERE id = ?').get(reportedId);
     const matchId = db.prepare("INSERT INTO matches (user1_id, user2_id, matched_at) VALUES (?, ?, datetime('now'))").run(reporterRow.id, reportedRow.id).lastInsertRowid;
     db.prepare("INSERT INTO entries (user_id, match_id, day, text) VALUES (?, ?, 1, 'reported entry')").run(reportedRow.id, matchId);
+    const badCategory = await request('POST', '/api/report', { reason: 'unsafe details', category: 'freeform-admin-state' }, { cookie });
+    assert.strictEqual(badCategory.status, 400, `bad report category got ${badCategory.status}: ${badCategory.raw}`);
+    assert.match(badCategory.json.error, /invalid report category/i);
+    const longReason = await request('POST', '/api/report', { reason: 'x'.repeat(501), category: 'other' }, { cookie });
+    assert.strictEqual(longReason.status, 400, `long report reason got ${longReason.status}: ${longReason.raw}`);
     const report = await request('POST', '/api/report', { matchId, day: 1, reason: 'unsafe', category: 'entry' }, { cookie });
     assert.strictEqual(report.status, 200, `report got ${report.status}: ${report.raw}`);
     const reportRow = db.prepare('SELECT * FROM reports ORDER BY id DESC LIMIT 1').get();
@@ -658,12 +685,16 @@ async function run() {
     ok('#s-forgot and #s-reset have auth-screen class');
   } catch (e) { fail('#s-forgot and #s-reset have auth-screen class', e); }
 
-  // R-12: /api/report does not crash for unmatched user
+  // R-12: reporting must never trigger matching as a hidden side effect.
   try {
     const appJsContent = fs.readFileSync(path.join(__dirname, '..', 'routes', 'app.js'), 'utf8');
-    assert.ok(appJsContent.includes('getUserById.get(userId)'), '/api/report loads user before accessing archetype');
-    ok('/api/report does not crash for unmatched user');
-  } catch (e) { fail('/api/report does not crash for unmatched user', e); }
+    const reportStart = appJsContent.indexOf("app.post('/api/report'");
+    const reportEnd = appJsContent.indexOf("app.post('/api/block-partner'", reportStart);
+    const reportHandler = appJsContent.slice(reportStart, reportEnd);
+    assert.ok(reportStart > -1 && reportEnd > reportStart, 'report handler is present');
+    assert.ok(!reportHandler.includes('attemptMatch'), 'reporting never creates a match');
+    ok('/api/report has no hidden matching side effect');
+  } catch (e) { fail('/api/report has no hidden matching side effect', e); }
 
   // R-13: sw.js CACHE_NAME includes the app.html CSS cache-bust version
   try {

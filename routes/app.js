@@ -1,3 +1,5 @@
+const { isExpoPushToken, normalizePlatform } = require('../lib/native-push');
+
 function registerAppRoutes(app, deps) {
   const {
     apiLimiter,
@@ -31,6 +33,14 @@ function registerAppRoutes(app, deps) {
     IS_PROD
   } = deps;
   const YEARS = new Set(['1st', '2nd', '3rd', '4th', '5th', '5th+', 'N/A']);
+  const REPORT_CATEGORIES = new Set([
+    'entry',
+    'harassment',
+    'sexual_pressure',
+    'threat',
+    'personal_information',
+    'other'
+  ]);
 
   function clean(value) {
     return String(value || '').trim().replace(/\s+/g, ' ');
@@ -102,7 +112,7 @@ function registerAppRoutes(app, deps) {
 
   const defaultPushPreferences = {
     enabled: true,
-    morningReminder: true,
+    morningReminder: false,
     eveningReminder: true,
     dailyReflection: true,
     streakReminder: true,
@@ -125,7 +135,7 @@ function registerAppRoutes(app, deps) {
     const enabled = raw.enabled !== false && raw.notificationsOff !== true;
     return {
       enabled,
-      morningReminder: enabled && raw.morningReminder !== false,
+      morningReminder: enabled && raw.morningReminder === true,
       eveningReminder: enabled && raw.eveningReminder !== false,
       dailyReflection: enabled && raw.dailyReflection !== false,
       streakReminder: enabled && raw.streakReminder !== false,
@@ -907,17 +917,16 @@ function registerAppRoutes(app, deps) {
     try {
       const userId = req.session.userId;
       const { day, reason, category } = req.body;
-      if (!reason || !reason.trim()) return res.status(400).json({ error: 'Reason required' });
-      const user = stmts.getUserById.get(userId);
-      let match = stmts.getMatch.get(userId, userId);
-      if (!match && user && user.archetype) {
-        attemptMatch(userId);
-        match = stmts.getMatch.get(userId, userId);
-      }
+      const cleanReason = String(reason || '').trim();
+      const cleanCategory = String(category || 'entry').trim();
+      if (!cleanReason) return res.status(400).json({ error: 'Reason required' });
+      if (cleanReason.length > 500) return res.status(400).json({ error: 'Reason must be 500 characters or fewer' });
+      if (!REPORT_CATEGORIES.has(cleanCategory)) return res.status(400).json({ error: 'Invalid report category' });
+      const match = stmts.getMatch.get(userId, userId);
       const partnerId = match ? getPartnerId(match, userId) : null;
       const entryDay = Number.isInteger(Number(day)) ? Number(day) : 0;
-      stmts.insertReport.run(userId, match ? match.id : null, partnerId, entryDay, entryDay, category || 'entry', reason.trim().substring(0, 500));
-      if (trackEvent) trackEvent(userId, 'report_clicked', { category: category || 'entry' });
+      stmts.insertReport.run(userId, match ? match.id : null, partnerId, entryDay, entryDay, cleanCategory, cleanReason);
+      if (trackEvent) trackEvent(userId, 'report_clicked', { category: cleanCategory });
       res.json({ ok: true });
     } catch (e) {
       console.error('Report error:', e);
@@ -1289,13 +1298,43 @@ function registerAppRoutes(app, deps) {
     }
   });
 
+  app.post('/api/push/native/subscribe', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const token = clean(req.body && req.body.token);
+      const platform = normalizePlatform(req.body && req.body.platform);
+      const timezone = clean(req.body && req.body.timezone).slice(0, 80) || 'Asia/Kolkata';
+      if (!isExpoPushToken(token) || !platform) {
+        return res.status(400).json({ error: 'Invalid native push registration' });
+      }
+      stmts.upsertNativePushDevice.run(req.session.userId, token, platform, timezone);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('Native push subscribe error:', e && e.message ? e.message : e);
+      res.status(500).json({ error: 'Failed to save native notification registration' });
+    }
+  });
+
+  app.post('/api/push/native/unsubscribe', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const token = clean(req.body && req.body.token);
+      if (!isExpoPushToken(token)) {
+        return res.status(400).json({ error: 'Invalid native push registration' });
+      }
+      stmts.disableNativePushDevice.run(req.session.userId, token);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to remove native notification registration' });
+    }
+  });
+
   app.get('/api/push/preferences', apiLimiter, requireAuth, (req, res) => {
     try {
       const user = stmts.getUserById.get(req.session.userId);
       if (!user) return res.status(404).json({ error: 'User not found' });
       res.json({
         preferences: parsePushPreferences(user.push_preferences),
-        subscribed: !!user.push_subscription
+        subscribed: !!user.push_subscription,
+        nativeSubscribed: !!stmts.hasNativePushDevice.get(req.session.userId)
       });
     } catch (e) {
       res.status(500).json({ error: 'Failed to load notification settings' });

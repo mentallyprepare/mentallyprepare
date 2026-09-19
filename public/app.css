@@ -6,10 +6,10 @@
   --green:#659179;
   --cyan:#5ec4d4;--cyan-l:#8FE3EF;
   --ink:#F8F2FF;--ink-m:rgba(248,242,255,.62);--ink-s:rgba(248,242,255,.35);
-  --line:rgba(248,242,255,.07);--card:#0E0A18;--bg:#08050F;
+  --line:rgba(248,242,255,.07);--card:#0E0A18;--bg:#08050F;--sky:#0B0820;
   --font-display:'Instrument Serif',Georgia,serif;--font-body:'Manrope',Arial,sans-serif;
 }
-html{background:var(--bg)}
+html{background:var(--sky);transition:background-color 1.2s ease}
 body{
   background:
     radial-gradient(circle at 50% -10%,rgba(137,108,181,.2),transparent 34%),
@@ -344,7 +344,7 @@ body.app-active #landing{display:none}
 .pip.done{background:linear-gradient(90deg,var(--rose-d),var(--purple))}
 .pip.now{background:rgba(212,133,154,.18);border:1px solid rgba(212,133,154,.35)}
 .moon-block{padding:28px 24px 0;display:flex;flex-direction:column;align-items:center;text-align:center}
-.moon-sm{width:72px;height:72px;box-shadow:0 0 40px rgba(201,169,110,.5),0 0 80px rgba(201,169,110,.15);animation:float 5s ease-in-out infinite}
+.moon-sm{width:72px;height:72px}
 .cd{font-family:'Playfair Display',serif;font-size:32px;color:var(--gold-l);letter-spacing:.08em;margin-bottom:5px;margin-top:16px}
 .cd-sub{font-size:11px;color:var(--ink-s)}
 .prompt-block{padding:24px 24px 0}
@@ -761,7 +761,6 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
   .special-day-title{font-size:16px}
   .prompt-chooser,.partner-status-panel{margin:12px 18px 0;padding:16px}
   .prompt-block{display:none}
-  .moon-block{display:none}
   .silent-feed-list{padding:14px 0 8px}
   .silent-line-block{padding:28px 24px}
   .silent-line-text{max-width:420px;font-size:15.5px;line-height:1.65}
@@ -1459,7 +1458,6 @@ textarea,#journal-draft,#tq-draft,.silent-textarea{font-family:var(--font-displa
   #app-area .special-day-sub{font-size:10.5px}
   #app-area .prompt-chooser,
   #app-area .partner-status-panel{margin:10px 18px 0;padding:15px;border-radius:16px}
-  #app-area .moon-block{display:none}
   #app-area .silent-header{padding:14px 20px 0}
   #app-area .silent-logo{font-size:13px}
   #app-area .silent-instruction{font-size:11px;padding:8px 28px 0}
@@ -1570,7 +1568,8 @@ textarea,#journal-draft,#tq-draft,.silent-textarea{font-family:var(--font-displa
 }
 
 body {
-  background:#08050f!important;
+  background:var(--sky)!important;
+  transition:background-color 1.2s ease;
   overflow-x:hidden;
 }
 
@@ -1836,6 +1835,15 @@ body.app-active #app-area .tabs.app-bottom-tabs {
   font-weight:800;
   margin-bottom:14px;
 }
+
+/* ── The Living Night · Phase 1: presence moon on Today ── */
+@keyframes moonBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+#s-journal .moon-sm{background:#6B5FAE!important;box-shadow:none;transition:background-color 1.2s ease,box-shadow 1.2s ease;animation:moonBreathe 7s ease-in-out infinite}
+#s-journal .moon-sm.present{background:#A89BF0!important;box-shadow:0 0 44px rgba(168,155,240,.45),0 0 90px rgba(168,155,240,.16)}
+#s-journal .presence-line{margin-top:12px;font-size:12.5px;letter-spacing:.03em;color:var(--ink-m)}
+/* The breathing moon is the only ambient motion on Today. */
+#s-journal .const-star.current,#s-journal .pw-moon,#s-journal .pw-dot,#s-journal .typing-dots span,#s-journal .note-seal-ring{animation:none}
+body[data-mp-mode="writing"] .star{animation:none;opacity:var(--a2,.4)}
 
 .notification-kicker,
 .push-settings-kicker {
