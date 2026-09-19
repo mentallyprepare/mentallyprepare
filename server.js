@@ -193,6 +193,7 @@ const rateLimit = require('express-rate-limit');
 const admin = require('firebase-admin');
 
 const tokens = require('./lib/tokens');
+const adminAuth = require('./lib/admin-auth');
 const registerShelfRoutes = require('./routes/shelf');
 
 const { registerStaticRoutes } = require('./routes/static');
@@ -1076,6 +1077,18 @@ try {
 } catch (err) {
   console.error('✗ Schema migration failed at boot:', err.message);
   throw err; // refuse to boot on a bad migration — the alternative is silent drift
+}
+
+// --- Admin bootstrap ----------------
+// If admin_users has zero active rows and ADMIN_BOOTSTRAP_EMAIL/
+// ADMIN_BOOTSTRAP_PASSWORD are set, create the first named admin. Idempotent
+// — once any active admin exists, this is a no-op and the bootstrap env
+// vars can be removed. The legacy ADMIN_PASSWORD header path in
+// requireAdmin below stays working as a grace fallback either way.
+try {
+  adminAuth.bootstrapFirstAdmin(db, { log: (msg) => console.log(msg) });
+} catch (err) {
+  console.error('Admin bootstrap surfaced an error (continuing):', err && err.message);
 }
 
 // --- Prepared Statements ----------------
@@ -3127,22 +3140,105 @@ app.post('/api/reminder-signup', apiLimiter, (req, res) => {
   }
 });
 
+// Named-admin lookup, cached per request. Populated after login, cleared on
+// logout, checked by requireAdmin at every admin request.
+function loadAdminFromSession(req) {
+  const id = req && req.session && req.session.adminId;
+  if (!id) return null;
+  const row = db.prepare(
+    'SELECT id, email, role, active FROM admin_users WHERE id = ?',
+  ).get(id);
+  if (!row || !row.active) return null;
+  return { id: row.id, email: row.email, role: row.role };
+}
+
+// One-shot deprecation warning so we know when the legacy path is still in
+// use without spamming logs on every request.
+let legacyAdminWarned = false;
+
 function requireAdmin(req, res, next) {
+  // Preferred path: a named admin session established via POST /admin/login.
+  const sessionAdmin = loadAdminFromSession(req);
+  if (sessionAdmin) {
+    req.admin = sessionAdmin;
+    return next();
+  }
+
+  // Grace-period fallback: the legacy shared ADMIN_PASSWORD header. Kept so
+  // the current admin dashboard + existing ops scripts keep working while
+  // the UI is migrated. Every use is annotated in req.admin so the audit
+  // trail can distinguish "legacy shared" from a real named actor.
   const adminPassword = process.env.ADMIN_PASSWORD;
   const rawHeader = req.headers['x-admin-password'] || req.headers['x-admin-key'];
   const supplied = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
-  if (!adminPassword || typeof supplied !== 'string' || !supplied) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  if (adminPassword && typeof supplied === 'string' && supplied) {
+    const expectedHash = crypto.createHash('sha256').update(String(adminPassword)).digest();
+    const suppliedHash = crypto.createHash('sha256').update(supplied).digest();
+    if (crypto.timingSafeEqual(expectedHash, suppliedHash)) {
+      req.admin = { id: null, email: 'legacy-shared', role: 'admin', legacy: true };
+      if (!legacyAdminWarned) {
+        legacyAdminWarned = true;
+        console.warn(
+          '⚠  Deprecated: an admin request used the legacy ADMIN_PASSWORD header path. ' +
+          'Migrate to a named admin (POST /admin/login) and remove ADMIN_PASSWORD from the environment ' +
+          'once every operator has an admin_users row.',
+        );
+      }
+      return next();
+    }
   }
-  // Timing-safe comparison: hash both to fixed-length buffers so timingSafeEqual
-  // never throws on length mismatch.
-  const expectedHash = crypto.createHash('sha256').update(String(adminPassword)).digest();
-  const suppliedHash = crypto.createHash('sha256').update(supplied).digest();
-  if (!crypto.timingSafeEqual(expectedHash, suppliedHash)) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  next();
+
+  return res.status(401).json({ error: 'Unauthorized' });
 }
+
+// --- Admin login/logout/me ---------------------------------------------------
+// Session-backed named-admin auth on top of admin_users. Sits alongside the
+// legacy header path above; a successful login sets req.session.adminId,
+// which requireAdmin then prefers over the shared-password fallback.
+app.post('/admin/login', authLimiter, (req, res) => {
+  const { email, password } = req.body || {};
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
+    return res.status(400).json({ error: 'email and password required' });
+  }
+  const result = adminAuth.verifyCredentials(db, email, password);
+  if (!result.ok) {
+    adminAuth.logAdminAction(db, null, 'admin.login_failed', {
+      actor: String(email).toLowerCase(),
+      metadata: { ip: req.ip },
+    });
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  // Regenerate the session on privilege change — same pattern as the user
+  // sign-in path — so a hijacked pre-auth session id can't inherit admin.
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error('admin login session regenerate failed:', err && err.message);
+      return res.status(500).json({ error: 'Login failed' });
+    }
+    req.session.adminId = result.admin.id;
+    adminAuth.markLogin(db, result.admin.id);
+    // Give logAdminAction a req shape it recognises.
+    const auditReq = { admin: result.admin };
+    adminAuth.logAdminAction(db, auditReq, 'admin.login', { metadata: { ip: req.ip } });
+    res.json({ ok: true, admin: { email: result.admin.email, role: result.admin.role } });
+  });
+});
+
+app.post('/admin/logout', requireAdmin, (req, res) => {
+  const admin = req.admin;
+  adminAuth.logAdminAction(db, req, 'admin.logout');
+  req.session.adminId = null;
+  req.session.destroy((err) => {
+    if (err) console.warn('admin session destroy warned:', err && err.message);
+    res.json({ ok: true });
+  });
+});
+
+app.get('/admin/me', requireAdmin, (req, res) => {
+  res.json({
+    admin: { email: req.admin.email, role: req.admin.role, legacy: !!req.admin.legacy },
+  });
+});
 
 function getAdminStats() {
   const totalUsers = db.prepare("SELECT COUNT(*) as c FROM users WHERE COALESCE(account_status, 'active') != 'deleted'").get().c;
