@@ -1062,6 +1062,22 @@ function handleReadinessText(req, res) {
   }
 })();
 
+// --- Versioned schema migrations ----------------
+// The go-forward pattern for schema changes. Runs after every
+// CREATE TABLE IF NOT EXISTS and ensureColumn() call, before prepared
+// statements are built. Files live in migrations/. Idempotent — a rerun
+// against an already-migrated DB is a no-op. See migrations/README.md.
+try {
+  const { applyMigrations } = require('./lib/migrations');
+  const result = applyMigrations(db, { log: (msg) => console.log(msg) });
+  if (result.applied.length) {
+    console.log(`✓ schema migrations applied=${result.applied.length}  skipped=${result.skipped.length}`);
+  }
+} catch (err) {
+  console.error('✗ Schema migration failed at boot:', err.message);
+  throw err; // refuse to boot on a bad migration — the alternative is silent drift
+}
+
 // --- Prepared Statements ----------------
 const stmts = {
   getUserById: db.prepare('SELECT * FROM users WHERE id = ?'),
