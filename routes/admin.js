@@ -1,5 +1,6 @@
 const path = require('path');
 const crypto = require('crypto');
+const { decrypt: decryptEntry } = require('../lib/entry-crypto');
 const REPORT_STATUSES = new Set(['open', 'reviewed', 'dismissed', 'escalated', 'resolved']);
 
 function registerAdminRoutes(app, deps) {
@@ -650,10 +651,16 @@ function registerAdminRoutes(app, deps) {
         exported_at: new Date().toISOString(),
         users: db.prepare('SELECT id, name, email, college, year, archetype, consent_given, created_at, last_active_date FROM users ORDER BY id').all(),
         matches: db.prepare('SELECT * FROM matches ORDER BY id').all(),
-        entries: db.prepare('SELECT * FROM entries ORDER BY id').all(),
-        waiting_entries: db.prepare('SELECT * FROM waiting_entries ORDER BY id').all(),
+        // Admin export decrypts the sensitive text columns so the JSON is
+        // human-readable. Admin already has DB access; encryption at rest
+        // protects the data volume, not the admin.
+        entries: db.prepare('SELECT * FROM entries ORDER BY id').all()
+          .map(r => ({ ...r, text: decryptEntry(r.text) })),
+        waiting_entries: db.prepare('SELECT * FROM waiting_entries ORDER BY id').all()
+          .map(r => ({ ...r, text: decryptEntry(r.text) })),
         reveals: db.prepare('SELECT * FROM reveals ORDER BY id').all(),
-        comments: db.prepare('SELECT * FROM comments ORDER BY id').all(),
+        comments: db.prepare('SELECT * FROM comments ORDER BY id').all()
+          .map(r => ({ ...r, text: decryptEntry(r.text) })),
         reports: db.prepare('SELECT * FROM reports ORDER BY id').all(),
         report_status_history: db.prepare('SELECT * FROM report_status_history ORDER BY id').all(),
         payments: db.prepare('SELECT id, user_id, provider, provider_payment_id, provider_order_id, amount, currency, product, status, created_at, updated_at FROM payments ORDER BY id').all(),

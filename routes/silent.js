@@ -1,4 +1,7 @@
 const crypto = require('crypto');
+// Silent-line bodies stay plaintext (they are moderated + shown publicly).
+// Only the crisis_review evidence rows get encrypted at rest.
+const { encrypt: encryptCrisis, decrypt: decryptCrisis } = require('../lib/entry-crypto');
 
 // ─── Silent Room API Routes ───────────────────────────────────────────────────
 function registerSilentRoutes(app, deps) {
@@ -148,7 +151,7 @@ function registerSilentRoutes(app, deps) {
       // Crisis & PII
       const safety = scanForSafety(content);
       if (safety.crisis) {
-        sl.logCrisis.run(userId, content);
+        sl.logCrisis.run(userId, encryptCrisis(content));
         const crisis = getCrisisPayload(req);
         return res.status(200).json({
           id: null,
@@ -346,9 +349,12 @@ function registerSilentAdminRoutes(app, deps) {
 
   app.get('/admin/silent-flagged', authLimiter, requireAdmin, (req, res) => {
     try {
-      res.json(db.prepare(
+      // crisis_review.content is encrypted at rest — decrypt for the admin
+      // safety-review queue so moderators read the actual trigger text.
+      const rows = db.prepare(
         `SELECT id, user_id, content, created_at FROM crisis_review ORDER BY created_at DESC LIMIT 50`
-      ).all());
+      ).all().map(r => ({ ...r, content: decryptCrisis(r.content) }));
+      res.json(rows);
     } catch (e) { res.status(500).json({ error: 'Failed to load flagged content' }); }
   });
 

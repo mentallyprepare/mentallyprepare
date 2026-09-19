@@ -2,6 +2,13 @@
 // Anonymous topic walls: support-need selector, reactions, and free-text peer
 // comments under a moderation floor. Crisis detection runs on both cards and
 // comments. No endpoint ever returns author_id to the client.
+//
+// Card / comment bodies themselves are stored plaintext by design: rooms are
+// public walls and encrypting them defeats their point. But `crisis_review`
+// entries carry the trigger body verbatim as evidence for the safety review
+// queue, and those DO get encrypted at rest.
+
+const { encrypt: encryptCrisis } = require('../lib/entry-crypto');
 
 const CARD_TTL_HOURS = 12;
 const NEEDS = ['listen', 'think', 'share', 'encourage', 'quiet'];
@@ -138,7 +145,7 @@ function registerRoomsRoutes(app, deps) {
       const safety = scanForSafety(body);
       if (safety.crisis) {
         stmts.insertCard.run(room.id, userId, need, body, 1);
-        stmts.logCrisis.run(userId, body);
+        stmts.logCrisis.run(userId, encryptCrisis(body));
         if (trackEvent) trackEvent(userId, 'crisis_keyword_triggered', { surface: 'room_card', room: room.slug });
         const crisis = getCrisisPayload(req);
         return res.json({ held: true, crisis: true, helplines: crisis.helplines, message: crisis.message });
@@ -194,7 +201,7 @@ function registerRoomsRoutes(app, deps) {
       const safety = scanForSafety(body);
       if (safety.crisis) {
         stmts.insertComment.run(card.id, userId, body, 1);
-        stmts.logCrisis.run(userId, body);
+        stmts.logCrisis.run(userId, encryptCrisis(body));
         if (trackEvent) trackEvent(userId, 'crisis_keyword_triggered', { surface: 'room_comment' });
         const crisis = getCrisisPayload(req);
         return res.json({ held: true, crisis: true, helplines: crisis.helplines, message: crisis.message });

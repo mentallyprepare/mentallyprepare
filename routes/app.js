@@ -1,4 +1,5 @@
 const { isExpoPushToken, normalizePlatform } = require('../lib/native-push');
+const { encrypt: encryptEntry, decrypt: decryptEntry } = require('../lib/entry-crypto');
 
 function registerAppRoutes(app, deps) {
   const {
@@ -385,8 +386,9 @@ function registerAppRoutes(app, deps) {
     // Consistency
     const consistencyScore = Math.min(userEntries.length / Math.max(matchDay, 1), 1) * 30;
     // Word balance
-    const userAvg = userEntries.reduce((s, e) => s + (e.text ? e.text.split(/\s+/).length : 0), 0) / userEntries.length;
-    const partnerAvg = partnerEntries.reduce((s, e) => s + (e.text ? e.text.split(/\s+/).length : 0), 0) / partnerEntries.length;
+    const wordCount = (e) => { const p = decryptEntry(e.text); return p ? p.split(/\s+/).length : 0; };
+    const userAvg = userEntries.reduce((s, e) => s + wordCount(e), 0) / userEntries.length;
+    const partnerAvg = partnerEntries.reduce((s, e) => s + wordCount(e), 0) / partnerEntries.length;
     const ratio = Math.min(userAvg, partnerAvg) / Math.max(userAvg, partnerAvg, 1);
     const balanceScore = ratio * 30;
     return Math.round(Math.min(syncScore + consistencyScore + balanceScore, 100));
@@ -467,13 +469,13 @@ function registerAppRoutes(app, deps) {
         };
 
         entriesData = stmts.getEntries.all(userId, match.id)
-          .map((e) => ({ day: e.day, text: e.text, mood: e.mood, prompt: e.prompt, created_at: e.created_at }));
+          .map((e) => ({ day: e.day, text: decryptEntry(e.text), mood: e.mood, prompt: e.prompt, created_at: e.created_at }));
 
         // Partner entries — show entries from previous days (midnight unsealing)
         const allPartnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, unlockedJourneyDay);
         partnerEntries = allPartnerEntries
           .filter((e) => isEntryUnlocked(e, match))
-          .map((e) => ({ day: e.day, text: e.text, mood: e.mood, created_at: e.created_at }));
+          .map((e) => ({ day: e.day, text: decryptEntry(e.text), mood: e.mood, created_at: e.created_at }));
 
         partnerStatus = buildPartnerWritingStatus({
           userId,
@@ -487,7 +489,7 @@ function registerAppRoutes(app, deps) {
         const allComments = stmts.getComments.all(match.id, userId, partnerId);
         comments = allComments.map((c) => ({
           day: c.day,
-          text: c.text,
+          text: decryptEntry(c.text),
           from: c.user_id === userId ? 'me' : 'partner',
           created_at: c.created_at
         }));
@@ -551,7 +553,7 @@ function registerAppRoutes(app, deps) {
             revealed: bothReveal,
             anonymous: eitherAnonymous,
             partner: partnerIdentity,
-            partnerUnsentLetter: (bothReveal || eitherAnonymous) && partnerDay11 ? partnerDay11.text : null
+            partnerUnsentLetter: (bothReveal || eitherAnonymous) && partnerDay11 ? decryptEntry(partnerDay11.text) : null
           };
         }
       }
@@ -568,7 +570,7 @@ function registerAppRoutes(app, deps) {
       const waitingInfo = {
         archetype: safeUser.archetype,
         day1Prompt: prompts[0],
-        savedEntry: waitingEntry ? waitingEntry.text : ''
+        savedEntry: waitingEntry ? decryptEntry(waitingEntry.text) : ''
       };
       res.json({
         user: safeUser,
@@ -729,7 +731,7 @@ function registerAppRoutes(app, deps) {
       }
       if (trackEvent && !existingEntry && [3, 7, 14, 21].includes(day)) trackEvent(userId, `day_${day}`, { day });
       if (trackEvent && !existingEntry) trackEvent(userId, 'day_written', { day });
-      stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
+      stmts.upsertEntry.run(userId, match.id, day, encryptEntry(text.trim()), mood || '🌓', prompt);
       stmts.clearGhostNudge.run(userId, match.id);
 
       const crisisData = safety.crisis ? getCrisisPayload(req) : null;
@@ -1094,7 +1096,7 @@ function registerAppRoutes(app, deps) {
       for (let d = 1; d < day; d++) {
         const existing = stmts.getEntry.get(partnerId, match.id, d);
         if (!existing) {
-          stmts.upsertEntry.run(partnerId, match.id, d, fakeTexts[(d - 1) % fakeTexts.length], moods[d % moods.length], prompts[(d - 1) % prompts.length]);
+          stmts.upsertEntry.run(partnerId, match.id, d, encryptEntry(fakeTexts[(d - 1) % fakeTexts.length]), moods[d % moods.length], prompts[(d - 1) % prompts.length]);
         }
       }
       res.json({ ok: true });
@@ -1131,7 +1133,7 @@ function registerAppRoutes(app, deps) {
       for (let day = 1; day <= 21; day++) {
         const existing = stmts.getEntry.get(partnerId, match.id, day);
         if (!existing) {
-          stmts.upsertEntry.run(partnerId, match.id, day, fakeTexts[(day - 1) % fakeTexts.length], moods[day % moods.length], prompts[(day - 1) % prompts.length]);
+          stmts.upsertEntry.run(partnerId, match.id, day, encryptEntry(fakeTexts[(day - 1) % fakeTexts.length]), moods[day % moods.length], prompts[(day - 1) % prompts.length]);
         }
       }
       res.json({ ok: true });
@@ -1163,13 +1165,15 @@ function registerAppRoutes(app, deps) {
       if (!user) return res.status(404).json({ error: 'User not found' });
 
       const match = stmts.getMatch.get(userId, userId);
+      // Personal data export — decrypt so the user reads their own words in plaintext.
       const myEntries = db.prepare('SELECT day, prompt, text, mood, created_at FROM entries WHERE user_id = ?').all(userId)
-        .map((e) => ({ day: e.day, prompt: e.prompt, text: e.text, mood: e.mood, written_at: e.created_at }));
-      const waitingDraft = stmts.getWaitingEntry.get(userId);
+        .map((e) => ({ day: e.day, prompt: e.prompt, text: decryptEntry(e.text), mood: e.mood, written_at: e.created_at }));
+      const waitingDraftRaw = stmts.getWaitingEntry.get(userId);
+      const waitingDraft = waitingDraftRaw ? { ...waitingDraftRaw, text: decryptEntry(waitingDraftRaw.text) } : null;
       const myReveals = db.prepare('SELECT match_id, choice, created_at FROM reveals WHERE user_id = ?').all(userId)
         .map((r) => ({ match_id: r.match_id, choice: r.choice, decided_at: r.created_at }));
       const myComments = db.prepare('SELECT day, text, created_at FROM comments WHERE user_id = ?').all(userId)
-        .map((c) => ({ day: c.day, text: c.text, written_at: c.created_at }));
+        .map((c) => ({ day: c.day, text: decryptEntry(c.text), written_at: c.created_at }));
 
       const exportData = {
         exported_at: new Date().toISOString(),
