@@ -1,0 +1,48 @@
+version: 2
+
+# Weekly dependency + Actions updates. Grouped so the PR queue stays small.
+# Anushka gets one PR per week per ecosystem instead of one per dependency,
+# unless a security-only update lands mid-cycle (Dependabot always opens
+# those individually and immediately, regardless of the schedule).
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 5
+    reviewers:
+      - anushkanavin-afk
+    labels:
+      - dependencies
+      - npm
+    groups:
+      # Everything patch/minor lands in one weekly PR. Majors get their own
+      # so the changelogs are read individually before merging.
+      production-minor-and-patch:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      dev-minor-and-patch:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 3
+    reviewers:
+      - anushkanavin-afk
+    labels:
+      - dependencies
+      - github-actions

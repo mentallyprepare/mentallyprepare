@@ -1,0 +1,31 @@
+# Gitleaks configuration.
+#
+# Default rules are inherited (~180 patterns). Allowlist entries below tune
+# specific known-good matches so real leaks stay noisy. Keep additions
+# focused — every entry is a small hole in the fence.
+
+title = "Mentally Prepare gitleaks config"
+
+[extend]
+# Inherit gitleaks' default ruleset.
+useDefault = true
+
+[allowlist]
+description = "Intentional non-secret strings"
+paths = [
+  # Test fixtures deliberately use placeholder passwords + fake tokens
+  # that look secret-shaped to a scanner. Keep only these files — every
+  # other test/ file still gets scanned normally.
+  '''test/admin-auth\.test\.js''',
+  '''test/entry-crypto\.test\.js''',
+  '''test/native-push\.test\.js''',
+]
+regexes = [
+  # A fixed decoy bcrypt hash in lib/admin-auth.js is used for constant-
+  # time comparison when the email is unknown, so the response time does
+  # not leak which emails are registered. It is not a credential.
+  '''\$2b\$12\$fillfill.*''',
+  # ExpoPushToken[smoke_test_device] appears in test fixtures; it is a
+  # syntactically valid Expo token pattern with no live device behind it.
+  '''ExpoPushToken\[smoke_test_device\]''',
+]
