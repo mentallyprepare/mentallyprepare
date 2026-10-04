@@ -1521,9 +1521,7 @@ app.use('/api', (req, res, next) => {
   return next();
 });
 
-const appSecurityHeaders = helmet({
-  contentSecurityPolicy: {
-    directives: {
+const baseContentSecurityDirectives = {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://checkout.razorpay.com", "https://www.gstatic.com", "https://apis.google.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
@@ -1534,16 +1532,32 @@ const appSecurityHeaders = helmet({
       frameSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com", "https://accounts.google.com", "https://*.firebaseapp.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"]
-    }
-  },
+};
+const sharedHelmetOptions = {
   crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
   crossOriginEmbedderPolicy: false,
   referrerPolicy: { policy: 'no-referrer' }
+};
+const appSecurityHeaders = helmet({
+  ...sharedHelmetOptions,
+  contentSecurityPolicy: { directives: baseContentSecurityDirectives }
 });
+const publicAnalyticsSecurityHeaders = helmet({
+  ...sharedHelmetOptions,
+  contentSecurityPolicy: {
+    directives: {
+      ...baseContentSecurityDirectives,
+      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com'],
+      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com'],
+      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com']
+    }
+  }
+});
+const publicAnalyticsPaths = new Set(['/', '/index.html', '/safety', '/safety.html', '/privacy', '/privacy.html', '/terms', '/terms.html']);
 
 app.use((req, res, next) => {
   if (isFirebaseAuthHelperPath(req)) return next();
-  return appSecurityHeaders(req, res, next);
+  return (publicAnalyticsPaths.has(req.path) ? publicAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
 });
 // --- Stripe webhook MUST be registered BEFORE express.json() ---
 // (Stripe needs the raw body for signature verification)
