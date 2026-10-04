@@ -631,6 +631,19 @@ async function run() {
     ok('/robots.txt disallows /app, /admin, /api');
   } catch (e) { fail('/robots.txt disallows /app, /admin, /api', e); }
 
+  // Google Analytics can load only on public pages after the local consent script allows it.
+  try {
+    const publicPage = await request('GET', '/');
+    const privatePage = await request('GET', '/app');
+    const publicCsp = publicPage.headers['content-security-policy'] || '';
+    const privateCsp = privatePage.headers['content-security-policy'] || '';
+    assert.ok(publicPage.raw.includes('/public-analytics.js'), 'homepage includes consent controller');
+    assert.ok(!privatePage.raw.includes('/public-analytics.js'), 'private app excludes consent controller');
+    assert.ok(publicCsp.includes('https://www.googletagmanager.com'), 'public CSP permits Google tag after consent');
+    assert.ok(!privateCsp.includes('https://www.googletagmanager.com'), 'private CSP blocks Google tag');
+    ok('Google Analytics is confined to public pages');
+  } catch (e) { fail('Google Analytics is confined to public pages', e); }
+
   // R-5: #s-archetype-reveal has no inline display:flex
   try {
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
