@@ -80,7 +80,7 @@ async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, back
 
   const payloadHash = crypto.createHash('sha256').update(body).digest('hex');
   const canonical = [
-    'PUT', `/${key}`, '',
+    'PUT', new URL(url).pathname, '',
     `host:${new URL(url).host}`,
     `x-amz-content-sha256:${payloadHash}`,
     `x-amz-date:${dateStamp}`,
