@@ -7,27 +7,116 @@ on:
       - main
   workflow_dispatch:
 
+# Least privilege. Read-only unless a specific job needs more.
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # Fast lane: parse every JS file we ship. Catches typos and truncated
+  # commits before the slower jobs bother to install deps.
   syntax:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
+      - run: npm ci
       - name: Check JavaScript syntax
         run: npm run check:syntax
-
       - name: Run API smoke test
         run: npm run smoke:api
+
+  # The full test suite. Runs every dedicated test file: admin-auth,
+  # migrations, idor, smoke, native-push, entry-crypto (when that PR lands).
+  # This is the check branch protection should require alongside `syntax`.
+  test:
+    runs-on: ubuntu-latest
+    needs: syntax
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run test suite
+        # Provide the ephemeral env the tests expect; nothing real, just
+        # placeholders so any module that reads them at import time doesn't
+        # blow up. Real prod values live in Railway.
+        env:
+          NODE_ENV: test
+          SESSION_SECRET: ci-scratch-secret
+          ADMIN_PASSWORD: ci-scratch-admin
+        run: npm test
+
+  # Immutable-migration invariant: once a migration file is committed to
+  # main, its content cannot change. Editing an already-applied migration
+  # would silently drift schema across environments (checksums stored by
+  # the runner would mismatch and prod would refuse to boot). We catch it
+  # before the PR is merged, not at deploy time.
+  migration-immutability:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compare migrations/ against the base branch
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          # Fetch the base commit so it exists locally.
+          git fetch --no-tags --depth=1 origin "$BASE" || true
+
+          echo "Base:  $BASE"
+          echo "Head:  ${{ github.event.pull_request.head.sha }}"
+          echo
+
+          # Every migration file that already existed on the base.
+          MIGRATIONS_ON_BASE=$(git ls-tree --name-only -r "$BASE" -- migrations 2>/dev/null | grep '\.sql$' || true)
+
+          if [ -z "$MIGRATIONS_ON_BASE" ]; then
+            echo "No migrations exist on the base branch — nothing to check."
+            exit 0
+          fi
+
+          MODIFIED=""
+          for f in $MIGRATIONS_ON_BASE; do
+            BASE_HASH=$(git rev-parse "$BASE:$f" 2>/dev/null || echo "")
+            HEAD_HASH=$(git rev-parse "HEAD:$f" 2>/dev/null || echo "MISSING")
+            if [ -z "$BASE_HASH" ]; then continue; fi
+            if [ "$BASE_HASH" != "$HEAD_HASH" ]; then
+              MODIFIED="$MODIFIED\n  $f  ($BASE_HASH -> $HEAD_HASH)"
+            fi
+          done
+
+          if [ -n "$MODIFIED" ]; then
+            printf "\n✗ Applied migrations must be immutable. These were modified in this PR:\n"
+            printf "$MODIFIED\n\n"
+            echo "Land a new migration on top (0002+, 0003+ …) instead of editing an existing file."
+            echo "See migrations/README.md and lib/migrations.js for the invariant this protects."
+            exit 1
+          fi
+
+          echo "✓ No existing migration files were modified in this PR."
+
+  # Secret scanning. Blocks a PR that would introduce API keys, private
+  # keys, database URLs, tokens, or any of the ~180 patterns gitleaks
+  # recognises. Runs on the PR diff, not the whole history.
+  secret-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
