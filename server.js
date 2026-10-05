@@ -3103,7 +3103,7 @@ function scheduleNotifications() {
   // 4:00 AM IST is 22:30 UTC — daily DB backup
   cron.schedule('30 22 * * *', () => {
     console.log('Running daily DB backup...');
-    runBackup().then(r => console.log('Backup:', r.ok ? 'success' : 'failed', r.local || '')).catch(e => console.error('Backup error:', e.message));
+    runBackup().then(r => console.log('Backup:', r.ok ? (r.s3 ? 'encrypted offsite success' : 'local only') : 'failed', r.local || '')).catch(e => console.error('Backup error:', e.message));
   });
 
   console.log('  ✦ Cron schedules loaded for email and push reminders');
