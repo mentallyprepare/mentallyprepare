@@ -96,10 +96,9 @@ function main() {
     if (!envConfigured('BACKUP_S3_BUCKET')) {
       findings.push({ severity: 'high', code: 'NO_OFFSITE_BACKUP_SIGNAL', message: 'No offsite backup bucket is configured in this process environment.' });
     }
-    // The current backup implementation uploads the raw SQLite file. Merely
-    // defining a key would not make that encrypted, so this stays a finding
-    // until the backup code itself implements authenticated encryption.
-    findings.push({ severity: 'high', code: 'BACKUPS_NOT_APP_ENCRYPTED', message: 'The current backup implementation snapshots and uploads the raw SQLite file without application-level encryption.' });
+    if (!envConfigured('BACKUP_ENCRYPTION_KEY')) {
+      findings.push({ severity: 'high', code: 'BACKUP_ENCRYPTION_KEY_MISSING', message: 'Encrypted offsite backup requires BACKUP_ENCRYPTION_KEY.' });
+    }
     if (tables.some((table) => table.sensitiveColumns.length > 0)) {
       findings.push({ severity: 'high', code: 'SENSITIVE_COLUMNS_PRESENT', message: 'Sensitive-data candidate columns exist; verify field-level encryption and retention per table.' });
     }
@@ -125,7 +124,8 @@ function main() {
         localDirectoryConfigured: envConfigured('BACKUP_DIR'),
         offsiteBucketConfigured: envConfigured('BACKUP_S3_BUCKET'),
         offsiteEndpointConfigured: envConfigured('BACKUP_S3_ENDPOINT'),
-        applicationEncryptionImplemented: false,
+        applicationEncryptionImplemented: true,
+        encryptionKeyConfigured: envConfigured('BACKUP_ENCRYPTION_KEY'),
       },
       tables,
       findings,

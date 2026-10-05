@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
+const { readKey, encryptBackup } = require('./backup-crypto');
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 const DB_PATH = process.env.DB_PATH
@@ -53,24 +54,32 @@ async function runBackup() {
   const secretKey = process.env.BACKUP_S3_SECRET_KEY;
   const endpoint = process.env.BACKUP_S3_ENDPOINT;
 
+  const anyOffsiteSetting = [bucket, accessKey, secretKey, endpoint].some(Boolean);
+  if (anyOffsiteSetting && !(bucket && accessKey && secretKey)) {
+    console.error('Offsite backup configuration is incomplete');
+    return { ok: false, local: backupFile, s3: false, reason: 'offsite_configuration_incomplete' };
+  }
+
   if (bucket && accessKey && secretKey) {
     try {
-      await uploadToS3({ bucket, region, accessKey, secretKey, endpoint, backupFile, timestamp });
-      console.log('Backup uploaded to S3:', bucket);
+      const encryptionKey = readKey();
+      const plaintext = fs.readFileSync(backupFile);
+      const encrypted = encryptBackup(plaintext, encryptionKey);
+      await uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body: encrypted, timestamp });
+      console.log('Encrypted backup uploaded to S3:', bucket);
     } catch (e) {
-      console.error('S3 upload failed:', e.message);
-      return { ok: true, local: backupFile, s3: false, error: e.message };
+      console.error('Encrypted offsite backup failed:', e.message);
+      return { ok: false, local: backupFile, s3: false, reason: 'offsite_backup_failed' };
     }
   } else {
     console.log('S3 not configured (set BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY, BACKUP_S3_SECRET_KEY). Local backup only.');
   }
 
-  return { ok: true, local: backupFile, size: stat.size };
+  return { ok: true, local: backupFile, s3: Boolean(bucket), size: stat.size };
 }
 
-async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, backupFile, timestamp }) {
-  const body = fs.readFileSync(backupFile);
-  const key = `mentally-prepare/backups/mentally-prepare-${timestamp}.db`;
+async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body, timestamp }) {
+  const key = `mentally-prepare/backups/mentally-prepare-${timestamp}.db.enc`;
   const host = endpoint || `${bucket}.s3.${region}.amazonaws.com`;
   const url = endpoint ? `${endpoint}/${bucket}/${key}` : `https://${host}/${key}`;
 
@@ -116,8 +125,7 @@ async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, back
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`S3 PUT ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`S3 PUT ${res.status}`);
   }
 }
 

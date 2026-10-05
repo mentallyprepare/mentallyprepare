@@ -39,4 +39,6 @@ Anonymous 21-day journaling webapp for college students, built with Node.js, Exp
 ### Data persistence
 - SQLite database: `DATA_DIR/mentally-prepare.db`
 - Session secret fallback: `DATA_DIR/.session-secret`
-- Daily backups run at 4am IST; S3 backup optional (set `BACKUP_S3_*` vars)
+- Daily backups run at 4am IST. Offsite uploads use an S3 compatible service and require `BACKUP_S3_BUCKET`, `BACKUP_S3_REGION`, `BACKUP_S3_ENDPOINT`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`, and `BACKUP_ENCRYPTION_KEY`. Generate the encryption key as 32 random bytes encoded in hex and store it outside the database and backup bucket. Uploaded `.db.enc` objects use AES-256-GCM; local snapshots remain plaintext on the Railway volume for seven days. A failed offsite upload reports failure.
+- For Backblaze B2, use a private bucket, a bucket-scoped read/write application key, the region shown for that bucket (for example `us-west-004`), and its S3 endpoint (for example `https://s3.us-west-004.backblazeb2.com`). Keep the endpoint without a trailing slash.
+- To restore, download a `.db.enc` object, set the same `BACKUP_ENCRYPTION_KEY` in a private local shell, and run `node scripts/restore-backup.js downloaded.db.enc restored.db`. The command refuses to overwrite a file and verifies SQLite integrity. Keep the encryption key safe: losing it makes offsite backups unreadable. Perform a restore drill before relying on this for recovery.
