@@ -32,6 +32,29 @@ async function main() {
       uploaded = Buffer.from(options.body);
       assert.equal(uploaded.includes(Buffer.from('private-test-marker')), false);
       assert.equal(options.headers['x-amz-content-sha256'], crypto.createHash('sha256').update(uploaded).digest('hex'));
+      // Verify the signer independently using the AWS SigV4 date → region → service → terminator order.
+      const hmac = (key, value) => crypto.createHmac('sha256', key).update(value).digest();
+      const stamp = options.headers['x-amz-date'];
+      const date = stamp.slice(0, 8);
+      const region = process.env.BACKUP_S3_REGION;
+      const scope = `${date}/${region}/s3/aws4_request`;
+      const payloadHash = options.headers['x-amz-content-sha256'];
+      const canonical = [
+        'PUT', new URL(url).pathname, '',
+        `host:${new URL(url).host}`,
+        `x-amz-content-sha256:${payloadHash}`,
+        `x-amz-date:${stamp}`,
+        '',
+        'host;x-amz-content-sha256;x-amz-date',
+        payloadHash
+      ].join('\n');
+      const toSign = ['AWS4-HMAC-SHA256', stamp, scope, crypto.createHash('sha256').update(canonical).digest('hex')].join('\n');
+      const dateKey = hmac(Buffer.from('AWS4' + process.env.BACKUP_S3_SECRET_KEY), date);
+      const regionKey = hmac(dateKey, region);
+      const serviceKey = hmac(regionKey, 's3');
+      const signingKey = hmac(serviceKey, 'aws4_request');
+      const expectedSignature = hmac(signingKey, toSign).toString('hex');
+      assert.ok(options.headers.Authorization.endsWith(`Signature=${expectedSignature}`), 'AWS SigV4 signature must match date/region/service key derivation');
       return { ok: true };
     };
     const result = await runBackup();
