@@ -23,12 +23,14 @@ async function main() {
     process.env.BACKUP_S3_ENDPOINT = 'https://s3.us-west-004.backblazeb2.com';
     process.env.BACKUP_S3_ACCESS_KEY = 'test-access-key';
     process.env.BACKUP_S3_SECRET_KEY = 'test-secret-key';
+    process.env.BACKUP_S3_KEY_PREFIX = 'mentally prepare/backups';
     process.env.BACKUP_ENCRYPTION_KEY = crypto.randomBytes(32).toString('hex');
     const { runBackup } = require('../scripts/backup');
 
     let uploaded;
     global.fetch = async (url, options) => {
       assert.match(url, /\.db\.enc$/);
+      assert.match(url, /\/mentally%20prepare\/backups\//);
       uploaded = Buffer.from(options.body);
       assert.equal(uploaded.includes(Buffer.from('private-test-marker')), false);
       assert.equal(options.headers['x-amz-content-sha256'], crypto.createHash('sha256').update(uploaded).digest('hex'));

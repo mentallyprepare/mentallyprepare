@@ -79,9 +79,15 @@ async function runBackup() {
 }
 
 async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body, timestamp }) {
-  const key = `mentally-prepare/backups/mentally-prepare-${timestamp}.db.enc`;
+  const prefix = (process.env.BACKUP_S3_KEY_PREFIX || 'mentally-prepare/backups').replace(/^\/+|\/+$/g, '');
+  if (!prefix || prefix.split('/').some(part => !part || part === '.' || part === '..')) {
+    throw new Error('BACKUP_S3_KEY_PREFIX must be a nonempty object key prefix');
+  }
+  const key = `${prefix}/mentally-prepare-${timestamp}.db.enc`;
+  const encodedKey = key.split('/').map(part => encodeURIComponent(part).replace(/[!'()*]/g, char =>
+    `%${char.charCodeAt(0).toString(16).toUpperCase()}`)).join('/');
   const host = endpoint || `${bucket}.s3.${region}.amazonaws.com`;
-  const url = endpoint ? `${endpoint}/${bucket}/${key}` : `https://${host}/${key}`;
+  const url = endpoint ? `${endpoint}/${bucket}/${encodedKey}` : `https://${host}/${encodedKey}`;
 
   const dateStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   const shortDate = dateStamp.slice(0, 8);
