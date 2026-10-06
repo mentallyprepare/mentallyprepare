@@ -355,7 +355,7 @@ html.mp-app-route #app-area{display:block}
       <div class="faq-q" style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--ink);margin-bottom:6px;">What happens on Day 21?</div>
       <div class="faq-a" style="font-family:'Lora',serif;font-size:1rem;color:var(--ink-m);margin-bottom:22px;">You both choose a reveal level: stay anonymous, first name only, name and college, or contact details with separate confirmation. Email is never shared automatically.</div>
       <div class="faq-q" style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--ink);margin-bottom:6px;">When do notes unlock?</div>
-      <div class="faq-a" style="font-family:'Lora',serif;font-size:1rem;color:var(--ink-m);margin-bottom:0;">Notes unlock at midnight. You and your partner are always on the same clock.</div>
+      <div class="faq-a" style="font-family:'Lora',serif;font-size:1rem;color:var(--ink-m);margin-bottom:0;">Notes unlock at midnight India time (IST), which may be a different local time for you. You and your partner follow the same schedule.</div>
     </div>
   </div>
 </section>
@@ -452,7 +452,7 @@ html.mp-app-route #app-area{display:block}
     <div style="width:100%;text-align:left;">
       <div class="input-block">
         <label class="input-label">Email address</label>
-        <input class="input-field" type="email" id="forgot-email" placeholder="you@college.edu"/>
+        <input class="input-field" type="email" id="forgot-email" placeholder="you@example.com"/>
       </div>
     </div>
     <button class="btn" id="forgotSubmitBtn" onclick="forgotPassword()" style="margin-top:8px;">Send reset code</button>
@@ -550,7 +550,7 @@ html.mp-app-route #app-area{display:block}
   <div class="slide">
     <div class="slide-visual" style="padding:24px 0 16px;flex-direction:column;gap:14px;align-items:flex-start;">
       <div class="input-block"><label class="input-label">Your name</label><input class="input-field" type="text" id="inp-name" placeholder="e.g. Anushka"/></div>
-      <div class="input-block"><label class="input-label">Your college</label><input class="input-field" type="text" id="inp-college" list="college-list" placeholder="e.g. your university or college"/><datalist id="college-list"><option value="University of Delhi"></option><option value="Miranda House, Delhi"></option><option value="Shri Ram College of Commerce"></option><option value="Lady Shri Ram College"></option><option value="Hindu College"></option><option value="St. Stephen's College"></option><option value="My college is not listed"></option></datalist><div class="field-help">College helps us avoid matching you with someone from the same college.</div></div>
+      <div class="input-block"><label class="input-label">Your university or college</label><input class="input-field" type="text" id="inp-college" placeholder="Enter the full name of your university or college"/><div class="field-help">Your school helps us avoid matching you with someone from the same institution.</div></div>
       <div class="input-block"><label class="input-label">Your year</label>
         <div class="year-row" id="year-row">
           <button class="year-btn" onclick="pickYear(this)">1st</button>
@@ -561,7 +561,7 @@ html.mp-app-route #app-area{display:block}
           <button class="year-btn" onclick="pickYear(this)">N/A</button>
         </div>
       </div>
-      <div class="input-block"><label class="input-label">Email</label><input class="input-field" type="email" id="inp-email" placeholder="you@college.edu"/><div class="field-help">Email is used for login, verification, and password reset.</div></div>
+      <div class="input-block"><label class="input-label">Email</label><input class="input-field" type="email" id="inp-email" placeholder="you@example.com"/><div class="field-help">Email is used for login, verification, and password reset.</div></div>
       <div class="input-block"><label class="input-label">Password (min 8 characters)</label><input class="input-field" type="password" id="inp-password" placeholder="Create a password"/></div>
       <button class="btn-ghost google-auth-btn" onclick="googleLogin('signup')" type="button"><span class="google-mark">G</span>Continue with Google</button>
     </div>

@@ -3,20 +3,20 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"/>
-<title>Mentally Prepare — Anonymous Pen Pal Journal: Write to One Stranger for 21 Nights</title>
-<meta name="description" content="An anonymous pen pal journal. For 21 nights you and one matched stranger exchange one honest note a day. On night 21, you both choose whether to reveal who you are. Free during early access. 18+."/>
+<title>Mentally Prepare — Anonymous Pen Pal Journal for Students 18+</title>
+<meta name="description" content="A private pen pal journal for university and college students 18+. For 21 nights, exchange one honest note a day with a matched stranger, then choose together whether to reveal who you are. Free during early access."/>
 <link rel="canonical" href="https://mymentallyprepare.com/"/>
 <meta name="theme-color" content="#0B0614"/>
 <meta property="og:type" content="website"/>
-<meta property="og:title" content="Mentally Prepare — Anonymous Pen Pal Journal: Write to One Stranger for 21 Nights"/>
-<meta property="og:description" content="An anonymous pen pal journal. For 21 nights you and one matched stranger exchange one honest note a day. On night 21, you both choose whether to reveal who you are. Free during early access. 18+."/>
+<meta property="og:title" content="Mentally Prepare — Anonymous Pen Pal Journal for Students 18+"/>
+<meta property="og:description" content="A private pen pal journal for university and college students 18+. For 21 nights, exchange one honest note a day with a matched stranger, then choose together whether to reveal who you are. Free during early access."/>
 <meta property="og:url" content="https://mymentallyprepare.com/"/>
 <meta property="og:image" content="https://mymentallyprepare.com/icon-512x512.png"/>
 <meta property="og:image:width" content="512"/>
 <meta property="og:image:height" content="512"/>
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Mentally Prepare — Anonymous Pen Pal Journal: Write to One Stranger for 21 Nights"/>
-<meta name="twitter:description" content="An anonymous pen pal journal. For 21 nights you and one matched stranger exchange one honest note a day. On night 21, you both choose whether to reveal who you are. Free during early access. 18+."/>
+<meta name="twitter:title" content="Mentally Prepare — Anonymous Pen Pal Journal for Students 18+"/>
+<meta name="twitter:description" content="A private pen pal journal for university and college students 18+. For 21 nights, exchange one honest note a day with a matched stranger, then choose together whether to reveal who you are. Free during early access."/>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -395,7 +395,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
       <div>
         <div class="hero-kicker reveal"><span class="pulse"></span>Early access &middot; currently free</div>
         <h1 class="reveal">For 21 nights, write to a stranger you may <em>never meet.</em></h1>
-        <p class="hero-sub reveal">One honest note each night. They write back. Neither of you knows who the other is, until day 21, when you both decide if you ever want to find out.</p>
+        <p class="hero-sub reveal">A private writing ritual for university and college students 18+. One honest note each night. On day 21, you both decide whether to reveal who you are.</p>
         <div class="hero-actions reveal">
           <a class="btn" href="/app?screen=s-signup">Begin tonight</a>
           <a class="btn-ghost" href="/app?src=test">Take the test — know what you are</a>
@@ -435,7 +435,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   <section class="section entity-block" aria-label="About Mentally Prepare">
     <div class="inner">
       <p class="entity-para reveal" style="font-family:var(--body);font-size:13px;line-height:1.75;color:var(--ink-secondary);max-width:65ch;margin:0 auto;text-align:left;">
-        Mentally Prepare is an anonymous pen-pal journaling app for adults 18 and over. You are matched with one stranger in your region. For 21 nights you each write one honest note a day; notes unlock the next morning. On night 21 both people independently choose whether to reveal their identity, and a single &ldquo;stay anonymous&rdquo; keeps both identities private forever. It is free during early access. It is a writing ritual, not therapy or crisis care.
+        Mentally Prepare is an anonymous pen-pal journaling app for university and college students aged 18 and over. You are matched with one stranger in your region. For 21 nights you each write one honest note a day; notes unlock after midnight India time (IST), which may be a different local time for you. On night 21 both people independently choose whether to reveal their identity, and a single &ldquo;stay anonymous&rdquo; keeps both identities private forever. It is free during early access. It is a writing ritual, not therapy or crisis care.
       </p>
     </div>
   </section>
@@ -811,12 +811,12 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
       t.setUTCHours(15,30,0,0);
       var d=t.getTime()-now.getTime();
       if(d<=0){
-        el.innerHTML='&#10022; Tonight&#8217;s prompt is live &mdash; <span class="cd-label">people are writing now</span>';
+        el.innerHTML='&#10022; Tonight&#8217;s prompt is live &mdash; <span class="cd-label">9 pm IST schedule</span>';
       }else{
         var h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000),p=[];
         if(h>0)p.push(h+' hour'+(h===1?'':'s'));
         if(m>0||h===0)p.push(m+' min');
-        el.innerHTML='&#10022; Tonight&#8217;s prompt opens in '+p.join(' ')+' <span class="cd-label">&middot; 9 pm</span>';
+        el.innerHTML='&#10022; Tonight&#8217;s prompt opens in '+p.join(' ')+' <span class="cd-label">&middot; 9 pm IST</span>';
       }
     }
     u();setInterval(u,30000);
