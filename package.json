@@ -14,6 +14,8 @@
     "smoke:auth": "node scripts/auth-smoke.js",
     "backup": "node scripts/backup.js",
     "test:backup": "node test/backup-encryption.test.js",
+    "backup:verify": "node scripts/verify-offsite-backup.js",
+    "backup:health": "node scripts/check-backup-health.js",
     "migrate": "node scripts/migrate.js",
     "test": "node test/admin-auth.test.js && node test/migrations.test.js && node test/idor.test.js && node test/public-analytics.test.js && node test/smoke.js && node test/native-push.test.js && node test/backup-encryption.test.js"
   },

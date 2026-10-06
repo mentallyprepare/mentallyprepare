@@ -8,15 +8,17 @@ const fs = require('fs');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const { readKey, encryptBackup } = require('./backup-crypto');
-
-const IS_PROD = process.env.NODE_ENV === 'production';
-const DB_PATH = process.env.DB_PATH
-  || path.join(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || (IS_PROD ? '/data/db' : path.join(__dirname, '..')), 'mentally-prepare.db');
-const BACKUP_DIR = process.env.BACKUP_DIR || path.join(path.dirname(DB_PATH), 'backups');
+const { getDBPath, getBackupDir } = require('./backup-paths');
+const { writeStatus } = require('./backup-status');
 
 async function runBackup() {
+  const DB_PATH = getDBPath();
+  const BACKUP_DIR = getBackupDir();
+  const startedAt = new Date().toISOString();
+  writeStatus({ lastAttemptAt: startedAt, lastAttemptOk: false });
   if (!fs.existsSync(DB_PATH)) {
     console.error('Backup skipped: DB not found at', DB_PATH);
+    writeStatus({ lastFailureCode: 'db_not_found' });
     return { ok: false, reason: 'db_not_found' };
   }
 
@@ -40,7 +42,7 @@ async function runBackup() {
   for (const f of fs.readdirSync(BACKUP_DIR)) {
     const fp = path.join(BACKUP_DIR, f);
     try {
-      if (fs.statSync(fp).mtimeMs < cutoff) {
+      if (/^mentally-prepare-.*\.db$/.test(f) && fs.statSync(fp).isFile() && fs.statSync(fp).mtimeMs < cutoff) {
         fs.unlinkSync(fp);
         console.log('Pruned old backup:', f);
       }
@@ -57,6 +59,7 @@ async function runBackup() {
   const anyOffsiteSetting = [bucket, accessKey, secretKey, endpoint].some(Boolean);
   if (anyOffsiteSetting && !(bucket && accessKey && secretKey)) {
     console.error('Offsite backup configuration is incomplete');
+    writeStatus({ lastFailureCode: 'offsite_configuration_incomplete' });
     return { ok: false, local: backupFile, s3: false, reason: 'offsite_configuration_incomplete' };
   }
 
@@ -65,14 +68,17 @@ async function runBackup() {
       const encryptionKey = readKey();
       const plaintext = fs.readFileSync(backupFile);
       const encrypted = encryptBackup(plaintext, encryptionKey);
-      await uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body: encrypted, timestamp });
+      const key = await uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body: encrypted, timestamp });
+      writeStatus({ lastAttemptOk: true, lastOffsiteSuccessAt: new Date().toISOString(), lastOffsiteKey: key, lastFailureCode: null });
       console.log('Encrypted backup uploaded to S3:', bucket);
     } catch (e) {
       console.error('Encrypted offsite backup failed:', e.message);
+      writeStatus({ lastFailureCode: 'offsite_backup_failed' });
       return { ok: false, local: backupFile, s3: false, reason: 'offsite_backup_failed' };
     }
   } else {
     console.log('S3 not configured (set BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY, BACKUP_S3_SECRET_KEY). Local backup only.');
+    writeStatus({ lastAttemptOk: true, lastFailureCode: 'offsite_not_configured' });
   }
 
   return { ok: true, local: backupFile, s3: Boolean(bucket), size: stat.size };
@@ -84,6 +90,12 @@ async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body
     throw new Error('BACKUP_S3_KEY_PREFIX must be a nonempty object key prefix');
   }
   const key = `${prefix}/mentally-prepare-${timestamp}.db.enc`;
+  const res = await signedS3Request({ method: 'PUT', bucket, region, accessKey, secretKey, endpoint, key, body });
+  if (!res.ok) throw new Error(`S3 PUT ${res.status}`);
+  return key;
+}
+
+async function signedS3Request({ method, bucket, region, accessKey, secretKey, endpoint, key, body }) {
   const encodedKey = key.split('/').map(part => encodeURIComponent(part).replace(/[!'()*]/g, char =>
     `%${char.charCodeAt(0).toString(16).toUpperCase()}`)).join('/');
   const host = endpoint || `${bucket}.s3.${region}.amazonaws.com`;
@@ -93,9 +105,9 @@ async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body
   const shortDate = dateStamp.slice(0, 8);
   const scope = `${shortDate}/${region}/s3/aws4_request`;
 
-  const payloadHash = crypto.createHash('sha256').update(body).digest('hex');
+  const payloadHash = crypto.createHash('sha256').update(body || Buffer.alloc(0)).digest('hex');
   const canonical = [
-    'PUT', new URL(url).pathname, '',
+    method, new URL(url).pathname, '',
     `host:${new URL(url).host}`,
     `x-amz-content-sha256:${payloadHash}`,
     `x-amz-date:${dateStamp}`,
@@ -117,22 +129,17 @@ async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body
 
   const auth = `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=${signature}`;
 
-  const res = await fetch(url, {
-    method: 'PUT',
+  return fetch(url, {
+    method,
     headers: {
       'Host': new URL(url).host,
       'x-amz-content-sha256': payloadHash,
       'x-amz-date': dateStamp,
       'Authorization': auth,
-      'Content-Type': 'application/octet-stream',
-      'Content-Length': body.length.toString()
+      ...(body ? { 'Content-Type': 'application/octet-stream', 'Content-Length': body.length.toString() } : {})
     },
-    body
+    ...(body ? { body } : {})
   });
-
-  if (!res.ok) {
-    throw new Error(`S3 PUT ${res.status}`);
-  }
 }
 
 // Run standalone
@@ -146,4 +153,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runBackup };
+module.exports = { runBackup, signedS3Request };
