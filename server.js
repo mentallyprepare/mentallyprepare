@@ -208,6 +208,8 @@ const { registerSilentRoutes, registerSilentAdminRoutes } = require('./routes/si
 const { registerWallRoutes } = require('./routes/wall');
 const { registerRoomsRoutes, registerRoomsAdminRoutes } = require('./routes/rooms');
 const { runBackup } = require('./scripts/backup');
+const { verifyOffsiteBackup } = require('./scripts/verify-offsite-backup');
+const { checkBackupHealth } = require('./scripts/check-backup-health');
 // ---------------------------------------------------------------
 const webpush = require('web-push');
 const { sendExpoPush } = require('./lib/native-push');
@@ -3103,7 +3105,37 @@ function scheduleNotifications() {
   // 4:00 AM IST is 22:30 UTC — daily DB backup
   cron.schedule('30 22 * * *', () => {
     console.log('Running daily DB backup...');
-    runBackup().then(r => console.log('Backup:', r.ok ? (r.s3 ? 'encrypted offsite success' : 'local only') : 'failed', r.local || '')).catch(e => console.error('Backup error:', e.message));
+    runBackup().then(r => {
+      console.log('Backup:', r.ok ? (r.s3 ? 'encrypted offsite success' : 'local only') : 'failed', r.local || '');
+      if (IS_PROD && (!r.ok || !r.s3) && SENTRY_ENABLED) Sentry.captureMessage('Production offsite backup failed', 'error');
+    }).catch(e => {
+      console.error('Backup error:', e.message);
+      if (IS_PROD && SENTRY_ENABLED) Sentry.captureMessage('Production offsite backup failed', 'error');
+    });
+  });
+
+  // Monday 5:00 AM IST, after Sunday's 4:00 AM backup.
+  if (IS_PROD) cron.schedule('30 23 * * 0', () => {
+    verifyOffsiteBackup().then(r => {
+      if (!r.ok && SENTRY_ENABLED) Sentry.captureMessage('Production offsite restore check failed', 'error');
+    }).catch(e => {
+      console.error('Restore check error:', e.message);
+      if (SENTRY_ENABLED) Sentry.captureMessage('Production offsite restore check failed', 'error');
+    });
+  });
+
+  // Daily 5:30 AM IST: flag a missing upload or overdue weekly restore.
+  if (IS_PROD) cron.schedule('0 0 * * *', () => {
+    try {
+      const problems = checkBackupHealth();
+      if (problems.length) {
+        console.error('Backup health failed:', problems.join(', '));
+        if (SENTRY_ENABLED) Sentry.captureMessage(`Production backup health: ${problems.join(', ')}`, 'error');
+      } else console.log('Backup health ok');
+    } catch (e) {
+      console.error('Backup health check failed:', e.message);
+      if (SENTRY_ENABLED) Sentry.captureMessage('Production backup health check failed', 'error');
+    }
   });
 
   console.log('  ✦ Cron schedules loaded for email and push reminders');

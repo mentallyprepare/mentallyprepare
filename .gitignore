@@ -13,6 +13,7 @@ mentally-prepare.db-shm
 
 # Backups
 backups/
+backup-status.json
 
 # VAPID keys
 .vapid-keys.json

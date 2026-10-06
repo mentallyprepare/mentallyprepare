@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const Database = require('better-sqlite3');
 const { decryptBackup, readKey } = require('../scripts/backup-crypto');
 const { restoreBackup } = require('../scripts/restore-backup');
+const { checkBackupHealth } = require('../scripts/check-backup-health');
 
 async function main() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mp-backup-test-'));
@@ -64,6 +65,26 @@ async function main() {
     assert.equal(result.s3, true);
     assert.ok(uploaded);
     assert.ok(decryptBackup(uploaded, readKey()).equals(fs.readFileSync(result.local)));
+    const { readStatus } = require('../scripts/backup-status');
+    assert.equal(readStatus().lastAttemptOk, true);
+    assert.match(readStatus().lastOffsiteKey, /^mentally prepare\/backups\/mentally-prepare-.*\.db\.enc$/);
+
+    global.fetch = async (url, options) => {
+      assert.equal(options.method, 'GET');
+      assert.match(url, /mentally%20prepare\/backups/);
+      assert.equal(options.headers['x-amz-content-sha256'], crypto.createHash('sha256').update('').digest('hex'));
+      return { ok: true, headers: new Map([['content-length', String(uploaded.length)]]), arrayBuffer: async () => uploaded };
+    };
+    const { verifyOffsiteBackup } = require('../scripts/verify-offsite-backup');
+    assert.equal((await verifyOffsiteBackup()).ok, true);
+    assert.ok(readStatus().lastRestoreSuccessAt);
+    assert.deepEqual(checkBackupHealth(readStatus()), []);
+    assert.deepEqual(checkBackupHealth({}, Date.now()), ['offsite_upload_stale', 'restore_check_stale']);
+    assert.ok(checkBackupHealth({ ...readStatus(), lastOffsiteSuccessAt: '2020-01-01T00:00:00.000Z' }).includes('offsite_upload_stale'));
+
+    global.fetch = async () => ({ ok: false, status: 403 });
+    assert.equal((await verifyOffsiteBackup()).ok, false);
+    assert.deepEqual(checkBackupHealth(readStatus()), ['last_restore_check_failed']);
 
     const encryptedFile = path.join(dir, 'downloaded.db.enc');
     fs.writeFileSync(encryptedFile, uploaded);
@@ -84,6 +105,8 @@ async function main() {
     const missingKey = await runBackup();
     assert.equal(missingKey.ok, false);
     assert.equal(missingKey.s3, false);
+    assert.equal(readStatus().lastAttemptOk, false);
+    assert.ok(checkBackupHealth(readStatus()).includes('last_backup_attempt_failed'));
     console.log('Encrypted backup and restore tests passed');
   } finally {
     global.fetch = originalFetch;
