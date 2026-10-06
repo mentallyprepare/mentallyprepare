@@ -621,6 +621,32 @@ async function run() {
     ok('/sitemap.xml lists only marketing pages');
   } catch (e) { fail('/sitemap.xml lists only marketing pages', e); }
 
+  // Blog: index and listed articles are public, indexable, in the sitemap, and analytics-eligible.
+  try {
+    const { BLOG_POSTS } = require('../lib/blog-posts');
+    const index = await request('GET', '/blog');
+    assert.strictEqual(index.status, 200);
+    assert.ok(index.raw.includes('rel="canonical" href="https://mymentallyprepare.com/blog"'), 'blog index has canonical');
+    assert.ok((index.headers['content-security-policy'] || '').includes('https://www.googletagmanager.com'), 'blog index uses public CSP');
+    const sitemap = await request('GET', '/sitemap.xml');
+    assert.ok(sitemap.raw.includes('/blog</loc>'), 'sitemap lists blog index');
+    for (const post of BLOG_POSTS) {
+      const r = await request('GET', `/blog/${post.slug}`);
+      assert.strictEqual(r.status, 200, `${post.slug} is served`);
+      assert.ok(!/noindex/.test(r.headers['x-robots-tag'] || ''), `${post.slug} is indexable`);
+      assert.ok(r.raw.includes(`<link rel="canonical" href="https://mymentallyprepare.com/blog/${post.slug}"/>`), `${post.slug} has its canonical`);
+      assert.ok(r.raw.includes('"@type": "BlogPosting"'), `${post.slug} has article schema`);
+      assert.ok(r.raw.includes('href="/safety"'), `${post.slug} links to the safety page`);
+      assert.ok(index.raw.includes(`href="/blog/${post.slug}"`), `blog index links to ${post.slug}`);
+      assert.ok(sitemap.raw.includes(`/blog/${post.slug}</loc>`), `sitemap lists ${post.slug}`);
+      const image = await request('GET', post.image);
+      assert.strictEqual(image.status, 200, `${post.slug} image exists`);
+    }
+    const missing = await request('GET', '/blog/not-a-real-post');
+    assert.strictEqual(missing.status, 404, 'unknown blog slug is a 404');
+    ok('blog pages are public, indexable, and in the sitemap');
+  } catch (e) { fail('blog pages are public, indexable, and in the sitemap', e); }
+
   // R-4: /robots.txt disallows /app, /admin, /api
   try {
     const r = await request('GET', '/robots.txt');

@@ -1,4 +1,5 @@
 const path = require('path');
+const { BLOG_POSTS, BLOG_SLUGS } = require('../lib/blog-posts');
 
 function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
 
@@ -26,6 +27,15 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
     });
   }
 
+  app.get('/blog', (req, res) => {
+    res.sendFile(path.join(rootDir, 'content', 'blog', 'index.html'));
+  });
+
+  app.get('/blog/:slug', (req, res, next) => {
+    if (!BLOG_SLUGS.has(req.params.slug)) return next();
+    res.sendFile(path.join(rootDir, 'content', 'blog', `${req.params.slug}.html`));
+  });
+
   app.get('/waitlist', (req, res) => {
     res.redirect(301, '/');
   });
@@ -46,9 +56,15 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
 
   app.get('/sitemap.xml', (req, res) => {
     res.header('Content-Type', 'application/xml');
+    const blogUrls = BLOG_POSTS
+      .map((post) => `  <url><loc>${baseUrl}/blog/${post.slug}</loc><lastmod>${post.updated}</lastmod><priority>0.7</priority></url>`)
+      .join('\n');
+    const blogLastmod = BLOG_POSTS.length ? `<lastmod>${BLOG_POSTS[0].updated}</lastmod>` : '';
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${baseUrl}/</loc><priority>1.0</priority></url>
+  <url><loc>${baseUrl}/blog</loc>${blogLastmod}<priority>0.8</priority></url>
+${blogUrls}
   <url><loc>${baseUrl}/safety</loc><priority>0.7</priority></url>
   <url><loc>${baseUrl}/privacy</loc><priority>0.5</priority></url>
   <url><loc>${baseUrl}/terms</loc><priority>0.5</priority></url>

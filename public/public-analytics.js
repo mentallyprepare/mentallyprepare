@@ -13,7 +13,8 @@
     '/terms': '/terms',
     '/terms.html': '/terms'
   };
-  const canonicalPath = publicPaths[window.location.pathname];
+  const blogMatch = /^\/blog(\/[a-z0-9-]+)?\/?$/.exec(window.location.pathname);
+  const canonicalPath = publicPaths[window.location.pathname] || (blogMatch ? '/blog' + (blogMatch[1] || '') : null);
   if (!canonicalPath) return;
 
   let tagLoaded = false;
@@ -69,6 +70,22 @@
     script.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
     document.head.appendChild(script);
   }
+
+  // Links marked data-mp-cta report which call to action was used. Sign-up
+  // links also report sign_up_start. Nothing is sent without consent.
+  document.addEventListener('click', function (event) {
+    if (!tagLoaded || !event.target || !event.target.closest) return;
+    const link = event.target.closest('a[data-mp-cta]');
+    if (!link) return;
+    const params = {
+      cta_id: link.getAttribute('data-mp-cta'),
+      page_location: 'https://mymentallyprepare.com' + canonicalPath
+    };
+    window.gtag('event', 'cta_click', params);
+    if (/[?&]screen=s-signup(?:&|$)/.test(link.getAttribute('href') || '')) {
+      window.gtag('event', 'sign_up_start', params);
+    }
+  });
 
   function hideBanner() {
     if (banner) banner.remove();
