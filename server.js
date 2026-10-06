@@ -213,6 +213,7 @@ const webpush = require('web-push');
 const { sendExpoPush } = require('./lib/native-push');
 const { selectNotificationCopy } = require('./lib/notification-copy');
 const { BASE_URL } = require('./lib/config');
+const { isBlogPath } = require('./lib/blog-posts');
 const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome, sendMatchFoundNotification, sendDailyPromptReminder, sendPartnerWroteReminder, sendPartnerStillWriting } = require('./email-service');
 const cron = require('node-cron');
 
@@ -1557,7 +1558,8 @@ const publicAnalyticsPaths = new Set(['/', '/index.html', '/safety', '/safety.ht
 
 app.use((req, res, next) => {
   if (isFirebaseAuthHelperPath(req)) return next();
-  return (publicAnalyticsPaths.has(req.path) ? publicAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
+  const isPublicPage = publicAnalyticsPaths.has(req.path) || isBlogPath(req.path);
+  return (isPublicPage ? publicAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
 });
 // --- Stripe webhook MUST be registered BEFORE express.json() ---
 // (Stripe needs the raw body for signature verification)
