@@ -329,8 +329,8 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   .nav-links,.nav-cta{display:none}
   .menu-btn{display:block}
   .mobile-menu.open{display:flex}
-  .mobile-menu{position:fixed;top:64px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--border);padding:12px 20px;flex-direction:column}
-  .mobile-menu a{padding:12px 0;color:var(--ink-secondary);font-size:13px}
+  .mobile-menu{position:fixed;top:64px;left:0;right:0;z-index:29;background:rgba(8,5,15,.96);border-bottom:1px solid var(--border);padding:12px 20px;flex-direction:column;max-height:calc(100dvh - 64px);overflow-y:auto}
+  .mobile-menu a{padding:10px 0;color:var(--ink-secondary);font-size:13px}
   .hero{padding-top:88px;min-height:auto;text-align:center}
   .hero-grid{grid-template-columns:1fr;gap:var(--gap-lg)}
   .hero-sub{margin-left:auto;margin-right:auto}
@@ -370,6 +370,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
     <a href="#how">How it works</a>
     <a href="#screens">Experience</a>
     <a href="#silent-room">Silent Room</a>
+    <a href="/blog">Blog</a>
     <a href="#safety">Safety</a>
     <a href="/app?screen=s-login">Log in</a>
   </div>
@@ -380,6 +381,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   <a href="#how">How it works</a>
   <a href="#screens">Experience</a>
   <a href="#silent-room">Silent Room</a>
+  <a href="/blog">Blog</a>
   <a href="#safety">Safety</a>
   <a href="/app?screen=s-login">Log in</a>
   <a href="/app?screen=s-signup">Begin tonight</a>
