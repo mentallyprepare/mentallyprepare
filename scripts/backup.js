@@ -103,7 +103,7 @@ async function uploadToS3({ bucket, region, accessKey, secretKey, endpoint, body
     crypto.createHash('sha256').update(canonical).digest('hex')
   ].join('\n');
 
-  const sigKey = ['aws4_request', 's3', region, shortDate].reduce(
+  const sigKey = [shortDate, region, 's3', 'aws4_request'].reduce(
     (k, msg) => crypto.createHmac('sha256', k).update(msg).digest(),
     Buffer.from('AWS4' + secretKey)
   );
