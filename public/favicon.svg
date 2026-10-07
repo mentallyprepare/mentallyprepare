@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="76 38 360 360" width="512" height="512">
+  <!-- Favicon: the planet mark alone (no wordmark), sized to stay legible at 16-48px. Derived from icon-512.svg. -->
+  <defs>
+    <!-- Dark background -->
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#1a0a2e"/>
+      <stop offset="100%" stop-color="#05020d"/>
+    </radialGradient>
+
+    <!-- Planet body gradient -->
+    <radialGradient id="planetGrad" cx="38%" cy="32%" r="60%">
+      <stop offset="0%" stop-color="#c07fff"/>
+      <stop offset="35%" stop-color="#8b36e8"/>
+      <stop offset="75%" stop-color="#5a1ab0"/>
+      <stop offset="100%" stop-color="#2d0a70"/>
+    </radialGradient>
+
+    <!-- Planet ambient glow -->
+    <radialGradient id="planetGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#7b2fff" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#3a0099" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Outer halo -->
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5b1aaa" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#1a0050" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Highlight glint -->
+    <radialGradient id="glint" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Ring gradient -->
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c09fff" stop-opacity="0.15"/>
+      <stop offset="30%" stop-color="#d8b4ff" stop-opacity="0.7"/>
+      <stop offset="50%" stop-color="#e8d0ff" stop-opacity="0.85"/>
+      <stop offset="70%" stop-color="#c09fff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#9b70e0" stop-opacity="0.1"/>
+    </linearGradient>
+
+    <!-- Clip for ring back: only top half visible behind planet -->
+    <clipPath id="ringBack">
+      <rect x="55" y="148" width="402" height="70"/>
+    </clipPath>
+    <clipPath id="ringFront">
+      <rect x="55" y="218" width="402" height="80"/>
+    </clipPath>
+  </defs>
+  <rect x="76" y="38" width="360" height="360" fill="#0b0614"/>
+  <rect x="76" y="38" width="360" height="360" fill="url(#bgGlow)"/>
+  <!-- Outer halo glow behind planet -->
+  <ellipse cx="256" cy="208" rx="138" ry="138" fill="url(#halo)"/>
+
+  <!-- Ring back strokes (behind planet) -->
+  <ellipse cx="256" cy="218" rx="154" ry="26" fill="none"
+    stroke="#c8a0f0" stroke-width="6" opacity="0.55"
+    clip-path="url(#ringBack)"/>
+  <ellipse cx="256" cy="218" rx="141" ry="22" fill="none"
+    stroke="#d8b8ff" stroke-width="2.0" opacity="0.25"
+    clip-path="url(#ringBack)"/>
+
+  <!-- Planet glow aura -->
+  <circle cx="256" cy="208" r="122" fill="url(#planetGlow)" opacity="0.7"/>
+
+  <!-- Planet body -->
+  <circle cx="256" cy="208" r="96" fill="url(#planetGrad)"/>
+
+  <!-- Subtle planet shading overlay -->
+  <circle cx="256" cy="208" r="96" fill="#1a0050" opacity="0.18"/>
+
+  <!-- Highlight glint (top-left) -->
+  <ellipse cx="220" cy="175" rx="26" ry="21" fill="url(#glint)" opacity="0.55"/>
+
+  <!-- Small bright star dots on planet surface -->
+  <circle cx="235" cy="192" r="4.8" fill="#ffffff" opacity="0.9"/>
+  <circle cx="248" cy="186" r="2.7" fill="#ffffff" opacity="0.75"/>
+  <circle cx="226" cy="202" r="1.6" fill="#ffffff" opacity="0.5"/>
+
+  <!-- Ring front strokes (in front of planet) -->
+  <ellipse cx="256" cy="218" rx="154" ry="26" fill="none"
+    stroke="#c8a0f0" stroke-width="9" opacity="0.9"
+    clip-path="url(#ringFront)"/>
+  <ellipse cx="256" cy="218" rx="141" ry="22" fill="none"
+    stroke="#e0c8ff" stroke-width="2.6" opacity="0.3"
+    clip-path="url(#ringFront)"/>
+  <ellipse cx="256" cy="218" rx="168" ry="30" fill="none"
+    stroke="#b090e0" stroke-width="2.6" opacity="0.2"
+    clip-path="url(#ringFront)"/>
+</svg>
