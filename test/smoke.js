@@ -735,16 +735,18 @@ async function run() {
     ok('/api/report has no hidden matching side effect');
   } catch (e) { fail('/api/report has no hidden matching side effect', e); }
 
-  // R-13: sw.js CACHE_NAME includes the app.html CSS cache-bust version
+  // R-13: HTML assets and service worker share the release cache-bust version
   try {
     const swJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8');
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
     const swMatch = swJs.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
     const htmlMatch = appHtml.match(/app\.css\?v=([^"&]+)/);
-    assert.ok(swMatch && htmlMatch, 'found both version strings');
+    const jsMatch = appHtml.match(/app\.js\?v=([^"&]+)/);
+    assert.ok(swMatch && htmlMatch && jsMatch, 'found all version strings');
     assert.strictEqual(swMatch[1], `mp-${htmlMatch[1]}`, 'SW cache name includes the CSS cache-bust version');
-    ok('sw.js CACHE_NAME includes app.html cache-bust version');
-  } catch (e) { fail('sw.js CACHE_NAME includes app.html cache-bust version', e); }
+    assert.strictEqual(jsMatch[1], htmlMatch[1], 'JavaScript and CSS cache-bust versions match');
+    ok('app assets and service worker share cache-bust version');
+  } catch (e) { fail('app assets and service worker share cache-bust version', e); }
 
   // R-14: app.js has popstate handler
   try {
