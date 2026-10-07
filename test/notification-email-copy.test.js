@@ -30,4 +30,7 @@ for (const rows of Object.values(COPY)) {
 for (const file of ['public/app.html', 'public/privacy.html', 'public/safety.html', 'public/terms.html']) {
   assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), /@mentallyprepare\.in/i);
 }
+const privacy = fs.readFileSync(path.join(__dirname, '..', 'public/privacy.html'), 'utf8');
+assert.doesNotMatch(privacy, /login and password reset only/i);
+assert.match(privacy, /Nightly writing emails are off by default/);
 console.log('Notification email copy checks passed');
