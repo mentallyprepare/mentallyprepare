@@ -51,7 +51,7 @@ if (!vapidKeys.publicKey || !vapidKeys.privateKey) {
   process.exit(1);
 }
 webpush.setVapidDetails(
-  'mailto:' + (process.env.CONTACT_EMAIL || 'hello@mentallyprepare.in'),
+  'mailto:' + (process.env.CONTACT_EMAIL || 'hello@mymentallyprepare.com'),
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );

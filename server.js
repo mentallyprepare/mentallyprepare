@@ -216,7 +216,7 @@ const { sendExpoPush } = require('./lib/native-push');
 const { selectNotificationCopy } = require('./lib/notification-copy');
 const { BASE_URL } = require('./lib/config');
 const { isBlogPath } = require('./lib/blog-posts');
-const { sendWaitlistConfirmation, sendWaitlistAccepted, sendLoginWelcome, sendMatchFoundNotification, sendDailyPromptReminder, sendPartnerWroteReminder, sendPartnerStillWriting } = require('./email-service');
+const { sendWaitlistConfirmation, sendWaitlistAccepted, sendMatchFoundNotification, sendDailyPromptReminder } = require('./email-service');
 const cron = require('node-cron');
 
 const DEFAULT_FIREBASE_WEB_CONFIG = {
@@ -1910,7 +1910,6 @@ registerAuthRoutes(app, {
   bcrypt,
   crypto,
   stmts,
-  sendLoginWelcome,
   normalizeCollegeName,
   trackEvent,
   verifyFirebaseIdToken,
@@ -2497,7 +2496,7 @@ try {
     throw new Error('VAPID keys missing public/private key');
   }
   webpush.setVapidDetails(
-    'mailto:' + (process.env.CONTACT_EMAIL || 'hello@mentallyprepare.in'),
+    'mailto:' + (process.env.CONTACT_EMAIL || 'hello@mymentallyprepare.com'),
     vapidKeys.publicKey,
     vapidKeys.privateKey
   );
@@ -2790,10 +2789,10 @@ const PUSH_COPY = {
   morning: 'A small pause can change the day.',
   daily_reflection: "Today's reflection is open.",
   evening: 'Your reset is ready.',
-  partner_waiting: 'Your next step is waiting.',
+  partner_waiting: 'A note is ready when you are.',
   daily_prompt_unlocked: "Today's reflection is open.",
   silent_room: 'Come back for two quiet minutes.',
-  inactive_24: 'Your 21 day journey continues today.',
+  inactive_24: 'Your private writing space is still here.',
   inactive_48: 'A small reset is open when you are ready.'
 };
 
@@ -2979,13 +2978,6 @@ function send9pmReminders() {
 
 // 10pm IST = 16:30 UTC — conditional "partner wrote" notification
 function send10pmReminders() {
-  // Rotate copy per night so the nudge never feels mechanical.
-  const tenPmCopy = [
-    "your person wrote today. you haven't. entries seal at midnight.",
-    "they showed up today. the page is still blank on your side.",
-    "it's 10pm. your match is waiting to be read."
-  ];
-  const body = tenPmCopy[Math.floor(Math.random() * tenPmCopy.length)];
   const rows = stmts.getActiveMatchUsers.all();
   for (const row of rows) {
     const day = getMatchDay(row.started_at);
@@ -2999,17 +2991,13 @@ function send10pmReminders() {
     const partnerEntry = stmts.getEntry.get(partnerId, match.id, day);
     if (partnerEntry) {
       const user = parseUser(stmts.getUserById.get(row.id));
-      const partner = parseUser(stmts.getUserById.get(partnerId));
-      if (user && partner) {
-        sendPartnerWroteReminder(user.email, user.name, partner.name, day).catch(err => console.error('Failed to send partner wrote reminder', err));
-      }
       const prefs = parsePushPreferences(row.push_preferences);
       if (prefs.enabled && prefs.eveningReminder) {
-        sendGentlePush(row, 'partner_waiting', body).catch(() => {});
+        sendGentlePush(row, 'partner_waiting', 'A note is ready when you are.').catch(() => {});
       }
     }
   }
-  console.log('  ✦ 10pm: Queued partner-wrote email and push reminders');
+  console.log('  ✦ 10pm: Queued optional partner-note push reminders');
 }
 
 function sendQuietPartnerNudges() {
@@ -3041,11 +3029,10 @@ function sendQuietPartnerNudges() {
     const user = parseUser(stmts.getUserById.get(row.id));
     if (!user) continue;
 
-    stmts.insertNudge.run(row.id, match.id, 'partner_still_writing', 'your partner is still writing. one honest line is enough.');
-    sendPartnerStillWriting(user.email, user.name).catch(err => console.error('Ghost nudge email failed', err));
+    stmts.insertNudge.run(row.id, match.id, 'partner_still_writing', 'Your space is here whenever you want it.');
     const prefs = parsePushPreferences(row.push_preferences);
     if (prefs.enabled && prefs.eveningReminder) {
-      sendGentlePush(row, 'partner_still_writing', 'your partner is still writing. one honest line is enough.').catch(() => {});
+      sendGentlePush(row, 'partner_still_writing', 'Your space is here whenever you want it.').catch(() => {});
     }
     sent++;
   }
