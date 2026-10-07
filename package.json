@@ -17,7 +17,7 @@
     "backup:verify": "node scripts/verify-offsite-backup.js",
     "backup:health": "node scripts/check-backup-health.js",
     "migrate": "node scripts/migrate.js",
-    "test": "node test/admin-auth.test.js && node test/migrations.test.js && node test/idor.test.js && node test/public-analytics.test.js && node test/smoke.js && node test/native-push.test.js && node test/backup-encryption.test.js"
+    "test": "node test/admin-auth.test.js && node test/admin-ui.test.js && node test/admin-login-ui.test.js && node test/account-ui.test.js && node test/migrations.test.js && node test/idor.test.js && node test/payments.test.js && node test/tokens.test.js && node test/public-analytics.test.js && node test/smoke.js && node test/native-push.test.js && node test/backup-encryption.test.js"
   },
   "dependencies": {
     "@sentry/node": "^10.57.0",
@@ -31,7 +31,7 @@
     "firebase-admin": "^14.2.0",
     "helmet": "^8.1.0",
     "node-cron": "^4.2.1",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.0.13",
     "razorpay": "^2.9.6",
     "stripe": "^20.4.1",
     "web-push": "^3.6.7"

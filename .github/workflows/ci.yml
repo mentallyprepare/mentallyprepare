@@ -20,7 +20,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -29,5 +29,11 @@ jobs:
       - name: Check JavaScript syntax
         run: npm run check:syntax
 
+      - name: Run test suite
+        run: npm test
+
       - name: Run API smoke test
         run: npm run smoke:api
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=moderate
