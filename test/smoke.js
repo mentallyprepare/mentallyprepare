@@ -255,6 +255,22 @@ async function run() {
     ok('Native push registration lifecycle');
   } catch (e) { fail('Native push registration lifecycle', e); }
 
+  try {
+    const initial = await request('GET', '/api/push/preferences', null, { cookie });
+    assert.strictEqual(initial.status, 200);
+    assert.strictEqual(initial.json.preferences.emailReminders, false, 'email reminders must default off');
+    const optedIn = await request('POST', '/api/push/preferences', { preferences: { enabled: true, emailReminders: true } }, { cookie });
+    assert.strictEqual(optedIn.status, 200);
+    assert.strictEqual(optedIn.json.preferences.emailReminders, true);
+    const pushOnlyUpdate = await request('POST', '/api/push/preferences', { preferences: { enabled: true, eveningReminder: false } }, { cookie });
+    assert.strictEqual(pushOnlyUpdate.status, 200);
+    assert.strictEqual(pushOnlyUpdate.json.preferences.emailReminders, true, 'push-only updates should preserve email consent');
+    const optedOut = await request('POST', '/api/push/preferences', { preferences: { enabled: false } }, { cookie });
+    assert.strictEqual(optedOut.status, 200);
+    assert.strictEqual(optedOut.json.preferences.emailReminders, false, 'turn off notifications must stop email reminders');
+    ok('Email reminders require opt-in and honor notification opt-out');
+  } catch (e) { fail('Email reminder preference lifecycle', e); }
+
   // 3. Save a waiting entry (Day 1, pre-match)
   try {
     const r = await request('POST', '/api/waiting-entry', {
