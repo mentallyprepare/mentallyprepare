@@ -112,6 +112,7 @@ function registerAppRoutes(app, deps) {
 
   const defaultPushPreferences = {
     enabled: true,
+    emailReminders: false,
     morningReminder: false,
     eveningReminder: true,
     dailyReflection: true,
@@ -124,17 +125,19 @@ function registerAppRoutes(app, deps) {
     try { prefs = raw ? JSON.parse(raw) : {}; } catch { prefs = {}; }
     const merged = { ...defaultPushPreferences, ...prefs };
     merged.enabled = merged.enabled !== false;
+    merged.emailReminders = merged.enabled && merged.emailReminders === true;
     for (const key of ['morningReminder', 'eveningReminder', 'dailyReflection', 'streakReminder', 'silentRoomReminder']) {
       merged[key] = merged.enabled && merged[key] !== false;
     }
     return merged;
   }
 
-  function cleanPushPreferences(input) {
+  function cleanPushPreferences(input, previous = {}) {
     const raw = input && typeof input === 'object' ? input : {};
     const enabled = raw.enabled !== false && raw.notificationsOff !== true;
     return {
       enabled,
+      emailReminders: enabled && (typeof raw.emailReminders === 'boolean' ? raw.emailReminders : previous.emailReminders === true),
       morningReminder: enabled && raw.morningReminder === true,
       eveningReminder: enabled && raw.eveningReminder !== false,
       dailyReflection: enabled && raw.dailyReflection !== false,
@@ -1287,7 +1290,8 @@ function registerAppRoutes(app, deps) {
       if (!subscription || !subscription.endpoint) return res.status(400).json({ error: 'Invalid subscription' });
       stmts.updatePushSub.run(JSON.stringify(subscription), req.session.userId);
       if (preferences) {
-        stmts.updatePushPrefs.run(JSON.stringify(cleanPushPreferences(preferences)), req.session.userId);
+        const current = stmts.getUserById.get(req.session.userId);
+        stmts.updatePushPrefs.run(JSON.stringify(cleanPushPreferences(preferences, parsePushPreferences(current && current.push_preferences))), req.session.userId);
       }
       console.log('Push subscription saved', { userId: req.session.userId });
       const updated = stmts.getUserById.get(req.session.userId);
@@ -1343,7 +1347,9 @@ function registerAppRoutes(app, deps) {
 
   app.post('/api/push/preferences', apiLimiter, requireAuth, (req, res) => {
     try {
-      const preferences = cleanPushPreferences((req.body && req.body.preferences) || req.body || {});
+      const current = stmts.getUserById.get(req.session.userId);
+      if (!current) return res.status(404).json({ error: 'User not found' });
+      const preferences = cleanPushPreferences((req.body && req.body.preferences) || req.body || {}, parsePushPreferences(current.push_preferences));
       stmts.updatePushPrefs.run(JSON.stringify(preferences), req.session.userId);
       console.log('Push preferences updated', { userId: req.session.userId, enabled: preferences.enabled });
       res.json({ ok: true, preferences });

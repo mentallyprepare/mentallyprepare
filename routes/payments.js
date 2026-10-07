@@ -57,15 +57,21 @@ function registerPaymentRoutes(app, deps) {
 
       const body = razorpay_order_id + '|' + razorpay_payment_id;
       const expectedSig = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
-      if (expectedSig !== razorpay_signature) {
+      const suppliedSig = String(razorpay_signature);
+      const expectedBuffer = Buffer.from(expectedSig, 'hex');
+      const suppliedBuffer = /^[0-9a-f]{64}$/i.test(suppliedSig) ? Buffer.from(suppliedSig, 'hex') : Buffer.alloc(0);
+      if (suppliedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, suppliedBuffer)) {
         return res.status(400).json({ error: 'Payment verification failed' });
       }
 
       const payment = stmts.getPaymentByOrder.get(razorpay_order_id);
-      if (payment) {
-        stmts.updatePayment.run(razorpay_payment_id, 'paid', payment.id);
-        if (trackEvent) trackEvent(payment.user_id, 'paid_conversion', { provider: 'razorpay', product: payment.product, paymentId: payment.id });
+      if (!payment || payment.provider !== 'razorpay' || payment.user_id !== req.session.userId) {
+        return res.status(404).json({ error: 'Payment not found' });
       }
+      if (payment.status !== 'created') return res.status(409).json({ error: 'Payment already processed' });
+
+      stmts.updatePayment.run(razorpay_payment_id, 'paid', payment.id);
+      if (trackEvent) trackEvent(payment.user_id, 'paid_conversion', { provider: 'razorpay', product: payment.product, paymentId: payment.id });
 
       res.json({ ok: true, verified: true });
     } catch (e) {

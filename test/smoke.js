@@ -255,6 +255,22 @@ async function run() {
     ok('Native push registration lifecycle');
   } catch (e) { fail('Native push registration lifecycle', e); }
 
+  try {
+    const initial = await request('GET', '/api/push/preferences', null, { cookie });
+    assert.strictEqual(initial.status, 200);
+    assert.strictEqual(initial.json.preferences.emailReminders, false, 'email reminders must default off');
+    const optedIn = await request('POST', '/api/push/preferences', { preferences: { enabled: true, emailReminders: true } }, { cookie });
+    assert.strictEqual(optedIn.status, 200);
+    assert.strictEqual(optedIn.json.preferences.emailReminders, true);
+    const pushOnlyUpdate = await request('POST', '/api/push/preferences', { preferences: { enabled: true, eveningReminder: false } }, { cookie });
+    assert.strictEqual(pushOnlyUpdate.status, 200);
+    assert.strictEqual(pushOnlyUpdate.json.preferences.emailReminders, true, 'push-only updates should preserve email consent');
+    const optedOut = await request('POST', '/api/push/preferences', { preferences: { enabled: false } }, { cookie });
+    assert.strictEqual(optedOut.status, 200);
+    assert.strictEqual(optedOut.json.preferences.emailReminders, false, 'turn off notifications must stop email reminders');
+    ok('Email reminders require opt-in and honor notification opt-out');
+  } catch (e) { fail('Email reminder preference lifecycle', e); }
+
   // 3. Save a waiting entry (Day 1, pre-match)
   try {
     const r = await request('POST', '/api/waiting-entry', {
@@ -735,16 +751,18 @@ async function run() {
     ok('/api/report has no hidden matching side effect');
   } catch (e) { fail('/api/report has no hidden matching side effect', e); }
 
-  // R-13: sw.js CACHE_NAME includes the app.html CSS cache-bust version
+  // R-13: HTML assets and service worker share the release cache-bust version
   try {
     const swJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'sw.js'), 'utf8');
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
     const swMatch = swJs.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
     const htmlMatch = appHtml.match(/app\.css\?v=([^"&]+)/);
-    assert.ok(swMatch && htmlMatch, 'found both version strings');
+    const jsMatch = appHtml.match(/app\.js\?v=([^"&]+)/);
+    assert.ok(swMatch && htmlMatch && jsMatch, 'found all version strings');
     assert.strictEqual(swMatch[1], `mp-${htmlMatch[1]}`, 'SW cache name includes the CSS cache-bust version');
-    ok('sw.js CACHE_NAME includes app.html cache-bust version');
-  } catch (e) { fail('sw.js CACHE_NAME includes app.html cache-bust version', e); }
+    assert.strictEqual(jsMatch[1], htmlMatch[1], 'JavaScript and CSS cache-bust versions match');
+    ok('app assets and service worker share cache-bust version');
+  } catch (e) { fail('app assets and service worker share cache-bust version', e); }
 
   // R-14: app.js has popstate handler
   try {

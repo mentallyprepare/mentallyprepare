@@ -197,7 +197,6 @@ function registerAuthRoutes(app, deps) {
     bcrypt,
     crypto,
     stmts,
-    sendLoginWelcome,
     normalizeCollegeName,
     trackEvent,
     verifyFirebaseIdToken,
@@ -423,7 +422,7 @@ function registerAuthRoutes(app, deps) {
     }
   });
 
-  app.get('/api/manual-verify-email', (req, res) => {
+  app.get('/api/manual-verify-email', async (req, res) => {
     try {
       const email = clean(req.query.email).toLowerCase();
       const expires = clean(req.query.expires);
@@ -439,11 +438,7 @@ function registerAuthRoutes(app, deps) {
         trackEvent(user.id, 'email_verified', { method: 'manual_signed_link' });
         logVerification('Verification successful', { email: user.email, method: 'manual_signed_link' });
       }
-      if (req.session && typeof req.session.regenerate === 'function') {
-        req.session.regenerate((err) => {
-          if (!err) { req.session.userId = user.id; req.session.save(() => {}); }
-        });
-      }
+      if (req.session) await establishSession(req, user.id);
       res.redirect('/app?verified=1');
     } catch (e) {
       console.error('Manual verify email error:', e);
@@ -489,17 +484,8 @@ function registerAuthRoutes(app, deps) {
       }
 
       await establishSession(req, user.id);
-      const signupDate = new Date(user.created_at || Date.now());
-      const reference = isNaN(signupDate.getTime()) ? Date.now() : signupDate.getTime();
-      const dayNumber = Math.min(Math.max(Math.floor((Date.now() - reference) / (1000 * 60 * 60 * 24)) + 1, 1), 21);
       res.json({ ok: true, emailVerificationRequired: !user.email_verified, ...authTokens(user.id) });
 
-      const lastSent = user.login_email_sent_at ? new Date(user.login_email_sent_at).getTime() : 0;
-      if (user.email_verified && Date.now() - lastSent > 24 * 60 * 60 * 1000 && sendLoginWelcome) {
-        sendLoginWelcome(user.email, user.name, dayNumber)
-          .then(() => stmts.updateLoginEmailTime.run(new Date().toISOString(), user.id))
-          .catch(err => console.error('Login email failed:', err.message));
-      }
     } catch (e) {
       console.error('Login error:', e);
       res.status(500).json({ error: 'Login failed' });

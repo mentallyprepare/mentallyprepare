@@ -15,7 +15,13 @@ const BRAND = {
 function firstName(name) {
   const raw = (name || '').trim();
   if (!raw) return 'friend';
-  return raw.split(' ')[0];
+  return escapeHtml(raw.split(' ')[0]);
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
 }
 
 function wordmarkHtml() {
@@ -49,7 +55,7 @@ function footerHtml() {
       font-size:12px;
       text-align:center;
     ">
-      quietly held in <a href="${SITE_URL}" style="color:${BRAND.violet}; text-decoration:none;">mentallyprepare.in</a>
+      <a href="${SITE_URL}" style="color:${BRAND.violet}; text-decoration:none;">mymentallyprepare.com</a>
     </div>
   `;
 }
@@ -88,7 +94,8 @@ function buildTemplate({ preheader, content }) {
 
 function waitlistConfirmationEmail(name, position) {
   const first = firstName(name);
-  const preheader = `You're #${position} on the Mentally Prepare waitlist ✦`;
+  const safePosition = Number.isSafeInteger(Number(position)) && Number(position) > 0 ? Number(position) : '';
+  const preheader = `You're #${safePosition} on the Mentally Prepare waitlist ✦`;
   const highlight = `
     <div style="
       margin:24px 0;
@@ -105,7 +112,7 @@ function waitlistConfirmationEmail(name, position) {
   const body = `
     <div style="text-align:center; font-size:40px; line-height:1; margin-bottom:12px;">🌙</div>
     <h1 style="margin:0; font-size:32px; text-transform:none;">you're on the list, ${first}</h1>
-    <p style="margin:8px 0 0; color:${BRAND.violet}; font-weight:600;">position #${position}</p>
+    <p style="margin:8px 0 0; color:${BRAND.violet}; font-weight:600;">position #${safePosition}</p>
     ${dividerHtml(BRAND.rose, BRAND.roseDark)}
     <p style="margin:0 0 12px;">hey ${first}, thank you for raising your hand for mentally prepare. this is a 21-day dip into anonymous letters with just one stranger – no names, no socials, just honest writing when your head is too loud.</p>
     <p style="margin:0 0 12px;">we hold the space, pair you slowly, and only reach back when a slot opens. until then, keep breathing and know we're saving a quiet corner for you.</p>
@@ -123,10 +130,10 @@ function waitlistAcceptedEmail(name) {
     <h1 style="margin:0; font-size:34px; text-transform:none;">you're in, ${first}</h1>
     <p style="margin:8px 0 0; color:${BRAND.gold}; font-weight:600;">✦ your 21 days begin now ✦</p>
     ${dividerHtml(BRAND.gold, '#F7B7C8')}
-    <p style="margin:16px 0 16px;">your spot just opened. we're matching you with one stranger within 24 hours, and you'll hear from us again as soon as the pairing lands in your inbox.</p>
+    <p style="margin:16px 0 16px;">your spot is open. you can set up your account now, and we'll let you know when a connection is ready.</p>
     <p style="margin:0 0 16px;">keep an eye on your phone, keep your journal nearby, and let curiosity lead the first note.</p>
     <div style="text-align:center; margin:32px 0;">
-      <a href="${SITE_URL}/signup" style="
+      <a href="${SITE_URL}/app?screen=s-signup" style="
         display:inline-block;
         padding:14px 36px;
         border-radius:999px;
@@ -148,8 +155,8 @@ function waitlistAcceptedEmail(name) {
         <li>create your profile and set your writing rhythm</li>
         <li>we match you with one person, no scouting</li>
         <li>write your first letter, keep it honest</li>
-        <li>day 14 unlock: option to ask to meet (or not)</li>
-        <li>day 21 reveal if it's time to step forward</li>
+        <li>write at your own pace</li>
+        <li>on day 21, both people can choose whether to reveal themselves</li>
       </ul>
     </div>
     <p style="margin:24px 0 0; color:${BRAND.muted}; line-height:1.6;">rooting for you, — <span style="color:${BRAND.rose};">the mentally prepare team</span></p>
@@ -171,12 +178,12 @@ function loginMessage(dayNumber) {
     return 'you\'re just getting started. take your time, write what feels true, and don\'t rush the silence.';
   }
   if (dayNumber <= 10) {
-    return 'you\'re building something real with your pen pal. keep showing up, even on the days that feel heavy.';
+    return 'you can return to your private writing space whenever it feels useful.';
   }
   if (dayNumber <= 18) {
-    return 'you\'ve been at this for a while now. look how far you\'ve come, and let that be permission to write honestly again.';
+    return 'your pace is yours. write what feels useful today.';
   }
-  return 'you\'re almost at day 21. whatever happens next — you showed up, and that matters more than you know.';
+  return 'day 21 is close. you can choose what to share and what to keep private.';
 }
 
 function loginWelcomeEmail(name, dayNumber) {
@@ -191,7 +198,7 @@ function loginWelcomeEmail(name, dayNumber) {
     ${dividerHtml(BRAND.purple, BRAND.violet)}
     <p style="margin:16px 0 16px;">${message}</p>
     <div style="text-align:center; margin:24px 0;">
-      <a href="${SITE_URL}/journal" style="
+      <a href="${SITE_URL}/app" style="
         display:inline-block;
         padding:10px 28px;
         border-radius:999px;
@@ -214,10 +221,10 @@ function matchFoundEmail(name, partnerArchetype) {
     <h1 style="margin:0; font-size:32px; text-transform:none;">your journey begins, ${first}</h1>
     <p style="margin:8px 0 0; color:${BRAND.gold}; font-weight:600;">✦ we found your partner ✦</p>
     ${dividerHtml(BRAND.gold, BRAND.violet)}
-    <p style="margin:16px 0 16px;">you have been matched with a ${partnerArchetype || 'stranger'}. their story is entirely different from yours, yet you might find unexpected parallels.</p>
-    <p style="margin:0 0 16px;">head to your journal to write your day 1 entry. don't overthink it, just tell the truth.</p>
+    <p style="margin:16px 0 16px;">a connection is ready in your private space.</p>
+    <p style="margin:0 0 16px;">when you have a moment, open the app to see what comes next.</p>
     <div style="text-align:center; margin:32px 0;">
-      <a href="${SITE_URL}/journal" style="
+      <a href="${SITE_URL}/app" style="
         display:inline-block;
         padding:14px 36px;
         border-radius:999px;
@@ -236,12 +243,12 @@ function dailyPromptReminderEmail(name, dayNumber) {
   const emoji = getMoonForDay(dayNumber);
   const body = `
     <div style="text-align:center; font-size:40px; line-height:1; margin-bottom:12px;">${emoji}</div>
-    <h1 style="margin:0; font-size:32px; text-transform:none;">tonight's prompt is waiting</h1>
+    <h1 style="margin:0; font-size:32px; text-transform:none;">a quiet minute for yourself</h1>
     <p style="margin:8px 0 0; color:${BRAND.violet}; font-weight:600;">day ${dayNumber} of 21</p>
     ${dividerHtml(BRAND.purple, BRAND.violet)}
-    <p style="margin:16px 0 16px;">${first}, your 5-minute ritual awaits. take a moment to reflect and write your entry before the day ends.</p>
+    <p style="margin:16px 0 16px;">${first}, if today has been full, you can pause here. Tonight's prompt is ready whenever you want to write.</p>
     <div style="text-align:center; margin:24px 0;">
-      <a href="${SITE_URL}/journal" style="
+      <a href="${SITE_URL}/app" style="
         display:inline-block;
         padding:10px 28px;
         border-radius:999px;
@@ -251,6 +258,7 @@ function dailyPromptReminderEmail(name, dayNumber) {
         text-decoration:none;
       ">View tonight's prompt →</a>
     </div>
+    <p style="margin:16px 0 0; color:${BRAND.muted}; font-size:13px;">You can turn off email reminders at any time in your app's notification settings.</p>
   `;
   return buildTemplate({ content: body });
 }
@@ -258,15 +266,14 @@ function dailyPromptReminderEmail(name, dayNumber) {
 function partnerWroteEmail(name, partnerName, dayNumber) {
   const first = firstName(name);
   const emoji = getMoonForDay(dayNumber);
-  const pName = partnerName ? firstName(partnerName) : 'your partner';
   const body = `
     <div style="text-align:center; font-size:40px; line-height:1; margin-bottom:12px;">${emoji}</div>
-    <h1 style="margin:0; font-size:32px; text-transform:none;">${pName} wrote today</h1>
+    <h1 style="margin:0; font-size:32px; text-transform:none;">a note is ready in your space</h1>
     <p style="margin:8px 0 0; color:${BRAND.violet}; font-weight:600;">day ${dayNumber} of 21</p>
     ${dividerHtml(BRAND.purple, BRAND.violet)}
-    <p style="margin:16px 0 16px;">${first}, ${pName} has shared their entry for today. don't leave them waiting.</p>
+    <p style="margin:16px 0 16px;">${first}, there's something new to see when you're ready. You can write whenever it feels right for you.</p>
     <div style="text-align:center; margin:24px 0;">
-      <a href="${SITE_URL}/journal" style="
+      <a href="${SITE_URL}/app" style="
         display:inline-block;
         padding:10px 28px;
         border-radius:999px;
@@ -283,10 +290,10 @@ function partnerWroteEmail(name, partnerName, dayNumber) {
 function partnerStillWritingEmail(name) {
   const first = firstName(name);
   const body = `
-    <h1 style="margin:0; font-size:32px; text-transform:none;">your partner is still writing.</h1>
+    <h1 style="margin:0; font-size:32px; text-transform:none;">your space is here when you need it</h1>
     ${dividerHtml(BRAND.purple, BRAND.violet)}
-    <p style="margin:16px 0 8px;">${first}, your partner wrote again tonight. the prompt is still open on your side.</p>
-    <p style="margin:0 0 16px;">one honest line is enough. you don't have to catch up.</p>
+    <p style="margin:16px 0 8px;">${first}, you can come back to your private writing space whenever you like.</p>
+    <p style="margin:0 0 16px;">There's nothing to catch up on. A single line is enough if that's what you have today.</p>
     <div style="text-align:center; margin:24px 0;">
       <a href="${SITE_URL}/app" style="
         display:inline-block;
@@ -296,10 +303,10 @@ function partnerStillWritingEmail(name) {
         color:${BRAND.text};
         font-weight:600;
         text-decoration:none;
-      ">Seal tonight's entry &rarr;</a>
+      ">Open the app &rarr;</a>
     </div>
   `;
-  return buildTemplate({ preheader: 'your partner is still writing. one honest line is enough.', content: body });
+  return buildTemplate({ preheader: 'Your private writing space is here when you want it.', content: body });
 }
 
 module.exports = {

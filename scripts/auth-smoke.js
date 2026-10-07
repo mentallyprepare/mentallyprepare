@@ -4,7 +4,7 @@ const DEFAULT_BASE_URL = 'https://mymentallyprepare.com';
 
 const baseUrl = normalizeBaseUrl(process.argv[2] || process.env.SMOKE_BASE_URL || DEFAULT_BASE_URL);
 const expectSameOriginAuth = process.env.EXPECT_SAME_ORIGIN_AUTH_DOMAIN === 'true';
-const expectedScriptVersion = process.env.EXPECTED_APP_VERSION || process.env.EXPECT_APP_SCRIPT_VERSION || '20260708';
+const expectedScriptVersion = process.env.EXPECTED_APP_VERSION || process.env.EXPECT_APP_SCRIPT_VERSION || '20261007';
 
 function normalizeBaseUrl(value) {
   const raw = String(value || DEFAULT_BASE_URL).trim();
