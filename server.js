@@ -2778,6 +2778,7 @@ app.get('/api/partner-wrote-today', apiLimiter, requireAuth, (req, res) => {
 // 9pm IST = 15:30 UTC — daily prompt reminder
 const DEFAULT_PUSH_PREFERENCES = {
   enabled: true,
+  emailReminders: false,
   morningReminder: false,
   eveningReminder: true,
   dailyReflection: true,
@@ -2801,6 +2802,7 @@ function parsePushPreferences(raw) {
   try { prefs = raw ? JSON.parse(raw) : {}; } catch { prefs = {}; }
   const merged = { ...DEFAULT_PUSH_PREFERENCES, ...prefs };
   merged.enabled = merged.enabled !== false;
+  merged.emailReminders = merged.enabled && merged.emailReminders === true;
   for (const key of ['morningReminder', 'eveningReminder', 'dailyReflection', 'streakReminder', 'silentRoomReminder']) {
     merged[key] = merged.enabled && merged[key] !== false;
   }
@@ -2964,16 +2966,16 @@ function send9pmReminders() {
     const todayEntry = stmts.getEntry.get(row.id, match.id, day);
     if (!todayEntry) {
       const user = parseUser(stmts.getUserById.get(row.id));
-      if (user) {
+      const prefs = parsePushPreferences(row.push_preferences);
+      if (user && user.email_verified && prefs.emailReminders) {
         sendDailyPromptReminder(user.email, user.name, day).catch(err => console.error('Failed to send daily prompt reminder', err));
       }
-      const prefs = parsePushPreferences(row.push_preferences);
       if (prefs.enabled && (prefs.dailyReflection || prefs.eveningReminder)) {
         sendGentlePush(row, 'daily_reflection', PUSH_COPY.daily_reflection).catch(() => {});
       }
     }
   }
-  console.log('  ✦ 9pm: Queued prompt email and push reminders');
+  console.log('  ✦ 9pm: Checked opted-in prompt email and push reminders');
 }
 
 // 10pm IST = 16:30 UTC — conditional "partner wrote" notification

@@ -35,6 +35,7 @@ function isTestEntry() {
 let state = null;
 const defaultPushPreferences = {
   enabled: true,
+  emailReminders: false,
   morningReminder: true,
   eveningReminder: true,
   dailyReflection: true,
@@ -2812,11 +2813,12 @@ function renderNotificationSettingsHtml() {
         </div>
         <span class="push-settings-status">${status}</span>
       </div>
-      <div class="push-settings-copy">Private lock screen copy only. You can change this anytime.</div>
+      <div class="push-settings-copy">Choose which reminders you want. Email reminders are off unless you turn them on.</div>
       <div class="push-pref-list">
         ${prefRow('morningReminder', 'Morning reminder')}
         ${prefRow('eveningReminder', 'Evening reminder')}
         ${prefRow('dailyReflection', 'Daily reflection reminder')}
+        ${prefRow('emailReminders', 'Email reminder for tonight’s prompt')}
         ${prefRow('streakReminder', 'Nightly nudge')}
         ${prefRow('silentRoomReminder', 'Silent Room reminder')}
         <label class="push-pref-row push-pref-off">
@@ -3801,6 +3803,7 @@ async function savePushPreferences(prefs, silent) {
     clean.morningReminder = false;
     clean.eveningReminder = false;
     clean.dailyReflection = false;
+    clean.emailReminders = false;
     clean.streakReminder = false;
     clean.silentRoomReminder = false;
   }

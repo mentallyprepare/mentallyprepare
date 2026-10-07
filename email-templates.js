@@ -258,6 +258,7 @@ function dailyPromptReminderEmail(name, dayNumber) {
         text-decoration:none;
       ">View tonight's prompt →</a>
     </div>
+    <p style="margin:16px 0 0; color:${BRAND.muted}; font-size:13px;">You can turn off email reminders at any time in your app's notification settings.</p>
   `;
   return buildTemplate({ content: body });
 }

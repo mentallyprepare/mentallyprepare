@@ -17,6 +17,6 @@ Current public DNS inspection (2026-10-07): apex SPF includes Hostinger only; DM
 1. Send one verification or password-reset email only to a controlled team mailbox, after approved production sender configuration.
 2. Confirm From and Reply-To identity, all links, plain-text and HTML bodies, SPF/DKIM/DMARC results, and inbox/spam placement at Gmail and another provider.
 3. Confirm public contact addresses receive replies and that provider dashboards report no bounces or complaints.
-4. Review scheduled-email consent and user opt-out before enabling routine email at scale. Account-security emails remain separate from optional reminders.
+4. In the app's Notification settings, explicitly opt in to the email reminder and confirm the setting persists. It defaults off and "Turn off notifications" disables it. Account-security emails remain separate from optional reminders.
 
 No subject line guarantees inbox placement. Keep subjects accurate and brief; avoid pressure, fabricated urgency, private journal content and partner identity. Send only messages the person expects.
