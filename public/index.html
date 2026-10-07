@@ -177,6 +177,11 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .card-label{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--rose-light);margin-bottom:10px}
 .card-title{font-family:var(--display);font-size:clamp(22px,2.5vw,28px);font-weight:400;line-height:1.1;margin-bottom:10px}
 .card-body{color:var(--ink-secondary);font-size:14px;line-height:1.8}
+.featured-article{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--gap-lg);align-items:center}
+.featured-article img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;border-radius:var(--radius-card)}
+.featured-article .section-sub{margin-bottom:var(--gap-md)}
+.featured-article-link{color:var(--rose-light);font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:4px}
+.featured-article-link:hover{color:var(--ink)}
 
 /* ===== BUTTONS ===== */
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 32px;border-radius:var(--radius-pill);border:1px solid rgba(110,78,166,.4);background:linear-gradient(135deg,rgba(212,133,154,.12),rgba(110,78,166,.14));color:var(--rose-light);font-family:var(--body);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .3s ease;box-shadow:0 0 20px rgba(110,78,166,.1),inset 0 0 20px rgba(212,133,154,.04);position:relative;overflow:hidden}
@@ -333,6 +338,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
   .mobile-menu a{padding:10px 0;color:var(--ink-secondary);font-size:13px}
   .hero{padding-top:88px;min-height:auto;text-align:center}
   .hero-grid{grid-template-columns:1fr;gap:var(--gap-lg)}
+  .featured-article{grid-template-columns:1fr}
   .hero-sub{margin-left:auto;margin-right:auto}
   .hero-actions{justify-content:center}
   .phone-wrap{min-height:400px}
@@ -690,7 +696,24 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 
   <div class="divider"></div>
 
-  <!-- 8. FINAL CTA -->
+  <!-- 8. FROM THE BLOG -->
+  <section class="section" aria-labelledby="featured-article-title">
+    <div class="inner featured-article">
+      <div class="reveal">
+        <div class="eyebrow">From the blog</div>
+        <h2 class="section-title" id="featured-article-title">Feeling lonely <em>in college?</em></h2>
+        <p class="section-sub">Eight small ways to find connection, with gentle writing prompts and places to turn for support.</p>
+        <a class="featured-article-link" href="/blog/feeling-lonely-in-college">Read Feeling Lonely in College? What Actually Helps</a>
+      </div>
+      <a href="/blog/feeling-lonely-in-college" aria-label="Read Feeling Lonely in College? What Actually Helps">
+        <img src="/images/blog/lonely-in-college-hostel-room.jpg" alt="A student standing beside a bunk bed in a shared room" loading="lazy" width="900" height="1050"/>
+      </a>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- 9. FINAL CTA -->
   <section class="section final" id="cta">
     <div class="inner reveal">
       <div class="eyebrow" style="justify-content:center">Tonight</div>
