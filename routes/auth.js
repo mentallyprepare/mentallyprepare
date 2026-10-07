@@ -423,7 +423,7 @@ function registerAuthRoutes(app, deps) {
     }
   });
 
-  app.get('/api/manual-verify-email', (req, res) => {
+  app.get('/api/manual-verify-email', async (req, res) => {
     try {
       const email = clean(req.query.email).toLowerCase();
       const expires = clean(req.query.expires);
@@ -439,11 +439,7 @@ function registerAuthRoutes(app, deps) {
         trackEvent(user.id, 'email_verified', { method: 'manual_signed_link' });
         logVerification('Verification successful', { email: user.email, method: 'manual_signed_link' });
       }
-      if (req.session && typeof req.session.regenerate === 'function') {
-        req.session.regenerate((err) => {
-          if (!err) { req.session.userId = user.id; req.session.save(() => {}); }
-        });
-      }
+      if (req.session) await establishSession(req, user.id);
       res.redirect('/app?verified=1');
     } catch (e) {
       console.error('Manual verify email error:', e);
