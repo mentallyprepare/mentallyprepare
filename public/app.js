@@ -4035,14 +4035,21 @@ async function downloadMyData() {
 }
 
 async function deleteAccount() {
-  const password = prompt('Enter your password to confirm permanent deletion:');
-  if (!password) return;
+  const hasPassword = String(state?.user?.authProvider || 'password').includes('password');
+  const answer = prompt(hasPassword
+    ? 'Enter your password to confirm permanent deletion:'
+    : 'Type DELETE to confirm permanent deletion:');
+  if (!answer) return;
+  if (!hasPassword && answer.trim().toUpperCase() !== 'DELETE') {
+    toast('Type DELETE to confirm. Your account was not deleted.');
+    return;
+  }
   if (!confirm('This will permanently delete your account, all journal entries, and all your data. This cannot be undone. Continue?')) return;
   try {
     const res = await fetch('/api/account', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
+      body: JSON.stringify(hasPassword ? { password: answer } : { confirm: 'DELETE' })
     });
     const data = await res.json();
     if (data.ok) {
