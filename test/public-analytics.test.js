@@ -5,8 +5,10 @@ const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'public-analytics.js'), 'utf8');
 
-function page(pathname, storedChoice) {
-  const storage = new Map(storedChoice ? [['mp_public_analytics_consent_v1', storedChoice]] : []);
+function page(pathname, storedChoice, storedRecording, search = '') {
+  const storage = new Map();
+  if (storedChoice) storage.set('mp_public_analytics_consent_v1', storedChoice);
+  if (storedRecording) storage.set('mp_public_clarity_consent_v1', storedRecording);
   const elements = [];
   const documentListeners = {};
   let reloads = 0;
@@ -23,7 +25,7 @@ function page(pathname, storedChoice) {
     return element;
   };
   const appendChild = (element) => { elements.push(element); return element; };
-  const window = { location: { pathname, search: '?private=do-not-send', reload: () => { reloads++; } } };
+  const window = { location: { pathname, search, hash: '', reload: () => { reloads++; } } };
   const document = { title: 'Public page', cookie: '', createElement: makeElement, head: { appendChild }, body: { appendChild }, addEventListener: (name, callback) => { documentListeners[name] = callback; } };
   vm.runInNewContext(source, {
     window,
@@ -34,6 +36,7 @@ function page(pathname, storedChoice) {
   return {
     window, storage, elements, documentListeners,
     tags: () => elements.filter((element) => element.tag === 'script' && element.src && element.src.includes('googletagmanager.com')),
+    clarityTags: () => elements.filter((element) => element.tag === 'script' && element.src && element.src.includes('clarity.ms/tag/')),
     banner: () => elements.find((element) => element.className === 'mp-analytics-choice'),
     settings: () => elements.find((element) => element.className === 'mp-analytics-settings'),
     reloads: () => reloads
@@ -42,24 +45,52 @@ function page(pathname, storedChoice) {
 
 const undecided = page('/');
 assert.equal(undecided.tags().length, 0, 'Google tag must not load before consent');
+assert.equal(undecided.clarityTags().length, 0, 'Clarity must not load before separate consent');
 assert.ok(undecided.banner(), 'undecided visitors see a choice');
 undecided.banner().listeners.click({ target: { getAttribute: () => 'denied' } });
 assert.equal(undecided.tags().length, 0, 'declining must not load Google');
+assert.equal(undecided.clarityTags().length, 0, 'declining must not load Clarity');
 assert.equal(undecided.storage.get('mp_public_analytics_consent_v1'), 'denied');
 
-const accepted = page('/privacy.html', 'granted');
+const accepted = page('/privacy.html', 'granted', null, '?private=do-not-send');
 assert.equal(accepted.tags().length, 1, 'accepted public page loads one Google tag');
+assert.equal(accepted.clarityTags().length, 0, 'prior Google consent does not enable recordings');
+assert.ok(accepted.banner(), 'prior Google consent prompts for the new recording choice');
+assert.ok(accepted.banner().innerHTML.includes('You already allow Google Analytics'), 'prior consent is described accurately');
 const config = accepted.window.dataLayer.find((entry) => entry[0] === 'config');
 assert.equal(config[2].page_location, 'https://mymentallyprepare.com/privacy', 'GA URL must omit query data and normalize the path');
 assert.equal(config[2].send_page_view, false, 'automatic page views must stay disabled');
 assert.equal(config[2].allow_google_signals, false, 'Google signals must stay disabled');
+accepted.banner().listeners.click({ target: { getAttribute: () => 'granted' } });
+assert.equal(accepted.clarityTags().length, 0, 'choosing no recordings keeps prior analytics only');
 accepted.settings().listeners.click();
 accepted.banner().listeners.click({ target: { getAttribute: () => 'denied' } });
 assert.equal(accepted.storage.get('mp_public_analytics_consent_v1'), 'denied', 'choice can be withdrawn');
 assert.equal(accepted.reloads(), 1, 'withdrawal reloads to stop the tag');
 
-const privateApp = page('/app', 'granted');
+const recordings = page('/', 'granted', 'granted');
+assert.equal(recordings.tags().length, 1, 'recording consent retains Google Analytics');
+assert.equal(recordings.clarityTags().length, 1, 'separate recording consent loads Clarity');
+assert.equal(recordings.clarityTags()[0].src, 'https://www.clarity.ms/tag/yujdrgc251');
+assert.equal(recordings.window.clarity.q[0][0], 'consentv2', 'Clarity receives explicit consent');
+assert.equal(recordings.window.clarity.q[0][1].ad_Storage, 'denied', 'advertising consent remains denied');
+recordings.settings().listeners.click();
+recordings.banner().listeners.click({ target: { getAttribute: () => 'granted' } });
+assert.equal(recordings.storage.get('mp_public_clarity_consent_v1'), 'denied', 'recording consent can be withdrawn');
+assert.equal(recordings.reloads(), 1, 'withdrawal reloads to stop recording');
+
+const newConsent = page('/');
+newConsent.banner().listeners.click({ target: { getAttribute: () => 'granted-recording' } });
+assert.equal(newConsent.tags().length, 1, 'new analytics consent loads Google');
+assert.equal(newConsent.clarityTags().length, 1, 'new recording consent loads Clarity');
+
+const queryPage = page('/blog', 'granted', 'granted', '?email=private');
+assert.equal(queryPage.clarityTags().length, 0, 'Clarity skips URLs with query details');
+assert.equal(page('/about', 'granted', 'denied').tags().length, 1, 'About uses the public analytics consent');
+
+const privateApp = page('/app', 'granted', 'granted');
 assert.equal(privateApp.tags().length, 0, 'private app never loads Google Analytics');
+assert.equal(privateApp.clarityTags().length, 0, 'private app never loads Clarity');
 assert.equal(privateApp.banner(), undefined, 'private app has no public analytics UI');
 
 const blogPost = page('/blog/feeling-lonely-in-college/', 'granted');
@@ -86,8 +117,9 @@ assert.equal(blogUndecided.window.dataLayer, undefined, 'CTA clicks send nothing
 
 const unknownPath = page('/blogs/feeling-lonely-in-college', 'granted');
 assert.equal(unknownPath.tags().length, 0, 'unlisted paths never load Google');
+assert.equal(unknownPath.clarityTags().length, 0, 'unlisted paths never load Clarity');
 
-for (const name of ['index', 'safety', 'privacy', 'terms']) {
+for (const name of ['index', 'about', 'safety', 'privacy', 'terms']) {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', `${name}.html`), 'utf8');
   assert.ok(html.includes('/public-analytics.js'), `${name} must include the consent script`);
 }

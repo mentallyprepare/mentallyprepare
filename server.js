@@ -1550,9 +1550,9 @@ const publicAnalyticsSecurityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       ...baseContentSecurityDirectives,
-      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com'],
-      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com'],
-      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com']
+      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com', 'https://*.clarity.ms', 'https://c.bing.com'],
+      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com'],
+      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com']
     }
   }
 });
