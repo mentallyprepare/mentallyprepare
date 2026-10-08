@@ -3,6 +3,10 @@ const { BLOG_POSTS, BLOG_SLUGS } = require('../lib/blog-posts');
 
 function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
 
+  app.get('/about', (req, res) => {
+    res.sendFile(path.join(rootDir, 'public', 'about.html'));
+  });
+
   app.get('/privacy', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'privacy.html'));
   });
@@ -63,6 +67,7 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${baseUrl}/</loc><priority>1.0</priority></url>
+  <url><loc>${baseUrl}/about</loc><priority>0.8</priority></url>
   <url><loc>${baseUrl}/blog</loc>${blogLastmod}<priority>0.8</priority></url>
 ${blogUrls}
   <url><loc>${baseUrl}/safety</loc><priority>0.7</priority></url>
