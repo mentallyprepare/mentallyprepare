@@ -1556,7 +1556,7 @@ const publicAnalyticsSecurityHeaders = helmet({
     }
   }
 });
-const publicAnalyticsPaths = new Set(['/', '/index.html', '/safety', '/safety.html', '/privacy', '/privacy.html', '/terms', '/terms.html']);
+const publicAnalyticsPaths = new Set(['/', '/index.html', '/about', '/about.html', '/safety', '/safety.html', '/privacy', '/privacy.html', '/terms', '/terms.html']);
 
 app.use((req, res, next) => {
   if (isFirebaseAuthHelperPath(req)) return next();

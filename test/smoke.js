@@ -634,8 +634,19 @@ async function run() {
     assert.ok(!r.raw.includes('/app'), 'sitemap does not list /app');
     assert.ok(!r.raw.includes('/admin'), 'sitemap does not list /admin');
     assert.ok(!r.raw.includes('/api'), 'sitemap does not list /api');
+    assert.ok(r.raw.includes('/about</loc>'), 'sitemap lists about page');
     ok('/sitemap.xml lists only marketing pages');
   } catch (e) { fail('/sitemap.xml lists only marketing pages', e); }
+
+  // Brand entity: public About page provides an editorial identity and is indexable.
+  try {
+    const r = await request('GET', '/about');
+    assert.strictEqual(r.status, 200, '/about returns 200');
+    assert.match(r.raw, /<title>About Mentally Prepare/i, '/about has a brand title');
+    assert.match(r.raw, /How we prepare our articles/i, '/about explains editorial approach');
+    assert.ok(!/noindex/.test(r.headers['x-robots-tag'] || ''), '/about is indexable');
+    ok('/about is public, indexable, and explains editorial approach');
+  } catch (e) { fail('/about is public, indexable, and explains editorial approach', e); }
 
   // Blog: index and listed articles are public, indexable, in the sitemap, and analytics-eligible.
   try {
