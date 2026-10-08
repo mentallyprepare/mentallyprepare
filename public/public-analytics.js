@@ -3,9 +3,13 @@
 
   const measurementId = 'G-8Y96FYSR01';
   const consentKey = 'mp_public_analytics_consent_v1';
+  const clarityConsentKey = 'mp_public_clarity_consent_v1';
+  const clarityProjectId = 'yujdrgc251';
   const publicPaths = {
     '/': '/',
     '/index.html': '/',
+    '/about': '/about',
+    '/about.html': '/about',
     '/safety': '/safety',
     '/safety.html': '/safety',
     '/privacy': '/privacy',
@@ -18,14 +22,15 @@
   if (!canonicalPath) return;
 
   let tagLoaded = false;
+  let clarityLoaded = false;
   let banner;
 
-  function readChoice() {
-    try { return localStorage.getItem(consentKey); } catch { return null; }
+  function readChoice(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
   }
 
-  function saveChoice(choice) {
-    try { localStorage.setItem(consentKey, choice); } catch {}
+  function saveChoice(key, choice) {
+    try { localStorage.setItem(key, choice); } catch {}
   }
 
   function clearAnalyticsCookies() {
@@ -71,6 +76,27 @@
     document.head.appendChild(script);
   }
 
+  function loadClarity() {
+    // Clarity records page and clicked URLs. Skip URLs with parameters or
+    // fragments, which may contain information that should not be recorded.
+    if (clarityLoaded || window.location.search || window.location.hash) return;
+    clarityLoaded = true;
+    window.clarity = window.clarity || function () {
+      (window.clarity.q = window.clarity.q || []).push(arguments);
+    };
+    window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: 'granted' });
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://www.clarity.ms/tag/' + clarityProjectId;
+    document.head.appendChild(script);
+  }
+
+  function stopClarity() {
+    if (!clarityLoaded) return;
+    window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: 'denied' });
+    window.clarity('consent', false);
+  }
+
   // Links marked data-mp-cta report which call to action was used. Sign-up
   // links also report sign_up_start. Nothing is sent without consent.
   document.addEventListener('click', function (event) {
@@ -98,35 +124,45 @@
     banner = document.createElement('div');
     banner.className = 'mp-analytics-choice';
     banner.setAttribute('role', 'dialog');
-    banner.setAttribute('aria-label', 'Analytics choice');
-    banner.innerHTML = '<p>May we measure visits to these public pages? Google Analytics loads only if you agree. It is never added to the private journal. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="denied">No thanks</button><button type="button" data-choice="granted">Allow analytics</button></div>';
+    banner.setAttribute('aria-label', 'Analytics and recording choice');
+    const existingAnalyticsOnly = readChoice(consentKey) === 'granted' && !readChoice(clarityConsentKey);
+    banner.innerHTML = existingAnalyticsOnly
+      ? '<p>You already allow Google Analytics on public pages. Would you also allow Microsoft Clarity to record clicks and scrolling on those pages? It never runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="granted">No recordings</button><button type="button" data-choice="granted-recording">Allow recordings</button></div>'
+      : '<p>May we measure visits to these public pages? Google Analytics counts visits. If you also choose recordings, Microsoft Clarity records clicks and scrolling on public pages. Neither runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="denied">No thanks</button><button type="button" data-choice="granted">Analytics only</button><button type="button" data-choice="granted-recording">Analytics + recordings</button></div>';
     banner.addEventListener('click', function (event) {
       const choice = event.target && event.target.getAttribute('data-choice');
-      if (choice !== 'granted' && choice !== 'denied') return;
-      saveChoice(choice);
+      if (!['granted', 'granted-recording', 'denied'].includes(choice)) return;
+      const analyticsChoice = choice === 'denied' ? 'denied' : 'granted';
+      const recordingChoice = choice === 'granted-recording' ? 'granted' : 'denied';
+      saveChoice(consentKey, analyticsChoice);
+      saveChoice(clarityConsentKey, recordingChoice);
       hideBanner();
-      if (choice === 'granted') loadTag();
+      if (analyticsChoice === 'granted') loadTag();
       else {
         clearAnalyticsCookies();
-        if (tagLoaded) window.location.reload();
       }
+      if (recordingChoice === 'granted') loadClarity();
+      else stopClarity();
+      if ((analyticsChoice === 'denied' && tagLoaded) || (recordingChoice === 'denied' && clarityLoaded)) window.location.reload();
     });
     document.body.appendChild(banner);
     settings.hidden = true;
   }
 
   const style = document.createElement('style');
-  style.textContent = '.mp-analytics-choice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;padding:18px 20px;background:#0E0A18;color:#F8F2FF;border:1px solid rgba(248,242,255,.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.55);font:14px/1.5 system-ui,sans-serif}.mp-analytics-choice p{margin:0 0 14px;color:#F8F2FF}.mp-analytics-choice a{color:#EBB4C2}.mp-analytics-actions{display:flex;flex-wrap:wrap;gap:10px}.mp-analytics-actions button,.mp-analytics-settings{cursor:pointer;border:1px solid rgba(248,242,255,.35);border-radius:8px;background:#0E0A18;color:#F8F2FF;padding:9px 13px;font:600 13px system-ui,sans-serif}.mp-analytics-actions button[data-choice="granted"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-analytics-actions button:focus-visible,.mp-analytics-settings:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-analytics-settings{position:fixed;z-index:9999;left:16px;bottom:16px;font-size:12px}.mp-analytics-settings[hidden]{display:none}';
+  style.textContent = '.mp-analytics-choice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;padding:18px 20px;background:#0E0A18;color:#F8F2FF;border:1px solid rgba(248,242,255,.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.55);font:14px/1.5 system-ui,sans-serif}.mp-analytics-choice p{margin:0 0 14px;color:#F8F2FF}.mp-analytics-choice a{color:#EBB4C2}.mp-analytics-actions{display:flex;flex-wrap:wrap;gap:10px}.mp-analytics-actions button,.mp-analytics-settings{cursor:pointer;border:1px solid rgba(248,242,255,.35);border-radius:8px;background:#0E0A18;color:#F8F2FF;padding:9px 13px;font:600 13px system-ui,sans-serif}.mp-analytics-actions button[data-choice="granted"],.mp-analytics-actions button[data-choice="granted-recording"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-analytics-actions button:focus-visible,.mp-analytics-settings:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-analytics-settings{position:fixed;z-index:9999;left:16px;bottom:16px;font-size:12px}.mp-analytics-settings[hidden]{display:none}';
   document.head.appendChild(style);
 
   const settings = document.createElement('button');
   settings.type = 'button';
   settings.className = 'mp-analytics-settings';
-  settings.textContent = 'Analytics choice';
+  settings.textContent = 'Analytics & recordings';
   settings.addEventListener('click', showBanner);
   document.body.appendChild(settings);
 
-  const choice = readChoice();
+  const choice = readChoice(consentKey);
+  const recordingChoice = readChoice(clarityConsentKey);
   if (choice === 'granted') loadTag();
-  else if (choice !== 'denied') showBanner();
+  if (choice === 'granted' && recordingChoice === 'granted') loadClarity();
+  if (choice !== 'denied' && (choice !== 'granted' || !recordingChoice)) showBanner();
 })();
