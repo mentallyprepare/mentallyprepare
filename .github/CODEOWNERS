@@ -1,0 +1,51 @@
+# CODEOWNERS — anti-drift protection.
+#
+# Every path listed here requires Anushka's review before a PR can merge.
+# The goal is to keep parallel work on other devices (agents or humans)
+# from silently overwriting decisions, security wiring, or the schema
+# without a human sign-off. Trivial paths (public/, docs/, brand/) are
+# deliberately not listed so day-to-day PRs stay unblocked.
+#
+# For this file to actually enforce reviews, GitHub branch protection
+# on `main` must be set to require review from Code Owners — see the
+# branch-protection checklist in the PR that introduced this file.
+#
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/managing-repository-settings/about-code-owners
+
+# The beating heart. Any change to the app bootstrap, session model,
+# schema DDL, cron jobs, or top-level middleware runs through review.
+/server.js                @anushkanavin-afk
+
+# Core libraries — auth, crypto, migrations, native-push, admin-auth.
+# A silent change here is the highest-blast-radius kind.
+/lib/                     @anushkanavin-afk
+
+# HTTP surface. Any new route, deleted route, or auth-wrapper change
+# is a security-adjacent event.
+/routes/                  @anushkanavin-afk
+
+# Schema. Migrations are immutable-once-applied by convention; the
+# CODEOWNERS rule adds a mechanical review on any change here so the
+# convention has teeth.
+/migrations/              @anushkanavin-afk
+
+# Test suite. Regression fences (idor, migrations, entry-crypto,
+# admin-auth, smoke) are the guardrails; edits go through review.
+/test/                    @anushkanavin-afk
+
+# Security artifacts — audit reports, threat models, key handling notes.
+/security/                @anushkanavin-afk
+
+# Ops scripts — backups, migrations, encryption backfill, storage audit.
+/scripts/                 @anushkanavin-afk
+
+# Deploy + config surface. Docker, Railway, dependency lockfile.
+/Dockerfile*              @anushkanavin-afk
+/railway.toml             @anushkanavin-afk
+/package.json             @anushkanavin-afk
+/package-lock.json        @anushkanavin-afk
+
+# Repository governance — the anti-drift scaffolding itself.
+/.github/                 @anushkanavin-afk
+/CODEOWNERS               @anushkanavin-afk
+/SECURITY.md              @anushkanavin-afk
