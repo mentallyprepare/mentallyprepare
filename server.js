@@ -1556,12 +1556,24 @@ const publicAnalyticsSecurityHeaders = helmet({
     }
   }
 });
+const publicHomepageSecurityHeaders = helmet({
+  ...sharedHelmetOptions,
+  contentSecurityPolicy: {
+    directives: {
+      ...baseContentSecurityDirectives,
+      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://connect.facebook.net'],
+      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://connect.facebook.net', 'https://www.facebook.com'],
+      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://www.facebook.com']
+    }
+  }
+});
 const publicAnalyticsPaths = new Set(['/', '/index.html', '/about', '/about.html', '/safety', '/safety.html', '/privacy', '/privacy.html', '/terms', '/terms.html']);
 
 app.use((req, res, next) => {
   if (isFirebaseAuthHelperPath(req)) return next();
   const isPublicPage = publicAnalyticsPaths.has(req.path) || isBlogPath(req.path);
-  return (isPublicPage ? publicAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
+  const isHomepage = req.path === '/' || req.path === '/index.html';
+  return (isHomepage ? publicHomepageSecurityHeaders : isPublicPage ? publicAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
 });
 // --- Stripe webhook MUST be registered BEFORE express.json() ---
 // (Stripe needs the raw body for signature verification)
