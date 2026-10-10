@@ -5,10 +5,11 @@ const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'public-analytics.js'), 'utf8');
 
-function page(pathname, storedChoice, storedRecording, search = '') {
+function page(pathname, storedChoice, storedRecording, search = '', storedMeta = null) {
   const storage = new Map();
   if (storedChoice) storage.set('mp_public_analytics_consent_v1', storedChoice);
   if (storedRecording) storage.set('mp_public_clarity_consent_v1', storedRecording);
+  if (storedMeta) storage.set('mp_public_meta_ads_consent_v1', storedMeta);
   const elements = [];
   const documentListeners = {};
   let reloads = 0;
@@ -37,6 +38,9 @@ function page(pathname, storedChoice, storedRecording, search = '') {
     window, storage, elements, documentListeners,
     tags: () => elements.filter((element) => element.tag === 'script' && element.src && element.src.includes('googletagmanager.com')),
     clarityTags: () => elements.filter((element) => element.tag === 'script' && element.src && element.src.includes('clarity.ms/tag/')),
+    metaTags: () => elements.filter((element) => element.tag === 'script' && element.src && element.src.includes('connect.facebook.net/en_US/fbevents.js')),
+    metaBanner: () => elements.find((element) => element.className === 'mp-analytics-choice mp-meta-choice'),
+    metaSettings: () => elements.find((element) => element.className === 'mp-analytics-settings mp-meta-settings'),
     banner: () => elements.find((element) => element.className === 'mp-analytics-choice'),
     settings: () => elements.find((element) => element.className === 'mp-analytics-settings'),
     reloads: () => reloads
@@ -46,8 +50,12 @@ function page(pathname, storedChoice, storedRecording, search = '') {
 const undecided = page('/');
 assert.equal(undecided.tags().length, 0, 'Google tag must not load before consent');
 assert.equal(undecided.clarityTags().length, 0, 'Clarity must not load before separate consent');
+assert.equal(undecided.metaTags().length, 0, 'Meta must not load before separate consent');
 assert.ok(undecided.banner(), 'undecided visitors see a choice');
 undecided.banner().listeners.click({ target: { getAttribute: () => 'denied' } });
+assert.ok(undecided.metaBanner(), 'homepage asks separately for Meta advertising consent');
+undecided.metaBanner().listeners.click({ target: { getAttribute: () => 'denied' } });
+assert.equal(undecided.metaTags().length, 0, 'declining Meta keeps its script unloaded');
 assert.equal(undecided.tags().length, 0, 'declining must not load Google');
 assert.equal(undecided.clarityTags().length, 0, 'declining must not load Clarity');
 assert.equal(undecided.storage.get('mp_public_analytics_consent_v1'), 'denied');
@@ -71,6 +79,7 @@ assert.equal(accepted.reloads(), 1, 'withdrawal reloads to stop the tag');
 const recordings = page('/', 'granted', 'granted');
 assert.equal(recordings.tags().length, 1, 'recording consent retains Google Analytics');
 assert.equal(recordings.clarityTags().length, 1, 'separate recording consent loads Clarity');
+assert.equal(recordings.metaTags().length, 0, 'analytics and recording consent never grants Meta');
 assert.equal(recordings.clarityTags()[0].src, 'https://www.clarity.ms/tag/yujdrgc251');
 assert.equal(recordings.window.clarity.q[0][0], 'consentv2', 'Clarity receives explicit consent');
 assert.equal(recordings.window.clarity.q[0][1].ad_Storage, 'denied', 'advertising consent remains denied');
@@ -86,6 +95,21 @@ assert.equal(newConsent.clarityTags().length, 1, 'new recording consent loads Cl
 
 const queryPage = page('/blog', 'granted', 'granted', '?email=private');
 assert.equal(queryPage.clarityTags().length, 0, 'Clarity skips URLs with query details');
+assert.equal(queryPage.metaTags().length, 0, 'blog pages never load Meta');
+
+const metaAllowed = page('/', 'denied', 'denied');
+metaAllowed.metaBanner().listeners.click({ target: { getAttribute: () => 'granted' } });
+assert.equal(metaAllowed.metaTags().length, 1, 'only explicit Meta grant loads its script');
+assert.equal(metaAllowed.window.fbq.queue.find((entry) => entry[0] === 'track')[1], 'PageView', 'only a homepage PageView is sent');
+metaAllowed.metaSettings().listeners.click();
+metaAllowed.metaBanner().listeners.click({ target: { getAttribute: () => 'denied' } });
+assert.equal(metaAllowed.reloads(), 1, 'withdrawing Meta consent reloads to stop the tag');
+
+for (const path of ['/about', '/safety', '/privacy', '/terms', '/app', '/blog/feeling-lonely-in-college']) {
+  assert.equal(page(path, 'denied', 'denied', '', 'granted').metaTags().length, 0, `${path} must not load Meta even with stored consent`);
+}
+assert.equal(page('/', 'denied', 'denied', '?email=private', 'granted').metaTags().length, 0, 'Meta skips homepage URLs with query details');
+assert.equal(page('/', 'denied', 'denied', '', 'granted').metaTags().length, 1, 'stored Meta consent loads on the clean homepage');
 assert.equal(page('/about', 'granted', 'denied').tags().length, 1, 'About uses the public analytics consent');
 
 const privateApp = page('/app', 'granted', 'granted');

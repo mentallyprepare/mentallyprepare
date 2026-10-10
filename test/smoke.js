@@ -687,6 +687,7 @@ async function run() {
   // Google Analytics can load only on public pages after the local consent script allows it.
   try {
     const publicPage = await request('GET', '/');
+    const aboutPage = await request('GET', '/about');
     const privatePage = await request('GET', '/app');
     const publicCsp = publicPage.headers['content-security-policy'] || '';
     const privateCsp = privatePage.headers['content-security-policy'] || '';
@@ -696,6 +697,9 @@ async function run() {
     assert.ok(!privateCsp.includes('https://www.googletagmanager.com'), 'private CSP blocks Google tag');
     assert.ok(publicCsp.includes('https://*.clarity.ms'), 'public CSP permits Clarity after consent');
     assert.ok(!privateCsp.includes('https://*.clarity.ms'), 'private CSP blocks Clarity');
+    assert.ok(publicCsp.includes('https://connect.facebook.net'), 'public CSP permits Meta after consent');
+    assert.ok(!(aboutPage.headers['content-security-policy'] || '').includes('https://connect.facebook.net'), 'non-homepage public CSP blocks Meta');
+    assert.ok(!privateCsp.includes('https://connect.facebook.net'), 'private CSP blocks Meta');
     ok('Google Analytics and Clarity are confined to public pages');
   } catch (e) { fail('Google Analytics and Clarity are confined to public pages', e); }
 
