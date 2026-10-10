@@ -106,9 +106,16 @@
     // homepage and never send events from the journal, sign-in, or blog.
     if (metaLoaded || canonicalPath !== '/' || window.location.search || window.location.hash) return;
     metaLoaded = true;
-    window.fbq = window.fbq || function () {
-      (window.fbq.queue = window.fbq.queue || []).push(arguments);
+    const fbq = function () {
+      if (fbq.callMethod) fbq.callMethod.apply(fbq, arguments);
+      else fbq.queue.push(arguments);
     };
+    fbq.push = fbq;
+    fbq.loaded = true;
+    fbq.version = '2.0';
+    fbq.queue = [];
+    window.fbq = fbq;
+    window._fbq = fbq;
     window.fbq('set', 'autoConfig', false, metaPixelId);
     window.fbq('init', metaPixelId);
     window.fbq('track', 'PageView');
