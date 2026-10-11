@@ -9,6 +9,15 @@
   to { --mp-shine-angle: 360deg; }
 }
 
+/* Action buttons share a crisp silhouette; small toggles and icon controls do not. */
+:is(.btn, .btn-primary, .btn-yes, .site-nav-cta, .cta-btn,
+    .nav-cta, .tq-seal-btn, .silent-release-btn, .btn-unseal,
+    .btn-ghost, .btn-ghost-l, .btn-back, .btn-no, .btn-skip,
+    .silent-back-btn, .silent-load-more-btn, .silent-resonate-btn,
+    .mp-cookie-choice .mp-analytics-actions button) {
+  border-radius: 4px !important;
+}
+
 :is(button, a.btn, a.btn-ghost, a.btn-ghost-l, a.nav-cta):focus-visible {
   outline: 2px solid #EBB4C2 !important;
   outline-offset: 3px;
