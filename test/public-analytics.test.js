@@ -41,7 +41,7 @@ function page(pathname, storedChoice, storedRecording, search = '', storedMeta =
     metaTags: () => elements.filter((element) => element.tag === 'script' && element.src && element.src.includes('connect.facebook.net/en_US/fbevents.js')),
     metaBanner: () => elements.find((element) => element.className === 'mp-analytics-choice mp-meta-choice'),
     metaSettings: () => elements.find((element) => element.className === 'mp-analytics-settings mp-meta-settings'),
-    banner: () => elements.find((element) => element.className === 'mp-analytics-choice'),
+    banner: () => elements.find((element) => element.className === 'mp-analytics-choice mp-cookie-choice'),
     settings: () => elements.find((element) => element.className === 'mp-analytics-settings'),
     reloads: () => reloads
   };
@@ -52,7 +52,8 @@ assert.equal(undecided.tags().length, 0, 'Google tag must not load before consen
 assert.equal(undecided.clarityTags().length, 0, 'session recordings must never load');
 assert.equal(undecided.metaTags().length, 0, 'Meta must not load before separate consent');
 assert.ok(undecided.banner(), 'undecided visitors see a choice');
-assert.ok(undecided.banner().innerHTML.includes('<h2>Cookie choices</h2>'), 'banner clearly identifies cookie choices');
+assert.ok(undecided.banner().innerHTML.includes('<h2>This website uses cookies</h2>'), 'banner clearly identifies cookie choices');
+assert.ok(undecided.banner().innerHTML.includes('Deny optional cookies'), 'banner offers an explicit denial choice');
 assert.ok(!undecided.banner().innerHTML.includes('recording'), 'cookie banner offers no recording choice');
 undecided.banner().listeners.click({ target: { getAttribute: () => 'denied' } });
 assert.ok(undecided.metaBanner(), 'homepage asks separately for Meta advertising consent');
