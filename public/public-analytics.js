@@ -3,8 +3,6 @@
 
   const measurementId = 'G-8Y96FYSR01';
   const consentKey = 'mp_public_analytics_consent_v1';
-  const clarityConsentKey = 'mp_public_clarity_consent_v1';
-  const clarityProjectId = 'yujdrgc251';
   const metaPixelId = '2477145509443715';
   const metaConsentKey = 'mp_public_meta_ads_consent_v1';
   const publicPaths = {
@@ -24,7 +22,6 @@
   if (!canonicalPath) return;
 
   let tagLoaded = false;
-  let clarityLoaded = false;
   let metaLoaded = false;
   let metaBanner;
   let banner;
@@ -80,27 +77,6 @@
     document.head.appendChild(script);
   }
 
-  function loadClarity() {
-    // Clarity records page and clicked URLs. Skip URLs with parameters or
-    // fragments, which may contain information that should not be recorded.
-    if (clarityLoaded || window.location.search || window.location.hash) return;
-    clarityLoaded = true;
-    window.clarity = window.clarity || function () {
-      (window.clarity.q = window.clarity.q || []).push(arguments);
-    };
-    window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: 'granted' });
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://www.clarity.ms/tag/' + clarityProjectId;
-    document.head.appendChild(script);
-  }
-
-  function stopClarity() {
-    if (!clarityLoaded) return;
-    window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: 'denied' });
-    window.clarity('consent', false);
-  }
-
   function loadMetaPixel() {
     // Meta can infer interests from page URLs. Limit the pixel to the clean
     // homepage and never send events from the journal, sign-in, or blog.
@@ -131,7 +107,7 @@
     metaBanner.className = 'mp-analytics-choice mp-meta-choice';
     metaBanner.setAttribute('role', 'dialog');
     metaBanner.setAttribute('aria-label', 'Meta advertising choice');
-    metaBanner.innerHTML = '<p>May we share a visit to this homepage with Meta to measure our ads? This uses the Meta Pixel and may set cookies. It never runs in the private app, sign-in, or blog. Your Google Analytics and Clarity choices stay separate. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-meta-choice="denied">No thanks</button><button type="button" data-meta-choice="granted">Allow Meta Pixel</button></div>';
+    metaBanner.innerHTML = '<p>May we share a visit to this homepage with Meta to measure our ads? This uses the Meta Pixel and may set cookies. It never runs in the private app, sign-in, or blog. Your Google Analytics choice stays separate. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-meta-choice="denied">No thanks</button><button type="button" data-meta-choice="granted">Allow Meta Pixel</button></div>';
     metaBanner.addEventListener('click', function (event) {
       const choice = event.target && event.target.getAttribute('data-meta-choice');
       if (choice !== 'granted' && choice !== 'denied') return;
@@ -172,33 +148,23 @@
     banner = document.createElement('div');
     banner.className = 'mp-analytics-choice';
     banner.setAttribute('role', 'dialog');
-    banner.setAttribute('aria-label', 'Cookie and recording choices');
-    const existingAnalyticsOnly = readChoice(consentKey) === 'granted' && !readChoice(clarityConsentKey);
-    banner.innerHTML = existingAnalyticsOnly
-      ? '<h2>Cookie and recording choices</h2><p>You already allow Google Analytics cookies on public pages. Would you also allow Microsoft Clarity to record clicks and scrolling on those pages? It never runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="granted">No recordings</button><button type="button" data-choice="granted-recording">Allow recordings</button></div>'
-      : '<h2>Cookie and recording choices</h2><p>We use essential cookies to keep the site working. With your permission, Google Analytics can use cookies to count visits to public pages. You can also allow Microsoft Clarity to record clicks and scrolling there. Neither runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="denied">Reject optional</button><button type="button" data-choice="granted">Analytics only</button><button type="button" data-choice="granted-recording">Analytics + recordings</button></div>';
+    banner.setAttribute('aria-label', 'Cookie choices');
+    banner.innerHTML = '<h2>Cookie choices</h2><p>Essential cookies keep the site working. If you allow analytics cookies, Google Analytics counts visits to public pages. It never runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="denied">Reject optional</button><button type="button" data-choice="granted">Allow analytics cookies</button></div>';
     banner.addEventListener('click', function (event) {
       const choice = event.target && event.target.getAttribute('data-choice');
-      if (!['granted', 'granted-recording', 'denied'].includes(choice)) return;
-      const analyticsChoice = choice === 'denied' ? 'denied' : 'granted';
-      const recordingChoice = choice === 'granted-recording' ? 'granted' : 'denied';
-      saveChoice(consentKey, analyticsChoice);
-      saveChoice(clarityConsentKey, recordingChoice);
+      if (choice !== 'granted' && choice !== 'denied') return;
+      saveChoice(consentKey, choice);
       hideBanner();
-      if (analyticsChoice === 'granted') loadTag();
-      else {
-        clearAnalyticsCookies();
-      }
-      if (recordingChoice === 'granted') loadClarity();
-      else stopClarity();
-      if ((analyticsChoice === 'denied' && tagLoaded) || (recordingChoice === 'denied' && clarityLoaded)) window.location.reload();
+      if (choice === 'granted') loadTag();
+      else clearAnalyticsCookies();
+      if (choice === 'denied' && tagLoaded) window.location.reload();
     });
     document.body.appendChild(banner);
     settings.hidden = true;
   }
 
   const style = document.createElement('style');
-  style.textContent = '.mp-analytics-choice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;padding:18px 20px;background:#0E0A18;color:#F8F2FF;border:1px solid rgba(248,242,255,.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.55);font:14px/1.5 system-ui,sans-serif}.mp-analytics-choice h2{margin:0 0 8px;font:700 16px/1.3 system-ui,sans-serif}.mp-analytics-choice p{margin:0 0 14px;color:#F8F2FF}.mp-analytics-choice a{color:#EBB4C2}.mp-analytics-actions{display:flex;flex-wrap:wrap;gap:10px}.mp-analytics-actions button,.mp-analytics-settings{cursor:pointer;border:1px solid rgba(248,242,255,.35);border-radius:8px;background:#0E0A18;color:#F8F2FF;padding:9px 13px;font:600 13px system-ui,sans-serif}.mp-analytics-actions button[data-choice="granted"],.mp-analytics-actions button[data-choice="granted-recording"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-analytics-actions button:focus-visible,.mp-analytics-settings:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-analytics-settings{position:fixed;z-index:9999;left:16px;bottom:16px;font-size:12px}.mp-analytics-settings[hidden]{display:none}';
+  style.textContent = '.mp-analytics-choice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;padding:18px 20px;background:#0E0A18;color:#F8F2FF;border:1px solid rgba(248,242,255,.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.55);font:14px/1.5 system-ui,sans-serif}.mp-analytics-choice h2{margin:0 0 8px;font:700 16px/1.3 system-ui,sans-serif}.mp-analytics-choice p{margin:0 0 14px;color:#F8F2FF}.mp-analytics-choice a{color:#EBB4C2}.mp-analytics-actions{display:flex;flex-wrap:wrap;gap:10px}.mp-analytics-actions button,.mp-analytics-settings{cursor:pointer;border:1px solid rgba(248,242,255,.35);border-radius:8px;background:#0E0A18;color:#F8F2FF;padding:9px 13px;font:600 13px system-ui,sans-serif}.mp-analytics-actions button[data-choice="granted"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-analytics-actions button:focus-visible,.mp-analytics-settings:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-analytics-settings{position:fixed;z-index:9999;left:16px;bottom:16px;font-size:12px}.mp-analytics-settings[hidden]{display:none}';
   style.textContent += '.mp-meta-choice .mp-analytics-actions button[data-meta-choice="granted"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-meta-choice .mp-analytics-actions button:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-meta-settings{left:auto;right:16px}';
   document.head.appendChild(style);
 
@@ -224,10 +190,8 @@
   }
 
   const choice = readChoice(consentKey);
-  const recordingChoice = readChoice(clarityConsentKey);
   if (choice === 'granted') loadTag();
-  if (choice === 'granted' && recordingChoice === 'granted') loadClarity();
-  if (choice !== 'denied' && (choice !== 'granted' || !recordingChoice)) showBanner();
+  if (choice !== 'denied' && choice !== 'granted') showBanner();
   if (readChoice(metaConsentKey) === 'granted') loadMetaPixel();
   if (!banner) showMetaChoice();
 })();

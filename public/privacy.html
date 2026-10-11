@@ -112,7 +112,7 @@
     border-top: 1px solid var(--line);
   }
 </style>
-<script defer src="/public-analytics.js?v=20261011"></script>
+<script defer src="/public-analytics.js?v=20261011-cookie-only"></script>
 </head>
 <body>
 <div class="container">
@@ -207,7 +207,7 @@
   <p class="subtitle">Last updated: October 9, 2026</p>
 
   <div class="highlight-box">
-    <p><strong>The short version:</strong> We collect what's needed to run the journal. Your entries stay private unless you explicitly share them. We never sell your data. With separate choices, Google Analytics can measure public-page visits, Microsoft Clarity can record public-page interactions, and Meta Pixel can measure homepage visits for ads. None runs in the private journal.</p>
+    <p><strong>The short version:</strong> We collect what's needed to run the journal. Your entries stay private unless you explicitly share them. We never sell your data. With separate choices, Google Analytics can measure public-page visits and Meta Pixel can measure homepage visits for ads. Neither runs in the private journal. We do not run session recordings.</p>
   </div>
 
   <h2>1. What We Collect</h2>
@@ -241,16 +241,15 @@
   </ul>
 
   <h3>Optional public-page analytics</h3>
-  <p>If you choose “Analytics only” or “Analytics + recordings” on a public page, we load Google Analytics to count visits to public website pages, including the homepage, About, Safety, Privacy, Terms, and blog. Google receives the page title, a page URL without query details, and technical information needed to provide Analytics. We do not send journal text, account IDs, form entries, or the page referrer to Google Analytics. The Google tag is not added to the private app or sign-in pages.</p>
-  <p>If you separately choose recordings, we also load Microsoft Clarity on those public pages to understand clicks and scrolling through session recordings and heatmaps. Clarity can process page content, interactions, technical device information, and analytics cookies. If a public page opens with query details or a fragment, we do not start Clarity on that page. It is never added to the private app, sign-in screens, or journal. Existing Google Analytics choices do not turn on Clarity.</p>
-  <p>On the homepage, you can separately choose to allow the Meta Pixel. If you do, Meta receives a homepage visit and technical browser information to measure our advertising and may use cookies. We do not load it when the URL has query details or a fragment. We do not send your journal text, account details, form entries, or sign-up events to Meta. It is never added to the private app, sign-in screens, Safety, Privacy, Terms, About, or blog pages. Google Analytics or Clarity consent does not enable Meta. You can decline or change this choice using “Meta ads choice” on the homepage.</p>
-  <p>Google, Microsoft, and Meta process data under their <a href="https://policies.google.com/privacy">Google privacy policy</a>, <a href="https://privacy.microsoft.com/privacystatement">Microsoft privacy statement</a>, and <a href="https://www.facebook.com/privacy/policy/">Meta privacy policy</a>. You can choose “Reject optional” or change your analytics and recording choices at any time with the “Cookie choices” button on a public page.</p>
+  <p>If you choose “Allow analytics cookies” on a public page, we load Google Analytics to count visits to public website pages, including the homepage, About, Safety, Privacy, Terms, and blog. Google receives the page title, a page URL without query details, and technical information needed to provide Analytics. We do not send journal text, account IDs, form entries, or the page referrer to Google Analytics. The Google tag is not added to the private app or sign-in pages. We no longer use Microsoft Clarity or session recordings, including for visitors who previously allowed them.</p>
+  <p>On the homepage, you can separately choose to allow the Meta Pixel. If you do, Meta receives a homepage visit and technical browser information to measure our advertising and may use cookies. We do not load it when the URL has query details or a fragment. We do not send your journal text, account details, form entries, or sign-up events to Meta. It is never added to the private app, sign-in screens, Safety, Privacy, Terms, About, or blog pages. Google Analytics consent does not enable Meta. You can decline or change this choice using “Meta ads choice” on the homepage.</p>
+  <p>Google and Meta process data under their <a href="https://policies.google.com/privacy">Google privacy policy</a> and <a href="https://www.facebook.com/privacy/policy/">Meta privacy policy</a>. You can choose “Reject optional” or change your analytics cookie choice at any time with the “Cookie choices” button on a public page.</p>
 
   <h2>3. What We Never Do</h2>
   <ul>
     <li>Sell your data or share your journal entries with analytics providers</li>
     <li>Use your private journal or account information for advertising or marketing</li>
-    <li>Load Google Analytics, Microsoft Clarity, or Meta Pixel in the private journal or before the relevant public-page consent</li>
+    <li>Load Google Analytics or Meta Pixel in the private journal or before the relevant public-page consent</li>
     <li>Share your identity with your partner without mutual consent</li>
   </ul>
 
@@ -298,7 +297,7 @@
     <li>SameSite: Strict (prevents CSRF cross-site attacks)</li>
     <li>Expires after 30 days of inactivity</li>
   </ul>
-  <p>On public pages, your analytics and recording choices are saved separately in your browser. If you allow analytics, Google Analytics may set first-party analytics cookies. If you also allow recordings, Microsoft Clarity may set analytics cookies. If you decline either tool, its tag does not load on later visits. We deny advertising storage for both tools and do not use this data for advertising.</p>
+  <p>On public pages, your analytics cookie choice is saved in your browser. If you allow analytics, Google Analytics may set first-party analytics cookies. If you decline, its tag does not load on later visits. We deny Google advertising storage and do not use its analytics data for advertising. An older Clarity choice saved in your browser no longer starts recordings.</p>
   <p>Your Meta Pixel choice is saved separately in your browser. If you allow it on the homepage, Meta may set cookies for advertising measurement. Declining does not load Meta Pixel. Withdrawing consent stops future visits from loading it; Meta may retain data already received under its policy.</p>
 
   <h2>9. Changes to This Policy</h2>

@@ -1535,9 +1535,9 @@ const publicAnalyticsSecurityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       ...baseContentSecurityDirectives,
-      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com', 'https://*.clarity.ms', 'https://c.bing.com'],
-      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com'],
-      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com']
+      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com'],
+      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com'],
+      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com']
     }
   }
 });
@@ -1546,9 +1546,9 @@ const publicHomepageSecurityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       ...baseContentSecurityDirectives,
-      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://connect.facebook.net'],
-      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://connect.facebook.net', 'https://www.facebook.com'],
-      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://www.facebook.com']
+      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com', 'https://connect.facebook.net'],
+      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://connect.facebook.net', 'https://www.facebook.com'],
+      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://www.facebook.com']
     }
   }
 });
