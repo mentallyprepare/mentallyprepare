@@ -712,6 +712,17 @@ initCosmicMotion();
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
+function setSiteNavCurrent(kind, target) {
+  document.querySelectorAll('.site-nav-links a').forEach(function(link) {
+    const selected = kind === 'section'
+      ? link.getAttribute('data-nav-target') === target
+      : link.getAttribute('data-auth-target') === target;
+    link.classList.toggle('is-current', selected);
+    if (selected) link.setAttribute('aria-current', kind === 'section' ? 'location' : 'page');
+    else link.removeAttribute('aria-current');
+  });
+}
+
 function go(id) {
   const prev = document.querySelector('.screen.active');
   const el = document.getElementById(id);
@@ -723,6 +734,9 @@ function go(id) {
   if (prev) prev.classList.remove('active','entering');
   if (id !== 's-waiting' && id !== 's-journal') clearInterval(matchPollTimer);
   el.classList.add('active','entering');
+  const authTarget = id === 's-login' ? 's-login' :
+    (id === 's-signup' || id.startsWith('s-ob')) ? 's-signup' : '';
+  setSiteNavCurrent('auth', authTarget);
   setMotionMode(modeForScreen(id));
   afterRenderMotion(el);
   if (el.classList.contains('auth-screen')) {
@@ -969,6 +983,7 @@ function showLanding(targetId) {
   if (appArea) appArea.style.display = 'none';
   document.documentElement.classList.remove('mp-app-route');
   document.body.classList.remove('app-active','focus-writing');
+  setSiteNavCurrent('section', targetId || '');
   setMotionMode('idle');
   var navCta = document.getElementById('navCta');
   if (navCta) { navCta.textContent = 'Sign up'; navCta.onclick = startSignup; }
