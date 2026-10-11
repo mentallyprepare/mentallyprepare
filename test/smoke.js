@@ -687,7 +687,6 @@ async function run() {
   // Google Analytics can load only on public pages after the local consent script allows it.
   try {
     const publicPage = await request('GET', '/');
-    const aboutPage = await request('GET', '/about');
     const privatePage = await request('GET', '/app');
     const publicCsp = publicPage.headers['content-security-policy'] || '';
     const privateCsp = privatePage.headers['content-security-policy'] || '';
@@ -698,11 +697,11 @@ async function run() {
     assert.ok(!publicCsp.includes('https://*.clarity.ms'), 'public CSP blocks retired Clarity recordings');
     assert.ok(!publicCsp.includes('https://c.bing.com'), 'public CSP blocks retired Clarity endpoint');
     assert.ok(!privateCsp.includes('https://*.clarity.ms'), 'private CSP blocks Clarity');
-    assert.ok(publicCsp.includes('https://connect.facebook.net'), 'public CSP permits Meta after consent');
-    assert.ok(!(aboutPage.headers['content-security-policy'] || '').includes('https://connect.facebook.net'), 'non-homepage public CSP blocks Meta');
+    assert.ok(!publicCsp.includes('https://connect.facebook.net'), 'public CSP blocks retired Meta Pixel');
+    assert.ok(!publicCsp.includes('https://www.facebook.com'), 'public CSP blocks retired Meta beacon');
     assert.ok(!privateCsp.includes('https://connect.facebook.net'), 'private CSP blocks Meta');
-    ok('Google Analytics is public only and Clarity is disabled');
-  } catch (e) { fail('Google Analytics is public only and Clarity is disabled', e); }
+    ok('Google Analytics is public only; Clarity and Meta Pixel are disabled');
+  } catch (e) { fail('Google Analytics is public only; Clarity and Meta Pixel are disabled', e); }
 
   // R-5: #s-archetype-reveal has no inline display:flex
   try {
