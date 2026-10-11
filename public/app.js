@@ -730,6 +730,7 @@ function go(id) {
     showAppError();
     return;
   }
+  if (id !== 's-reveal-wait') stopAetherOutcome();
   if (prev === el) return;
   if (prev) prev.classList.remove('active','entering');
   if (id !== 's-waiting' && id !== 's-journal') clearInterval(matchPollTimer);
@@ -977,6 +978,7 @@ function getLandingTargetFromHash(hash) {
 }
 
 function showLanding(targetId) {
+  stopAetherOutcome();
   var landing = document.getElementById('landing');
   var appArea = document.getElementById('app-area');
   if (landing) landing.style.display = '';
@@ -3099,7 +3101,102 @@ function handleRevealFlow() {
   return true;
 }
 
+// A quiet, full-viewport version of the supplied connected-particle effect.
+// It exists only while the anonymous Day 21 outcome is on screen.
+var aetherOutcome = null;
+function stopAetherOutcome() {
+  if (!aetherOutcome) return;
+  cancelAnimationFrame(aetherOutcome.frame);
+  window.removeEventListener('resize', aetherOutcome.resize);
+  window.removeEventListener('pointermove', aetherOutcome.move);
+  window.removeEventListener('pointerout', aetherOutcome.out);
+  aetherOutcome.motion.removeEventListener('change', aetherOutcome.motionChanged);
+  aetherOutcome.canvas.remove();
+  document.body.classList.remove('aether-outcome-active');
+  aetherOutcome = null;
+}
+
+function startAetherOutcome() {
+  stopAetherOutcome();
+  var motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (motion.matches) return;
+  var canvas = document.createElement('canvas');
+  canvas.className = 'aether-outcome-canvas';
+  canvas.setAttribute('aria-hidden', 'true');
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  document.body.appendChild(canvas);
+  document.body.classList.add('aether-outcome-active');
+  var dots = [], width = 0, height = 0, lastFrame = 0;
+  var pointer = { x: -1000, y: -1000 };
+  var colors = ['235,180,194', '137,108,181', '248,242,255'];
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    var pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    canvas.width = Math.round(width * pixelRatio);
+    canvas.height = Math.round(height * pixelRatio);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    var count = Math.min(34, Math.max(12, Math.round(width * height / 25000)));
+    dots = Array.from({ length: count }, function(_, i) {
+      return {
+        x: Math.random() * width, y: Math.random() * height,
+        vx: (Math.random() - .5) * .28, vy: (Math.random() - .5) * .28,
+        size: 1 + Math.random() * 1.5, color: colors[i % colors.length]
+      };
+    });
+  }
+  function move(event) { pointer.x = event.clientX; pointer.y = event.clientY; }
+  function out(event) {
+    if (!event.relatedTarget) { pointer.x = -1000; pointer.y = -1000; }
+  }
+  function motionChanged(event) { if (event.matches) stopAetherOutcome(); }
+  function tick(time) {
+    if (!aetherOutcome || aetherOutcome.canvas !== canvas) return;
+    if (time - lastFrame >= 33 && !document.hidden) {
+      lastFrame = time;
+      ctx.clearRect(0, 0, width, height);
+      dots.forEach(function(dot) {
+        var dx = dot.x - pointer.x, dy = dot.y - pointer.y;
+        var distance = Math.hypot(dx, dy);
+        if (distance > 0 && distance < 115) {
+          dot.x += dx / distance * .7;
+          dot.y += dy / distance * .7;
+        }
+        dot.x += dot.vx; dot.y += dot.vy;
+        if (dot.x < 0 || dot.x > width) dot.vx *= -1;
+        if (dot.y < 0 || dot.y > height) dot.vy *= -1;
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + dot.color + ',.55)';
+        ctx.fill();
+      });
+      for (var i = 0; i < dots.length; i++) {
+        for (var j = i + 1; j < dots.length; j++) {
+          var gap = Math.hypot(dots[i].x - dots[j].x, dots[i].y - dots[j].y);
+          if (gap > 150) continue;
+          ctx.beginPath();
+          ctx.moveTo(dots[i].x, dots[i].y);
+          ctx.lineTo(dots[j].x, dots[j].y);
+          ctx.strokeStyle = 'rgba(235,180,194,' + ((1 - gap / 150) * .2).toFixed(3) + ')';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+    aetherOutcome.frame = requestAnimationFrame(tick);
+  }
+  aetherOutcome = { canvas: canvas, frame: 0, resize: resize, move: move, out: out, motion: motion, motionChanged: motionChanged };
+  window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener('pointermove', move, { passive: true });
+  window.addEventListener('pointerout', out, { passive: true });
+  motion.addEventListener('change', motionChanged);
+  resize();
+  aetherOutcome.frame = requestAnimationFrame(tick);
+}
+
 function renderRevealConsent() {
+  stopAetherOutcome();
   const arch = archetypes[state.user.archetype];
   const matchArch = archetypes[state.match.partner.archetype];
   document.getElementById('s-reveal-wait').innerHTML = `
@@ -3124,6 +3221,7 @@ function renderRevealConsent() {
 }
 
 function renderRevealWaiting() {
+  stopAetherOutcome();
   const matchArch = archetypes[state.match.partner.archetype];
   document.getElementById('s-reveal-wait').innerHTML = `
     <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day 21 ✦</div></div>
@@ -3151,6 +3249,7 @@ function renderRevealAnonymous() {
       <p class="wait-p">One of you chose to keep it anonymous. And that's perfectly okay. The words you exchanged were real — the names don't change that.</p>
       <button class="btn" onclick="renderProfile();go('s-profile')" style="margin-top:20px;">Go to profile</button>
     </div>`;
+  startAetherOutcome();
 }
 
 async function submitReveal(choice) {

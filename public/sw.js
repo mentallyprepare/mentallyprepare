@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261011-tab-underline';
+const CACHE_NAME = 'mp-20261011-aether-outcome';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',
