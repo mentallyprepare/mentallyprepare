@@ -1,9 +1,10 @@
 require('dotenv').config({ quiet: true });
 
 // --- Crash reporting (Sentry). No-op without SENTRY_DSN set. ---
-// Crashes only: no tracing, no PII. Entry text never goes to third parties.
-// Console breadcrumbs disabled because our logs contain emails and user IDs.
+// Crashes only: no tracing. Keep request context and breadcrumbs out of crash
+// reports: outbound URLs can contain push tokens and backup object names.
 const Sentry = require('@sentry/node');
+const { discardBreadcrumb, sanitizeCrashEvent } = require('./lib/sentry-privacy');
 const SENTRY_ENABLED = Boolean(process.env.SENTRY_DSN);
 if (SENTRY_ENABLED) {
   Sentry.init({
@@ -13,24 +14,8 @@ if (SENTRY_ENABLED) {
     integrations(defaults) {
       return defaults.filter(i => i.name !== 'Console');
     },
-    beforeBreadcrumb(crumb) {
-      if (crumb.category === 'console') return null;
-      return crumb;
-    },
-    beforeSend(event) {
-      if (event.request) {
-        delete event.request.data;
-        delete event.request.cookies;
-        delete event.request.query_string;
-        delete event.request.headers;
-      }
-      if (event.user) {
-        delete event.user.email;
-        delete event.user.ip_address;
-        delete event.user.username;
-      }
-      return event;
-    },
+    beforeBreadcrumb: discardBreadcrumb,
+    beforeSend: sanitizeCrashEvent,
   });
 }
 
@@ -2883,7 +2868,13 @@ async function sendGentlePush(row, type, body, url = '/app') {
       stmts.updatePushSub.run(null, row.id);
       console.warn('Push subscription expired, cleared for user', row.id);
     } else {
-      console.error('Push notification failed', { userId: row.id, type, reason: e && e.message ? e.message : e });
+      // Web Push errors can include endpoint URLs (and device tokens). Log only
+      // the HTTP status needed to diagnose failures without exposing the URL.
+      console.error('Push notification failed', {
+        userId: row.id,
+        type,
+        statusCode: e && Number.isInteger(e.statusCode) ? e.statusCode : null
+      });
     }
     return false;
   }
