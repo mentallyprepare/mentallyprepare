@@ -172,11 +172,11 @@
     banner = document.createElement('div');
     banner.className = 'mp-analytics-choice';
     banner.setAttribute('role', 'dialog');
-    banner.setAttribute('aria-label', 'Analytics and recording choice');
+    banner.setAttribute('aria-label', 'Cookie and recording choices');
     const existingAnalyticsOnly = readChoice(consentKey) === 'granted' && !readChoice(clarityConsentKey);
     banner.innerHTML = existingAnalyticsOnly
-      ? '<p>You already allow Google Analytics on public pages. Would you also allow Microsoft Clarity to record clicks and scrolling on those pages? It never runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="granted">No recordings</button><button type="button" data-choice="granted-recording">Allow recordings</button></div>'
-      : '<p>May we measure visits to these public pages? Google Analytics counts visits. If you also choose recordings, Microsoft Clarity records clicks and scrolling on public pages. Neither runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="denied">No thanks</button><button type="button" data-choice="granted">Analytics only</button><button type="button" data-choice="granted-recording">Analytics + recordings</button></div>';
+      ? '<h2>Cookie and recording choices</h2><p>You already allow Google Analytics cookies on public pages. Would you also allow Microsoft Clarity to record clicks and scrolling on those pages? It never runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="granted">No recordings</button><button type="button" data-choice="granted-recording">Allow recordings</button></div>'
+      : '<h2>Cookie and recording choices</h2><p>We use essential cookies to keep the site working. With your permission, Google Analytics can use cookies to count visits to public pages. You can also allow Microsoft Clarity to record clicks and scrolling there. Neither runs in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-choice="denied">Reject optional</button><button type="button" data-choice="granted">Analytics only</button><button type="button" data-choice="granted-recording">Analytics + recordings</button></div>';
     banner.addEventListener('click', function (event) {
       const choice = event.target && event.target.getAttribute('data-choice');
       if (!['granted', 'granted-recording', 'denied'].includes(choice)) return;
@@ -198,14 +198,14 @@
   }
 
   const style = document.createElement('style');
-  style.textContent = '.mp-analytics-choice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;padding:18px 20px;background:#0E0A18;color:#F8F2FF;border:1px solid rgba(248,242,255,.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.55);font:14px/1.5 system-ui,sans-serif}.mp-analytics-choice p{margin:0 0 14px;color:#F8F2FF}.mp-analytics-choice a{color:#EBB4C2}.mp-analytics-actions{display:flex;flex-wrap:wrap;gap:10px}.mp-analytics-actions button,.mp-analytics-settings{cursor:pointer;border:1px solid rgba(248,242,255,.35);border-radius:8px;background:#0E0A18;color:#F8F2FF;padding:9px 13px;font:600 13px system-ui,sans-serif}.mp-analytics-actions button[data-choice="granted"],.mp-analytics-actions button[data-choice="granted-recording"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-analytics-actions button:focus-visible,.mp-analytics-settings:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-analytics-settings{position:fixed;z-index:9999;left:16px;bottom:16px;font-size:12px}.mp-analytics-settings[hidden]{display:none}';
+  style.textContent = '.mp-analytics-choice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;padding:18px 20px;background:#0E0A18;color:#F8F2FF;border:1px solid rgba(248,242,255,.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.55);font:14px/1.5 system-ui,sans-serif}.mp-analytics-choice h2{margin:0 0 8px;font:700 16px/1.3 system-ui,sans-serif}.mp-analytics-choice p{margin:0 0 14px;color:#F8F2FF}.mp-analytics-choice a{color:#EBB4C2}.mp-analytics-actions{display:flex;flex-wrap:wrap;gap:10px}.mp-analytics-actions button,.mp-analytics-settings{cursor:pointer;border:1px solid rgba(248,242,255,.35);border-radius:8px;background:#0E0A18;color:#F8F2FF;padding:9px 13px;font:600 13px system-ui,sans-serif}.mp-analytics-actions button[data-choice="granted"],.mp-analytics-actions button[data-choice="granted-recording"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-analytics-actions button:focus-visible,.mp-analytics-settings:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-analytics-settings{position:fixed;z-index:9999;left:16px;bottom:16px;font-size:12px}.mp-analytics-settings[hidden]{display:none}';
   style.textContent += '.mp-meta-choice .mp-analytics-actions button[data-meta-choice="granted"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-meta-choice .mp-analytics-actions button:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-meta-settings{left:auto;right:16px}';
   document.head.appendChild(style);
 
   const settings = document.createElement('button');
   settings.type = 'button';
   settings.className = 'mp-analytics-settings';
-  settings.textContent = 'Analytics & recordings';
+  settings.textContent = 'Cookie choices';
   settings.addEventListener('click', showBanner);
   document.body.appendChild(settings);
 
