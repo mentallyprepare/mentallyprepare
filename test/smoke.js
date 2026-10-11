@@ -695,13 +695,14 @@ async function run() {
     assert.ok(!privatePage.raw.includes('/public-analytics.js'), 'private app excludes consent controller');
     assert.ok(publicCsp.includes('https://www.googletagmanager.com'), 'public CSP permits Google tag after consent');
     assert.ok(!privateCsp.includes('https://www.googletagmanager.com'), 'private CSP blocks Google tag');
-    assert.ok(publicCsp.includes('https://*.clarity.ms'), 'public CSP permits Clarity after consent');
+    assert.ok(!publicCsp.includes('https://*.clarity.ms'), 'public CSP blocks retired Clarity recordings');
+    assert.ok(!publicCsp.includes('https://c.bing.com'), 'public CSP blocks retired Clarity endpoint');
     assert.ok(!privateCsp.includes('https://*.clarity.ms'), 'private CSP blocks Clarity');
     assert.ok(publicCsp.includes('https://connect.facebook.net'), 'public CSP permits Meta after consent');
     assert.ok(!(aboutPage.headers['content-security-policy'] || '').includes('https://connect.facebook.net'), 'non-homepage public CSP blocks Meta');
     assert.ok(!privateCsp.includes('https://connect.facebook.net'), 'private CSP blocks Meta');
-    ok('Google Analytics and Clarity are confined to public pages');
-  } catch (e) { fail('Google Analytics and Clarity are confined to public pages', e); }
+    ok('Google Analytics is public only and Clarity is disabled');
+  } catch (e) { fail('Google Analytics is public only and Clarity is disabled', e); }
 
   // R-5: #s-archetype-reveal has no inline display:flex
   try {

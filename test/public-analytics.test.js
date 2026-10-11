@@ -41,7 +41,7 @@ function page(pathname, storedChoice, storedRecording, search = '', storedMeta =
     metaTags: () => elements.filter((element) => element.tag === 'script' && element.src && element.src.includes('connect.facebook.net/en_US/fbevents.js')),
     metaBanner: () => elements.find((element) => element.className === 'mp-analytics-choice mp-meta-choice'),
     metaSettings: () => elements.find((element) => element.className === 'mp-analytics-settings mp-meta-settings'),
-    banner: () => elements.find((element) => element.className === 'mp-analytics-choice'),
+    banner: () => elements.find((element) => element.className === 'mp-analytics-choice mp-cookie-choice'),
     settings: () => elements.find((element) => element.className === 'mp-analytics-settings'),
     reloads: () => reloads
   };
@@ -49,49 +49,43 @@ function page(pathname, storedChoice, storedRecording, search = '', storedMeta =
 
 const undecided = page('/');
 assert.equal(undecided.tags().length, 0, 'Google tag must not load before consent');
-assert.equal(undecided.clarityTags().length, 0, 'Clarity must not load before separate consent');
+assert.equal(undecided.clarityTags().length, 0, 'session recordings must never load');
 assert.equal(undecided.metaTags().length, 0, 'Meta must not load before separate consent');
 assert.ok(undecided.banner(), 'undecided visitors see a choice');
+assert.ok(undecided.banner().innerHTML.includes('<h2>This website uses cookies</h2>'), 'banner clearly identifies cookie choices');
+assert.ok(undecided.banner().innerHTML.includes('Deny optional cookies'), 'banner offers an explicit denial choice');
+assert.ok(!undecided.banner().innerHTML.includes('recording'), 'cookie banner offers no recording choice');
 undecided.banner().listeners.click({ target: { getAttribute: () => 'denied' } });
 assert.ok(undecided.metaBanner(), 'homepage asks separately for Meta advertising consent');
 undecided.metaBanner().listeners.click({ target: { getAttribute: () => 'denied' } });
 assert.equal(undecided.metaTags().length, 0, 'declining Meta keeps its script unloaded');
 assert.equal(undecided.tags().length, 0, 'declining must not load Google');
-assert.equal(undecided.clarityTags().length, 0, 'declining must not load Clarity');
+assert.equal(undecided.clarityTags().length, 0, 'declining must not load recordings');
 assert.equal(undecided.storage.get('mp_public_analytics_consent_v1'), 'denied');
 
 const accepted = page('/privacy.html', 'granted', null, '?private=do-not-send');
 assert.equal(accepted.tags().length, 1, 'accepted public page loads one Google tag');
 assert.equal(accepted.clarityTags().length, 0, 'prior Google consent does not enable recordings');
-assert.ok(accepted.banner(), 'prior Google consent prompts for the new recording choice');
-assert.ok(accepted.banner().innerHTML.includes('You already allow Google Analytics'), 'prior consent is described accurately');
+assert.equal(accepted.banner(), undefined, 'prior Google consent does not prompt for recordings');
 const config = accepted.window.dataLayer.find((entry) => entry[0] === 'config');
 assert.equal(config[2].page_location, 'https://mymentallyprepare.com/privacy', 'GA URL must omit query data and normalize the path');
 assert.equal(config[2].send_page_view, false, 'automatic page views must stay disabled');
 assert.equal(config[2].allow_google_signals, false, 'Google signals must stay disabled');
-accepted.banner().listeners.click({ target: { getAttribute: () => 'granted' } });
-assert.equal(accepted.clarityTags().length, 0, 'choosing no recordings keeps prior analytics only');
 accepted.settings().listeners.click();
 accepted.banner().listeners.click({ target: { getAttribute: () => 'denied' } });
 assert.equal(accepted.storage.get('mp_public_analytics_consent_v1'), 'denied', 'choice can be withdrawn');
 assert.equal(accepted.reloads(), 1, 'withdrawal reloads to stop the tag');
 
 const recordings = page('/', 'granted', 'granted');
-assert.equal(recordings.tags().length, 1, 'recording consent retains Google Analytics');
-assert.equal(recordings.clarityTags().length, 1, 'separate recording consent loads Clarity');
-assert.equal(recordings.metaTags().length, 0, 'analytics and recording consent never grants Meta');
-assert.equal(recordings.clarityTags()[0].src, 'https://www.clarity.ms/tag/yujdrgc251');
-assert.equal(recordings.window.clarity.q[0][0], 'consentv2', 'Clarity receives explicit consent');
-assert.equal(recordings.window.clarity.q[0][1].ad_Storage, 'denied', 'advertising consent remains denied');
-recordings.settings().listeners.click();
-recordings.banner().listeners.click({ target: { getAttribute: () => 'granted' } });
-assert.equal(recordings.storage.get('mp_public_clarity_consent_v1'), 'denied', 'recording consent can be withdrawn');
-assert.equal(recordings.reloads(), 1, 'withdrawal reloads to stop recording');
+assert.equal(recordings.tags().length, 1, 'older analytics consent still loads Google Analytics');
+assert.equal(recordings.clarityTags().length, 0, 'old recording consent no longer loads Clarity');
+assert.equal(recordings.banner(), undefined, 'old recording consent does not trigger a prompt');
+assert.equal(recordings.metaTags().length, 0, 'old recording consent never grants Meta');
 
 const newConsent = page('/');
-newConsent.banner().listeners.click({ target: { getAttribute: () => 'granted-recording' } });
+newConsent.banner().listeners.click({ target: { getAttribute: () => 'granted' } });
 assert.equal(newConsent.tags().length, 1, 'new analytics consent loads Google');
-assert.equal(newConsent.clarityTags().length, 1, 'new recording consent loads Clarity');
+assert.equal(newConsent.clarityTags().length, 0, 'new analytics consent does not load recordings');
 
 const queryPage = page('/blog', 'granted', 'granted', '?email=private');
 assert.equal(queryPage.clarityTags().length, 0, 'Clarity skips URLs with query details');
