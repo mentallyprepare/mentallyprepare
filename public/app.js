@@ -3146,12 +3146,12 @@ function startAetherBackground() {
     canvas.width = Math.round(width * pixelRatio);
     canvas.height = Math.round(height * pixelRatio);
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    var count = Math.min(24, Math.max(10, Math.round(width * height / 35000)));
+    var count = Math.min(48, Math.max(30, Math.round(width * height / 11000)));
     dots = Array.from({ length: count }, function(_, i) {
       return {
         x: Math.random() * width, y: Math.random() * height,
         vx: (Math.random() - .5) * .28, vy: (Math.random() - .5) * .28,
-        size: 1 + Math.random() * 1.5, color: colors[i % colors.length]
+        size: 1.6 + Math.random() * 1.8, color: colors[i % colors.length]
       };
     });
   }
@@ -3177,17 +3177,17 @@ function startAetherBackground() {
         if (dot.y < 0 || dot.y > height) dot.vy *= -1;
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + dot.color + ',.55)';
+        ctx.fillStyle = 'rgba(' + dot.color + ',.85)';
         ctx.fill();
       });
       for (var i = 0; i < dots.length; i++) {
         for (var j = i + 1; j < dots.length; j++) {
           var gap = Math.hypot(dots[i].x - dots[j].x, dots[i].y - dots[j].y);
-          if (gap > 150) continue;
+          if (gap > 180) continue;
           ctx.beginPath();
           ctx.moveTo(dots[i].x, dots[i].y);
           ctx.lineTo(dots[j].x, dots[j].y);
-          ctx.strokeStyle = 'rgba(235,180,194,' + ((1 - gap / 150) * .2).toFixed(3) + ')';
+          ctx.strokeStyle = 'rgba(235,180,194,' + ((1 - gap / 180) * .42).toFixed(3) + ')';
           ctx.lineWidth = 1;
           ctx.stroke();
         }

@@ -46,7 +46,7 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-startup-image" href="/icon-512x512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/app.css?v=20261011-aether-app"/>
+<link rel="stylesheet" href="/app.css?v=20261011-aether-visible"/>
 <link rel="stylesheet" href="/refine.css"/>
 <link rel="stylesheet" href="/brand-buttons.css?v=20261011"/>
 <script>
@@ -578,7 +578,7 @@ html.mp-app-route #app-area{display:block}
       <h2 class="slide-h">Create your<br/><em>private room.</em></h2>
       <p class="slide-p">Only the basics. Your public profile does not exist here.</p>
     </div>
-    <div class="nav-row"><button class="btn-back" onclick="go('s-ob3')">←</button><button class="btn btn-next" onclick="continueFromSignupBasics()">Next →</button></div>
+    <div class="nav-row"><button class="btn-back" type="button" aria-label="Back to sign up" onclick="go('s-signup')">←</button><button class="btn btn-next" onclick="continueFromSignupBasics()">Next →</button></div>
   </div>
 </div>
 
@@ -852,6 +852,6 @@ html.mp-app-route #app-area{display:block}
 
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
-<script src="/app.js?v=20261011-aether-app" defer></script>
+<script src="/app.js?v=20261011-aether-visible" defer></script>
 </body>
 </html>
