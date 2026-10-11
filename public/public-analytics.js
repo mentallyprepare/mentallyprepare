@@ -3,8 +3,6 @@
 
   const measurementId = 'G-8Y96FYSR01';
   const consentKey = 'mp_public_analytics_consent_v1';
-  const metaPixelId = '2477145509443715';
-  const metaConsentKey = 'mp_public_meta_ads_consent_v1';
   const publicPaths = {
     '/': '/',
     '/index.html': '/',
@@ -22,8 +20,6 @@
   if (!canonicalPath) return;
 
   let tagLoaded = false;
-  let metaLoaded = false;
-  let metaBanner;
   let banner;
 
   function readChoice(key) {
@@ -38,6 +34,17 @@
     document.cookie.split(';').forEach(function (part) {
       const name = part.split('=')[0].trim();
       if (!/^_ga(?:_|$)/.test(name)) return;
+      document.cookie = name + '=; Max-Age=0; Path=/; SameSite=Lax';
+      document.cookie = name + '=; Max-Age=0; Path=/; Domain=.mymentallyprepare.com; SameSite=Lax';
+    });
+  }
+
+  function retireMetaPixel() {
+    // An old grant must not reactivate a cached copy of the retired loader.
+    saveChoice('mp_public_meta_ads_consent_v1', 'denied');
+    document.cookie.split(';').forEach(function (part) {
+      const name = part.split('=')[0].trim();
+      if (name !== '_fbp' && name !== '_fbc') return;
       document.cookie = name + '=; Max-Age=0; Path=/; SameSite=Lax';
       document.cookie = name + '=; Max-Age=0; Path=/; Domain=.mymentallyprepare.com; SameSite=Lax';
     });
@@ -77,49 +84,6 @@
     document.head.appendChild(script);
   }
 
-  function loadMetaPixel() {
-    // Meta can infer interests from page URLs. Limit the pixel to the clean
-    // homepage and never send events from the journal, sign-in, or blog.
-    if (metaLoaded || canonicalPath !== '/' || window.location.search || window.location.hash) return;
-    metaLoaded = true;
-    const fbq = function () {
-      if (fbq.callMethod) fbq.callMethod.apply(fbq, arguments);
-      else fbq.queue.push(arguments);
-    };
-    fbq.push = fbq;
-    fbq.loaded = true;
-    fbq.version = '2.0';
-    fbq.queue = [];
-    window.fbq = fbq;
-    window._fbq = fbq;
-    window.fbq('set', 'autoConfig', false, metaPixelId);
-    window.fbq('init', metaPixelId);
-    window.fbq('track', 'PageView');
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-    document.head.appendChild(script);
-  }
-
-  function showMetaChoice() {
-    if (canonicalPath !== '/' || metaBanner || banner || readChoice(metaConsentKey)) return;
-    metaBanner = document.createElement('div');
-    metaBanner.className = 'mp-analytics-choice mp-meta-choice';
-    metaBanner.setAttribute('role', 'dialog');
-    metaBanner.setAttribute('aria-label', 'Meta advertising choice');
-    metaBanner.innerHTML = '<p>May we share a visit to this homepage with Meta to measure our ads? This uses the Meta Pixel and may set cookies. It never runs in the private app, sign-in, or blog. Your Google Analytics choice stays separate. <a href="/privacy">Read our privacy policy</a>.</p><div class="mp-analytics-actions"><button type="button" data-meta-choice="denied">No thanks</button><button type="button" data-meta-choice="granted">Allow Meta Pixel</button></div>';
-    metaBanner.addEventListener('click', function (event) {
-      const choice = event.target && event.target.getAttribute('data-meta-choice');
-      if (choice !== 'granted' && choice !== 'denied') return;
-      saveChoice(metaConsentKey, choice);
-      metaBanner.remove();
-      metaBanner = null;
-      if (choice === 'granted') loadMetaPixel();
-      if (choice === 'denied' && metaLoaded) window.location.reload();
-    });
-    document.body.appendChild(metaBanner);
-  }
-
   // Links marked data-mp-cta report which call to action was used. Sign-up
   // links also report sign_up_start. Nothing is sent without consent.
   document.addEventListener('click', function (event) {
@@ -140,7 +104,6 @@
     if (banner) banner.remove();
     banner = null;
     settings.hidden = false;
-    showMetaChoice();
   }
 
   function showBanner() {
@@ -165,7 +128,6 @@
 
   const style = document.createElement('style');
   style.textContent = '.mp-analytics-choice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;padding:18px 20px;background:#0E0A18;color:#F8F2FF;border:1px solid rgba(248,242,255,.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.55);font:14px/1.5 system-ui,sans-serif}.mp-analytics-choice h2{margin:0 0 8px;font:700 16px/1.3 system-ui,sans-serif}.mp-analytics-choice p{margin:0 0 14px;color:#F8F2FF}.mp-analytics-choice a{color:#EBB4C2}.mp-analytics-actions{display:flex;flex-wrap:wrap;gap:10px}.mp-analytics-actions button,.mp-analytics-settings{cursor:pointer;border:1px solid rgba(248,242,255,.35);border-radius:8px;background:#0E0A18;color:#F8F2FF;padding:9px 13px;font:600 13px system-ui,sans-serif}.mp-analytics-actions button[data-choice="granted"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-analytics-actions button:focus-visible,.mp-analytics-settings:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-analytics-settings{position:fixed;z-index:9999;left:16px;bottom:16px;font-size:12px}.mp-analytics-settings[hidden]{display:none}';
-  style.textContent += '.mp-meta-choice .mp-analytics-actions button[data-meta-choice="granted"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-meta-choice .mp-analytics-actions button:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-meta-settings{left:auto;right:16px}';
   style.textContent += '.mp-cookie-choice{left:0;right:0;bottom:0;max-width:none;padding:24px clamp(20px,4vw,64px);border:0;border-top:1px solid rgba(248,242,255,.2);border-radius:0;display:grid;grid-template-columns:minmax(130px,180px) minmax(0,1fr) minmax(210px,260px);align-items:start;gap:clamp(20px,3vw,48px);box-shadow:0 -10px 40px rgba(0,0,0,.45)}.mp-cookie-brand{padding-top:3px;font:700 16px/1.3 system-ui,sans-serif;white-space:nowrap}.mp-cookie-choice .mp-cookie-copy{max-width:720px}.mp-cookie-choice h2{margin:0 0 10px}.mp-cookie-choice p{margin:0}.mp-cookie-choice .mp-analytics-actions{display:grid;gap:8px}.mp-cookie-choice .mp-analytics-actions button{width:100%;min-height:44px;text-align:center}.mp-cookie-choice .mp-analytics-actions button[data-choice="denied"]{background:transparent}@media(max-width:760px){.mp-cookie-choice{grid-template-columns:1fr;gap:12px;padding:18px 20px 22px;max-height:75vh;overflow:auto}.mp-cookie-brand{font-size:13px;color:#EBB4C2}.mp-cookie-choice h2{font-size:16px}.mp-cookie-choice .mp-analytics-actions{grid-template-columns:1fr 1fr}.mp-cookie-choice .mp-analytics-actions button{min-height:48px}}@media(max-width:440px){.mp-cookie-choice .mp-analytics-actions{grid-template-columns:1fr}}';
   document.head.appendChild(style);
 
@@ -176,23 +138,8 @@
   settings.addEventListener('click', showBanner);
   document.body.appendChild(settings);
 
-  if (canonicalPath === '/') {
-    const metaSettings = document.createElement('button');
-    metaSettings.type = 'button';
-    metaSettings.className = 'mp-analytics-settings mp-meta-settings';
-    metaSettings.textContent = 'Meta ads choice';
-    metaSettings.addEventListener('click', function () {
-      if (metaBanner || banner) return;
-      // Reopen the choice without carrying a previous grant forward.
-      saveChoice(metaConsentKey, '');
-      showMetaChoice();
-    });
-    document.body.appendChild(metaSettings);
-  }
-
   const choice = readChoice(consentKey);
+  retireMetaPixel();
   if (choice === 'granted') loadTag();
   if (choice !== 'denied' && choice !== 'granted') showBanner();
-  if (readChoice(metaConsentKey) === 'granted') loadMetaPixel();
-  if (!banner) showMetaChoice();
 })();

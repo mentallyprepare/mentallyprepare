@@ -50,15 +50,15 @@ function page(pathname, storedChoice, storedRecording, search = '', storedMeta =
 const undecided = page('/');
 assert.equal(undecided.tags().length, 0, 'Google tag must not load before consent');
 assert.equal(undecided.clarityTags().length, 0, 'session recordings must never load');
-assert.equal(undecided.metaTags().length, 0, 'Meta must not load before separate consent');
+assert.equal(undecided.metaTags().length, 0, 'Meta must not load');
+assert.equal(undecided.metaBanner(), undefined, 'homepage must not show a Meta prompt');
+assert.equal(undecided.metaSettings(), undefined, 'homepage must not show Meta settings');
 assert.ok(undecided.banner(), 'undecided visitors see a choice');
 assert.ok(undecided.banner().innerHTML.includes('<h2>This website uses cookies</h2>'), 'banner clearly identifies cookie choices');
 assert.ok(undecided.banner().innerHTML.includes('Deny optional cookies'), 'banner offers an explicit denial choice');
 assert.ok(!undecided.banner().innerHTML.includes('recording'), 'cookie banner offers no recording choice');
 undecided.banner().listeners.click({ target: { getAttribute: () => 'denied' } });
-assert.ok(undecided.metaBanner(), 'homepage asks separately for Meta advertising consent');
-undecided.metaBanner().listeners.click({ target: { getAttribute: () => 'denied' } });
-assert.equal(undecided.metaTags().length, 0, 'declining Meta keeps its script unloaded');
+assert.equal(undecided.metaBanner(), undefined, 'rejecting analytics must not reveal a second prompt');
 assert.equal(undecided.tags().length, 0, 'declining must not load Google');
 assert.equal(undecided.clarityTags().length, 0, 'declining must not load recordings');
 assert.equal(undecided.storage.get('mp_public_analytics_consent_v1'), 'denied');
@@ -91,22 +91,13 @@ const queryPage = page('/blog', 'granted', 'granted', '?email=private');
 assert.equal(queryPage.clarityTags().length, 0, 'Clarity skips URLs with query details');
 assert.equal(queryPage.metaTags().length, 0, 'blog pages never load Meta');
 
-const metaAllowed = page('/', 'denied', 'denied');
-metaAllowed.metaBanner().listeners.click({ target: { getAttribute: () => 'granted' } });
-assert.equal(metaAllowed.metaTags().length, 1, 'only explicit Meta grant loads its script');
-assert.equal(metaAllowed.window.fbq.loaded, true, 'Meta queue uses the supported pixel loader shape');
-assert.equal(metaAllowed.window.fbq.version, '2.0', 'Meta queue declares the pixel version');
-assert.equal(metaAllowed.window._fbq, metaAllowed.window.fbq, 'Meta queue exposes the expected alias');
-assert.equal(metaAllowed.window.fbq.queue.find((entry) => entry[0] === 'track')[1], 'PageView', 'only a homepage PageView is sent');
-metaAllowed.metaSettings().listeners.click();
-metaAllowed.metaBanner().listeners.click({ target: { getAttribute: () => 'denied' } });
-assert.equal(metaAllowed.reloads(), 1, 'withdrawing Meta consent reloads to stop the tag');
-
-for (const path of ['/about', '/safety', '/privacy', '/terms', '/app', '/blog/feeling-lonely-in-college']) {
-  assert.equal(page(path, 'denied', 'denied', '', 'granted').metaTags().length, 0, `${path} must not load Meta even with stored consent`);
+for (const path of ['/', '/about', '/safety', '/privacy', '/terms', '/app', '/blog/feeling-lonely-in-college']) {
+  const oldGrant = page(path, 'denied', 'denied', '', 'granted');
+  assert.equal(oldGrant.metaTags().length, 0, `${path} must not load Meta even with a stored grant`);
+  assert.equal(oldGrant.metaBanner(), undefined, `${path} must not show a Meta prompt`);
+  if (path !== '/app') assert.equal(oldGrant.storage.get('mp_public_meta_ads_consent_v1'), 'denied', `${path} clears an old Meta grant`);
 }
-assert.equal(page('/', 'denied', 'denied', '?email=private', 'granted').metaTags().length, 0, 'Meta skips homepage URLs with query details');
-assert.equal(page('/', 'denied', 'denied', '', 'granted').metaTags().length, 1, 'stored Meta consent loads on the clean homepage');
+assert.equal(page('/', 'denied', 'denied', '?email=private', 'granted').metaTags().length, 0, 'query URLs never load Meta');
 assert.equal(page('/about', 'granted', 'denied').tags().length, 1, 'About uses the public analytics consent');
 
 const privateApp = page('/app', 'granted', 'granted');
