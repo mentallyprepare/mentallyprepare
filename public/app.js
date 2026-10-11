@@ -730,11 +730,11 @@ function go(id) {
     showAppError();
     return;
   }
-  if (id !== 's-reveal-wait') stopAetherOutcome();
-  if (prev === el) return;
+  if (prev === el) { syncAetherBackground(el); return; }
   if (prev) prev.classList.remove('active','entering');
   if (id !== 's-waiting' && id !== 's-journal') clearInterval(matchPollTimer);
   el.classList.add('active','entering');
+  syncAetherBackground(el);
   const authTarget = id === 's-login' ? 's-login' :
     (id === 's-signup' || id.startsWith('s-ob')) ? 's-signup' : '';
   setSiteNavCurrent('auth', authTarget);
@@ -965,6 +965,7 @@ function showAppShell() {
   if (appArea) appArea.style.display = 'block';
   document.documentElement.classList.add('mp-app-route');
   document.body.classList.add('app-active');
+  syncAetherBackground(active);
   setMotionMode(modeForScreen(active && active.id));
   window.scrollTo(0, 0);
 }
@@ -978,7 +979,7 @@ function getLandingTargetFromHash(hash) {
 }
 
 function showLanding(targetId) {
-  stopAetherOutcome();
+  stopAetherBackground();
   var landing = document.getElementById('landing');
   var appArea = document.getElementById('app-area');
   if (landing) landing.style.display = '';
@@ -3102,31 +3103,39 @@ function handleRevealFlow() {
 }
 
 // A quiet, full-viewport version of the supplied connected-particle effect.
-// It exists only while the anonymous Day 21 outcome is on screen.
-var aetherOutcome = null;
-function stopAetherOutcome() {
-  if (!aetherOutcome) return;
-  cancelAnimationFrame(aetherOutcome.frame);
-  window.removeEventListener('resize', aetherOutcome.resize);
-  window.removeEventListener('pointermove', aetherOutcome.move);
-  window.removeEventListener('pointerout', aetherOutcome.out);
-  aetherOutcome.motion.removeEventListener('change', aetherOutcome.motionChanged);
-  aetherOutcome.canvas.remove();
-  document.body.classList.remove('aether-outcome-active');
-  aetherOutcome = null;
+// It stays behind signed-in screens and never runs on public or auth screens.
+var aetherBackground = null;
+function syncAetherBackground(screen) {
+  if (!state || !state.user || !screen || screen.classList.contains('auth-screen')) {
+    stopAetherBackground();
+  } else if (!aetherBackground) {
+    startAetherBackground();
+  }
 }
 
-function startAetherOutcome() {
-  stopAetherOutcome();
+function stopAetherBackground() {
+  if (!aetherBackground) return;
+  cancelAnimationFrame(aetherBackground.frame);
+  window.removeEventListener('resize', aetherBackground.resize);
+  window.removeEventListener('pointermove', aetherBackground.move);
+  window.removeEventListener('pointerout', aetherBackground.out);
+  aetherBackground.motion.removeEventListener('change', aetherBackground.motionChanged);
+  aetherBackground.canvas.remove();
+  document.body.classList.remove('aether-app-active');
+  aetherBackground = null;
+}
+
+function startAetherBackground() {
+  if (aetherBackground) return;
   var motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   if (motion.matches) return;
   var canvas = document.createElement('canvas');
-  canvas.className = 'aether-outcome-canvas';
+  canvas.className = 'aether-app-canvas';
   canvas.setAttribute('aria-hidden', 'true');
   var ctx = canvas.getContext('2d');
   if (!ctx) return;
   document.body.appendChild(canvas);
-  document.body.classList.add('aether-outcome-active');
+  document.body.classList.add('aether-app-active');
   var dots = [], width = 0, height = 0, lastFrame = 0;
   var pointer = { x: -1000, y: -1000 };
   var colors = ['235,180,194', '137,108,181', '248,242,255'];
@@ -3137,7 +3146,7 @@ function startAetherOutcome() {
     canvas.width = Math.round(width * pixelRatio);
     canvas.height = Math.round(height * pixelRatio);
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    var count = Math.min(34, Math.max(12, Math.round(width * height / 25000)));
+    var count = Math.min(24, Math.max(10, Math.round(width * height / 35000)));
     dots = Array.from({ length: count }, function(_, i) {
       return {
         x: Math.random() * width, y: Math.random() * height,
@@ -3150,10 +3159,10 @@ function startAetherOutcome() {
   function out(event) {
     if (!event.relatedTarget) { pointer.x = -1000; pointer.y = -1000; }
   }
-  function motionChanged(event) { if (event.matches) stopAetherOutcome(); }
+  function motionChanged(event) { if (event.matches) stopAetherBackground(); }
   function tick(time) {
-    if (!aetherOutcome || aetherOutcome.canvas !== canvas) return;
-    if (time - lastFrame >= 33 && !document.hidden) {
+    if (!aetherBackground || aetherBackground.canvas !== canvas) return;
+    if (time - lastFrame >= 42 && !document.hidden) {
       lastFrame = time;
       ctx.clearRect(0, 0, width, height);
       dots.forEach(function(dot) {
@@ -3184,19 +3193,18 @@ function startAetherOutcome() {
         }
       }
     }
-    aetherOutcome.frame = requestAnimationFrame(tick);
+    aetherBackground.frame = requestAnimationFrame(tick);
   }
-  aetherOutcome = { canvas: canvas, frame: 0, resize: resize, move: move, out: out, motion: motion, motionChanged: motionChanged };
+  aetherBackground = { canvas: canvas, frame: 0, resize: resize, move: move, out: out, motion: motion, motionChanged: motionChanged };
   window.addEventListener('resize', resize, { passive: true });
   window.addEventListener('pointermove', move, { passive: true });
   window.addEventListener('pointerout', out, { passive: true });
   motion.addEventListener('change', motionChanged);
   resize();
-  aetherOutcome.frame = requestAnimationFrame(tick);
+  aetherBackground.frame = requestAnimationFrame(tick);
 }
 
 function renderRevealConsent() {
-  stopAetherOutcome();
   const arch = archetypes[state.user.archetype];
   const matchArch = archetypes[state.match.partner.archetype];
   document.getElementById('s-reveal-wait').innerHTML = `
@@ -3221,7 +3229,6 @@ function renderRevealConsent() {
 }
 
 function renderRevealWaiting() {
-  stopAetherOutcome();
   const matchArch = archetypes[state.match.partner.archetype];
   document.getElementById('s-reveal-wait').innerHTML = `
     <div class="nav"><div class="nav-logo"><div class="site-nav-orb"></div>mentally prepare</div><div class="day-pill">Day 21 ✦</div></div>
@@ -3249,7 +3256,6 @@ function renderRevealAnonymous() {
       <p class="wait-p">One of you chose to keep it anonymous. And that's perfectly okay. The words you exchanged were real — the names don't change that.</p>
       <button class="btn" onclick="renderProfile();go('s-profile')" style="margin-top:20px;">Go to profile</button>
     </div>`;
-  startAetherOutcome();
 }
 
 async function submitReveal(choice) {
