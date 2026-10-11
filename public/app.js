@@ -3628,9 +3628,12 @@ function initScrollReveal(sel) { document.querySelectorAll(sel + ' .reveal-on-sc
 
 // Swipe gestures
 (function(){
-  const obMap = ['s-splash','s-ob1','s-ob2','s-ob3','s-ob4','s-ob5'];
+  const obMap = ['s-splash','s-ob1','s-ob2','s-ob3','s-ob4','s-ob4b','s-ob5'];
   let startX = 0, startY = 0, swiping = false;
   document.addEventListener('touchstart', function(e) {
+    // A dragged tap must not navigate before its button click fires.
+    swiping = false;
+    if (e.target.closest('button, a, input, textarea, select, [role="button"]')) return;
     const screen = document.querySelector('.screen.active');
     if (!screen || !obMap.includes(screen.id)) return;
     startX = e.touches[0].clientX; startY = e.touches[0].clientY; swiping = true;
@@ -3643,9 +3646,10 @@ function initScrollReveal(sel) { document.querySelectorAll(sel + ' .reveal-on-sc
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
     if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+    e.preventDefault(); // Do not also click a control where the swipe ended.
     if (dx < 0 && idx < obMap.length - 1) go(obMap[idx + 1]);
     else if (dx > 0 && idx > 0) go(obMap[idx - 1]);
-  }, { passive: true });
+  }, { passive: false });
 })();
 
 // Haptic feedback
