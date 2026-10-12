@@ -97,7 +97,9 @@ function authDebug(message, details) {
 function firebaseLoginMessage(error) {
   if (!error) return 'Google login failed. Please try again.';
   if (error.code === 'auth/unauthorized-domain') {
-    return 'Google login needs mymentallyprepare.com added in Firebase Authorized Domains.';
+    return window.location.hostname === 'mymentallyprepare.com'
+      ? 'Google sign-in is temporarily unavailable. Please use email and password while we fix it.'
+      : 'Google sign-in works on mymentallyprepare.com. Please open the main website.';
   }
   if (error.code === 'auth/popup-closed-by-user') return 'Google login was cancelled.';
   if (error.code === 'auth/network-request-failed') return 'Google login could not reach Firebase. Please refresh and try again.';
