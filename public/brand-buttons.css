@@ -1,0 +1,63 @@
+/* Shared action treatment for the public website and private web app. */
+@property --mp-shine-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes mp-button-shine {
+  to { --mp-shine-angle: 360deg; }
+}
+
+/* Action buttons share a crisp silhouette; small toggles and icon controls do not. */
+:is(.btn, .btn-primary, .btn-yes, .site-nav-cta, .cta-btn,
+    .nav-cta, .tq-seal-btn, .silent-release-btn, .btn-unseal,
+    .btn-ghost, .btn-ghost-l, .btn-back, .btn-no, .btn-skip,
+    .silent-back-btn, .silent-load-more-btn, .silent-resonate-btn,
+    .mp-cookie-choice .mp-analytics-actions button) {
+  border-radius: 4px !important;
+}
+
+:is(button, a.btn, a.btn-ghost, a.btn-ghost-l, a.nav-cta):focus-visible {
+  outline: 2px solid #EBB4C2 !important;
+  outline-offset: 3px;
+}
+
+@media (hover: hover) {
+  :is(button:not(:disabled), a.btn, a.btn-ghost, a.btn-ghost-l, a.nav-cta):hover {
+    filter: brightness(1.08);
+  }
+}
+
+/* The supplied shiny-button effect is adapted to existing native actions. */
+:is(.btn, .btn-primary, .btn-yes, .site-nav-cta, .cta-btn,
+    .nav-cta, .tq-seal-btn, .silent-release-btn, .btn-unseal) {
+  border: 2px solid transparent !important;
+  color: #fff !important;
+  background:
+    linear-gradient(135deg, #9B4F66, #694C8E) padding-box,
+    conic-gradient(from var(--mp-shine-angle),
+      #9B4F66 0deg, #EBB4C2 35deg, #F8F2FF 52deg,
+      #EBB4C2 70deg, #896CB5 110deg, #9B4F66 360deg) border-box !important;
+}
+
+:is(.btn, .btn-primary, .btn-yes, .site-nav-cta, .cta-btn,
+    .nav-cta, .tq-seal-btn, .silent-release-btn, .btn-unseal):disabled {
+  animation: none !important;
+  filter: none;
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  :is(.btn, .btn-primary, .btn-yes, .site-nav-cta, .cta-btn,
+      .nav-cta, .tq-seal-btn, .silent-release-btn, .btn-unseal):not(:disabled):hover {
+    animation: mp-button-shine 2.4s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.btn, .btn-primary, .btn-yes, .site-nav-cta, .cta-btn,
+      .nav-cta, .tq-seal-btn, .silent-release-btn, .btn-unseal) {
+    animation: none !important;
+    transition: none !important;
+  }
+}

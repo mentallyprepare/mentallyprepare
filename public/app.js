@@ -97,7 +97,9 @@ function authDebug(message, details) {
 function firebaseLoginMessage(error) {
   if (!error) return 'Google login failed. Please try again.';
   if (error.code === 'auth/unauthorized-domain') {
-    return 'Google login needs mymentallyprepare.com added in Firebase Authorized Domains.';
+    return window.location.hostname === 'mymentallyprepare.com'
+      ? 'Google sign-in is temporarily unavailable. Please use email and password while we fix it.'
+      : 'Google sign-in works on mymentallyprepare.com. Please open the main website.';
   }
   if (error.code === 'auth/popup-closed-by-user') return 'Google login was cancelled.';
   if (error.code === 'auth/network-request-failed') return 'Google login could not reach Firebase. Please refresh and try again.';
@@ -712,6 +714,17 @@ initCosmicMotion();
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
+function setSiteNavCurrent(kind, target) {
+  document.querySelectorAll('.site-nav-links a').forEach(function(link) {
+    const selected = kind === 'section'
+      ? link.getAttribute('data-nav-target') === target
+      : link.getAttribute('data-auth-target') === target;
+    link.classList.toggle('is-current', selected);
+    if (selected) link.setAttribute('aria-current', kind === 'section' ? 'location' : 'page');
+    else link.removeAttribute('aria-current');
+  });
+}
+
 function go(id) {
   const prev = document.querySelector('.screen.active');
   const el = document.getElementById(id);
@@ -719,10 +732,14 @@ function go(id) {
     showAppError();
     return;
   }
-  if (prev === el) return;
+  if (prev === el) { syncAetherBackground(el); return; }
   if (prev) prev.classList.remove('active','entering');
   if (id !== 's-waiting' && id !== 's-journal') clearInterval(matchPollTimer);
   el.classList.add('active','entering');
+  syncAetherBackground(el);
+  const authTarget = id === 's-login' ? 's-login' :
+    (id === 's-signup' || id.startsWith('s-ob')) ? 's-signup' : '';
+  setSiteNavCurrent('auth', authTarget);
   setMotionMode(modeForScreen(id));
   afterRenderMotion(el);
   if (el.classList.contains('auth-screen')) {
@@ -950,6 +967,7 @@ function showAppShell() {
   if (appArea) appArea.style.display = 'block';
   document.documentElement.classList.add('mp-app-route');
   document.body.classList.add('app-active');
+  syncAetherBackground(active);
   setMotionMode(modeForScreen(active && active.id));
   window.scrollTo(0, 0);
 }
@@ -963,12 +981,14 @@ function getLandingTargetFromHash(hash) {
 }
 
 function showLanding(targetId) {
+  stopAetherBackground();
   var landing = document.getElementById('landing');
   var appArea = document.getElementById('app-area');
   if (landing) landing.style.display = '';
   if (appArea) appArea.style.display = 'none';
   document.documentElement.classList.remove('mp-app-route');
   document.body.classList.remove('app-active','focus-writing');
+  setSiteNavCurrent('section', targetId || '');
   setMotionMode('idle');
   var navCta = document.getElementById('navCta');
   if (navCta) { navCta.textContent = 'Sign up'; navCta.onclick = startSignup; }
@@ -1114,6 +1134,8 @@ function updateSky() {
   document.documentElement.style.setProperty('--sky', sky);
 }
 
+// Initialise before the startup routine can open signup and start its canvas.
+var aetherBackground = null;
 (async function init() {
   updateSky();
   setInterval(updateSky, 600000);
@@ -3084,6 +3106,107 @@ function handleRevealFlow() {
   return true;
 }
 
+// A full-viewport version of the supplied connected-particle effect.
+// It belongs only on the account creation entry screen.
+function syncAetherBackground(screen) {
+  if (!screen || screen.id !== 's-signup') {
+    stopAetherBackground();
+  } else if (!aetherBackground) {
+    startAetherBackground();
+  }
+}
+
+function stopAetherBackground() {
+  if (!aetherBackground) return;
+  cancelAnimationFrame(aetherBackground.frame);
+  window.removeEventListener('resize', aetherBackground.resize);
+  window.removeEventListener('pointermove', aetherBackground.move);
+  window.removeEventListener('pointerout', aetherBackground.out);
+  aetherBackground.motion.removeEventListener('change', aetherBackground.motionChanged);
+  aetherBackground.canvas.remove();
+  document.body.classList.remove('aether-signup-active');
+  aetherBackground = null;
+}
+
+function startAetherBackground() {
+  if (aetherBackground) return;
+  var motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (motion.matches) return;
+  var canvas = document.createElement('canvas');
+  canvas.className = 'aether-signup-canvas';
+  canvas.setAttribute('aria-hidden', 'true');
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  document.body.appendChild(canvas);
+  document.body.classList.add('aether-signup-active');
+  var dots = [], width = 0, height = 0, lastFrame = 0;
+  var pointer = { x: -1000, y: -1000 };
+  var colors = ['235,180,194', '137,108,181', '248,242,255'];
+  function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    var pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    canvas.width = Math.round(width * pixelRatio);
+    canvas.height = Math.round(height * pixelRatio);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    var count = Math.min(48, Math.max(30, Math.round(width * height / 11000)));
+    dots = Array.from({ length: count }, function(_, i) {
+      return {
+        x: Math.random() * width, y: Math.random() * height,
+        vx: (Math.random() - .5) * .28, vy: (Math.random() - .5) * .28,
+        size: 1.6 + Math.random() * 1.8, color: colors[i % colors.length]
+      };
+    });
+  }
+  function move(event) { pointer.x = event.clientX; pointer.y = event.clientY; }
+  function out(event) {
+    if (!event.relatedTarget) { pointer.x = -1000; pointer.y = -1000; }
+  }
+  function motionChanged(event) { if (event.matches) stopAetherBackground(); }
+  function tick(time) {
+    if (!aetherBackground || aetherBackground.canvas !== canvas) return;
+    if (time - lastFrame >= 42 && !document.hidden) {
+      lastFrame = time;
+      ctx.clearRect(0, 0, width, height);
+      dots.forEach(function(dot) {
+        var dx = dot.x - pointer.x, dy = dot.y - pointer.y;
+        var distance = Math.hypot(dx, dy);
+        if (distance > 0 && distance < 115) {
+          dot.x += dx / distance * .7;
+          dot.y += dy / distance * .7;
+        }
+        dot.x += dot.vx; dot.y += dot.vy;
+        if (dot.x < 0 || dot.x > width) dot.vx *= -1;
+        if (dot.y < 0 || dot.y > height) dot.vy *= -1;
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dot.size, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + dot.color + ',.85)';
+        ctx.fill();
+      });
+      for (var i = 0; i < dots.length; i++) {
+        for (var j = i + 1; j < dots.length; j++) {
+          var gap = Math.hypot(dots[i].x - dots[j].x, dots[i].y - dots[j].y);
+          if (gap > 180) continue;
+          ctx.beginPath();
+          ctx.moveTo(dots[i].x, dots[i].y);
+          ctx.lineTo(dots[j].x, dots[j].y);
+          ctx.strokeStyle = 'rgba(235,180,194,' + ((1 - gap / 180) * .42).toFixed(3) + ')';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+    }
+    aetherBackground.frame = requestAnimationFrame(tick);
+  }
+  aetherBackground = { canvas: canvas, frame: 0, resize: resize, move: move, out: out, motion: motion, motionChanged: motionChanged };
+  window.addEventListener('resize', resize, { passive: true });
+  window.addEventListener('pointermove', move, { passive: true });
+  window.addEventListener('pointerout', out, { passive: true });
+  motion.addEventListener('change', motionChanged);
+  resize();
+  aetherBackground.frame = requestAnimationFrame(tick);
+}
+
 function renderRevealConsent() {
   const arch = archetypes[state.user.archetype];
   const matchArch = archetypes[state.match.partner.archetype];
@@ -3628,9 +3751,12 @@ function initScrollReveal(sel) { document.querySelectorAll(sel + ' .reveal-on-sc
 
 // Swipe gestures
 (function(){
-  const obMap = ['s-splash','s-ob1','s-ob2','s-ob3','s-ob4','s-ob5'];
+  const obMap = ['s-splash','s-ob1','s-ob2','s-ob3','s-ob4','s-ob4b','s-ob5'];
   let startX = 0, startY = 0, swiping = false;
   document.addEventListener('touchstart', function(e) {
+    // A dragged tap must not navigate before its button click fires.
+    swiping = false;
+    if (e.target.closest('button, a, input, textarea, select, [role="button"]')) return;
     const screen = document.querySelector('.screen.active');
     if (!screen || !obMap.includes(screen.id)) return;
     startX = e.touches[0].clientX; startY = e.touches[0].clientY; swiping = true;
@@ -3643,9 +3769,10 @@ function initScrollReveal(sel) { document.querySelectorAll(sel + ' .reveal-on-sc
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
     if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)) return;
+    e.preventDefault(); // Do not also click a control where the swipe ended.
     if (dx < 0 && idx < obMap.length - 1) go(obMap[idx + 1]);
     else if (dx > 0 && idx > 0) go(obMap[idx - 1]);
-  }, { passive: true });
+  }, { passive: false });
 })();
 
 // Haptic feedback

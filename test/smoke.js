@@ -149,6 +149,25 @@ async function run() {
     ok('Firebase custom-domain auth config');
   } catch (e) { fail('Firebase custom-domain auth config', e); }
 
+  // OAuth entry points must not remain on Railway or www hosts, which are not
+  // authorised in this Firebase project's current domain list.
+  try {
+    for (const host of [
+      'www.mymentallyprepare.com',
+      'mentallyprepare-production.up.railway.app',
+      'mentally-prepare-web-production.up.railway.app'
+    ]) {
+      const redirect = await request('GET', '/app?screen=s-login', null, { Host: host });
+      assert.strictEqual(redirect.status, 302, `${host} should redirect before showing login`);
+      assert.strictEqual(redirect.headers.location, 'https://mymentallyprepare.com/app?screen=s-login');
+    }
+    const canonical = await request('GET', '/app?screen=s-login', null, { Host: 'mymentallyprepare.com' });
+    assert.strictEqual(canonical.status, 200, 'the authorised domain should serve login');
+    const api = await request('GET', '/api/ready', null, { Host: 'mentallyprepare-production.up.railway.app' });
+    assert.strictEqual(api.status, 200, 'Railway health checks must stay on their current host');
+    ok('Google login entry redirects to authorised domain');
+  } catch (e) { fail('Google login entry redirects to authorised domain', e); }
+
   // 1c. Firebase auth helper pages must not inherit app frame-blocking headers.
   try {
     const helperFrame = await request('GET', '/__/auth/handler', null, { Host: 'mymentallyprepare.com' });
@@ -687,7 +706,6 @@ async function run() {
   // Google Analytics can load only on public pages after the local consent script allows it.
   try {
     const publicPage = await request('GET', '/');
-    const aboutPage = await request('GET', '/about');
     const privatePage = await request('GET', '/app');
     const publicCsp = publicPage.headers['content-security-policy'] || '';
     const privateCsp = privatePage.headers['content-security-policy'] || '';
@@ -695,13 +713,14 @@ async function run() {
     assert.ok(!privatePage.raw.includes('/public-analytics.js'), 'private app excludes consent controller');
     assert.ok(publicCsp.includes('https://www.googletagmanager.com'), 'public CSP permits Google tag after consent');
     assert.ok(!privateCsp.includes('https://www.googletagmanager.com'), 'private CSP blocks Google tag');
-    assert.ok(publicCsp.includes('https://*.clarity.ms'), 'public CSP permits Clarity after consent');
+    assert.ok(!publicCsp.includes('https://*.clarity.ms'), 'public CSP blocks retired Clarity recordings');
+    assert.ok(!publicCsp.includes('https://c.bing.com'), 'public CSP blocks retired Clarity endpoint');
     assert.ok(!privateCsp.includes('https://*.clarity.ms'), 'private CSP blocks Clarity');
-    assert.ok(publicCsp.includes('https://connect.facebook.net'), 'public CSP permits Meta after consent');
-    assert.ok(!(aboutPage.headers['content-security-policy'] || '').includes('https://connect.facebook.net'), 'non-homepage public CSP blocks Meta');
+    assert.ok(!publicCsp.includes('https://connect.facebook.net'), 'public CSP blocks retired Meta Pixel');
+    assert.ok(!publicCsp.includes('https://www.facebook.com'), 'public CSP blocks retired Meta beacon');
     assert.ok(!privateCsp.includes('https://connect.facebook.net'), 'private CSP blocks Meta');
-    ok('Google Analytics and Clarity are confined to public pages');
-  } catch (e) { fail('Google Analytics and Clarity are confined to public pages', e); }
+    ok('Google Analytics is public only; Clarity and Meta Pixel are disabled');
+  } catch (e) { fail('Google Analytics is public only; Clarity and Meta Pixel are disabled', e); }
 
   // R-5: #s-archetype-reveal has no inline display:flex
   try {

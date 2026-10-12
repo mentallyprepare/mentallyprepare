@@ -1535,20 +1535,9 @@ const publicAnalyticsSecurityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       ...baseContentSecurityDirectives,
-      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com', 'https://*.clarity.ms', 'https://c.bing.com'],
-      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com'],
-      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com']
-    }
-  }
-});
-const publicHomepageSecurityHeaders = helmet({
-  ...sharedHelmetOptions,
-  contentSecurityPolicy: {
-    directives: {
-      ...baseContentSecurityDirectives,
-      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://connect.facebook.net'],
-      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://connect.facebook.net', 'https://www.facebook.com'],
-      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com', 'https://*.clarity.ms', 'https://c.bing.com', 'https://www.facebook.com']
+      scriptSrc: [...baseContentSecurityDirectives.scriptSrc, 'https://www.googletagmanager.com'],
+      connectSrc: [...baseContentSecurityDirectives.connectSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com'],
+      imgSrc: [...baseContentSecurityDirectives.imgSrc, 'https://www.google-analytics.com', 'https://region1.google-analytics.com']
     }
   }
 });
@@ -1557,8 +1546,7 @@ const publicAnalyticsPaths = new Set(['/', '/index.html', '/about', '/about.html
 app.use((req, res, next) => {
   if (isFirebaseAuthHelperPath(req)) return next();
   const isPublicPage = publicAnalyticsPaths.has(req.path) || isBlogPath(req.path);
-  const isHomepage = req.path === '/' || req.path === '/index.html';
-  return (isHomepage ? publicHomepageSecurityHeaders : isPublicPage ? publicAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
+  return (isPublicPage ? publicAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
 });
 // --- Stripe webhook MUST be registered BEFORE express.json() ---
 // (Stripe needs the raw body for signature verification)
@@ -1647,6 +1635,21 @@ function setStaticCacheHeaders(res, filePath) {
 }
 
 app.use(compression());
+
+// OAuth on the public app must start on the domain authorised in Firebase.
+// Railway and www addresses remain useful for health checks and assets, but
+// showing an interactive login there leads to auth/unauthorized-domain.
+const NON_CANONICAL_AUTH_HOSTS = new Set([
+  'www.mymentallyprepare.com',
+  'mentallyprepare-production.up.railway.app',
+  'mentally-prepare-web-production.up.railway.app'
+]);
+const AUTH_ENTRY_PATHS = new Set(['/app', '/app.html', '/signup', '/login', '/forgot', '/onboarding', '/scan', '/room', '/rooms']);
+app.use((req, res, next) => {
+  if (!['GET', 'HEAD'].includes(req.method) || !NON_CANONICAL_AUTH_HOSTS.has(getRequestHost(req))) return next();
+  if (!AUTH_ENTRY_PATHS.has(req.path) && !req.path.startsWith('/app/')) return next();
+  return res.redirect(302, 'https://mymentallyprepare.com' + req.originalUrl);
+});
 
 // --- HTTPS redirect (production) — BEFORE static files ---
 if (IS_PROD) {
