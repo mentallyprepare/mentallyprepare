@@ -3104,11 +3104,11 @@ function handleRevealFlow() {
   return true;
 }
 
-// A quiet, full-viewport version of the supplied connected-particle effect.
-// It stays behind signed-in screens and never runs on public or auth screens.
+// A full-viewport version of the supplied connected-particle effect.
+// It belongs only on the account creation entry screen.
 var aetherBackground = null;
 function syncAetherBackground(screen) {
-  if (!state || !state.user || !screen || screen.classList.contains('auth-screen')) {
+  if (!screen || screen.id !== 's-signup') {
     stopAetherBackground();
   } else if (!aetherBackground) {
     startAetherBackground();
@@ -3123,7 +3123,7 @@ function stopAetherBackground() {
   window.removeEventListener('pointerout', aetherBackground.out);
   aetherBackground.motion.removeEventListener('change', aetherBackground.motionChanged);
   aetherBackground.canvas.remove();
-  document.body.classList.remove('aether-app-active');
+  document.body.classList.remove('aether-signup-active');
   aetherBackground = null;
 }
 
@@ -3132,12 +3132,12 @@ function startAetherBackground() {
   var motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   if (motion.matches) return;
   var canvas = document.createElement('canvas');
-  canvas.className = 'aether-app-canvas';
+  canvas.className = 'aether-signup-canvas';
   canvas.setAttribute('aria-hidden', 'true');
   var ctx = canvas.getContext('2d');
   if (!ctx) return;
   document.body.appendChild(canvas);
-  document.body.classList.add('aether-app-active');
+  document.body.classList.add('aether-signup-active');
   var dots = [], width = 0, height = 0, lastFrame = 0;
   var pointer = { x: -1000, y: -1000 };
   var colors = ['235,180,194', '137,108,181', '248,242,255'];

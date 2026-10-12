@@ -526,7 +526,8 @@ textarea::placeholder{color:rgba(248,242,255,.15)}
 /* ── Particles ── */
 .particles{position:fixed;inset:0;pointer-events:none;z-index:100}
 .particle{position:absolute;border-radius:50%;animation:particleFly 1.2s ease-out forwards}
-.aether-app-canvas{position:fixed;inset:0;width:100vw;height:100dvh;z-index:0;pointer-events:none;opacity:.95;mask-image:radial-gradient(ellipse 42% 34% at 50% 52%,rgba(0,0,0,.55) 0%,rgba(0,0,0,.82) 68%,#000 100%)}
+.aether-signup-canvas{position:fixed;inset:0;width:100vw;height:100dvh;z-index:0;pointer-events:none;opacity:.95;mask-image:radial-gradient(ellipse 42% 34% at 50% 52%,rgba(0,0,0,.55) 0%,rgba(0,0,0,.82) 68%,#000 100%)}
+#s-signup .auth-card{background:linear-gradient(145deg,rgba(22,16,37,.96),rgba(18,12,31,.96))}
 
 /* ── Settings ── */
 .settings-list{padding:20px 24px 0;display:flex;flex-direction:column;gap:8px}
