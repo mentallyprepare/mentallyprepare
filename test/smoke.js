@@ -149,6 +149,25 @@ async function run() {
     ok('Firebase custom-domain auth config');
   } catch (e) { fail('Firebase custom-domain auth config', e); }
 
+  // OAuth entry points must not remain on Railway or www hosts, which are not
+  // authorised in this Firebase project's current domain list.
+  try {
+    for (const host of [
+      'www.mymentallyprepare.com',
+      'mentallyprepare-production.up.railway.app',
+      'mentally-prepare-web-production.up.railway.app'
+    ]) {
+      const redirect = await request('GET', '/app?screen=s-login', null, { Host: host });
+      assert.strictEqual(redirect.status, 302, `${host} should redirect before showing login`);
+      assert.strictEqual(redirect.headers.location, 'https://mymentallyprepare.com/app?screen=s-login');
+    }
+    const canonical = await request('GET', '/app?screen=s-login', null, { Host: 'mymentallyprepare.com' });
+    assert.strictEqual(canonical.status, 200, 'the authorised domain should serve login');
+    const api = await request('GET', '/api/ready', null, { Host: 'mentallyprepare-production.up.railway.app' });
+    assert.strictEqual(api.status, 200, 'Railway health checks must stay on their current host');
+    ok('Google login entry redirects to authorised domain');
+  } catch (e) { fail('Google login entry redirects to authorised domain', e); }
+
   // 1c. Firebase auth helper pages must not inherit app frame-blocking headers.
   try {
     const helperFrame = await request('GET', '/__/auth/handler', null, { Host: 'mymentallyprepare.com' });

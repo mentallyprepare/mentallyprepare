@@ -1636,6 +1636,21 @@ function setStaticCacheHeaders(res, filePath) {
 
 app.use(compression());
 
+// OAuth on the public app must start on the domain authorised in Firebase.
+// Railway and www addresses remain useful for health checks and assets, but
+// showing an interactive login there leads to auth/unauthorized-domain.
+const NON_CANONICAL_AUTH_HOSTS = new Set([
+  'www.mymentallyprepare.com',
+  'mentallyprepare-production.up.railway.app',
+  'mentally-prepare-web-production.up.railway.app'
+]);
+const AUTH_ENTRY_PATHS = new Set(['/app', '/app.html', '/signup', '/login', '/forgot', '/onboarding', '/scan', '/room', '/rooms']);
+app.use((req, res, next) => {
+  if (!['GET', 'HEAD'].includes(req.method) || !NON_CANONICAL_AUTH_HOSTS.has(getRequestHost(req))) return next();
+  if (!AUTH_ENTRY_PATHS.has(req.path) && !req.path.startsWith('/app/')) return next();
+  return res.redirect(302, 'https://mymentallyprepare.com' + req.originalUrl);
+});
+
 // --- HTTPS redirect (production) — BEFORE static files ---
 if (IS_PROD) {
   app.use((req, res, next) => {
