@@ -225,7 +225,7 @@ body.app-active #landing{display:none}
 .input-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-s);margin-bottom:8px;display:block}
 .input-field{width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);outline:none;transition:border-color .2s}
 .input-field:focus{border-color:rgba(212,133,154,.35)}
-.input-field::placeholder{color:rgba(248,242,255,.18)}
+.input-field::placeholder{color:rgba(248,242,255,.52)}
 .input-field:-webkit-autofill,
 .input-field:-webkit-autofill:hover,
 .input-field:-webkit-autofill:focus{
