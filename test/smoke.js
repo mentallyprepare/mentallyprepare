@@ -643,6 +643,7 @@ async function run() {
   try {
     const appR = await request('GET', '/app');
     assert.match(appR.headers['x-robots-tag'] || '', /noindex/, '/app has noindex');
+    assert.match(appR.raw, /<meta name="robots" content="noindex, nofollow"\/>/, '/app HTML has noindex');
     ok('X-Robots-Tag headers correct');
   } catch (e) { fail('X-Robots-Tag headers correct', e); }
 
@@ -693,15 +694,15 @@ async function run() {
     ok('blog pages are public, indexable, and in the sitemap');
   } catch (e) { fail('blog pages are public, indexable, and in the sitemap', e); }
 
-  // R-4: /robots.txt disallows /app, /admin, /api
+  // R-4: /robots.txt lets crawlers see /app noindex while blocking admin and API routes.
   try {
     const r = await request('GET', '/robots.txt');
     assert.strictEqual(r.status, 200);
-    assert.ok(r.raw.includes('/app'), 'robots.txt mentions /app');
-    assert.ok(r.raw.includes('/admin'), 'robots.txt mentions /admin');
-    assert.ok(r.raw.includes('/api'), 'robots.txt mentions /api');
-    ok('/robots.txt disallows /app, /admin, /api');
-  } catch (e) { fail('/robots.txt disallows /app, /admin, /api', e); }
+    assert.ok(!/^Disallow: \/app(?:\/|$)/m.test(r.raw), 'robots.txt permits /app and /app/ to be crawled');
+    assert.ok(r.raw.includes('Disallow: /admin'), 'robots.txt blocks /admin');
+    assert.ok(r.raw.includes('Disallow: /api/'), 'robots.txt blocks /api');
+    ok('/robots.txt permits /app and blocks /admin and /api');
+  } catch (e) { fail('/robots.txt permits /app and blocks /admin and /api', e); }
 
   // Google Analytics can load only on public pages after the local consent script allows it.
   try {

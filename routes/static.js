@@ -81,8 +81,7 @@ ${blogUrls}
     res.send([
       'User-agent: *',
       'Allow: /',
-      'Disallow: /app',
-      'Disallow: /app/',
+      // Google must crawl /app to read its noindex response and remove the URL from search.
       'Disallow: /admin',
       'Disallow: /admin/',
       'Disallow: /api/',
