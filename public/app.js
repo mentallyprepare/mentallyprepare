@@ -1134,6 +1134,8 @@ function updateSky() {
   document.documentElement.style.setProperty('--sky', sky);
 }
 
+// Initialise before the startup routine can open signup and start its canvas.
+var aetherBackground = null;
 (async function init() {
   updateSky();
   setInterval(updateSky, 600000);
@@ -3106,7 +3108,6 @@ function handleRevealFlow() {
 
 // A full-viewport version of the supplied connected-particle effect.
 // It belongs only on the account creation entry screen.
-var aetherBackground = null;
 function syncAetherBackground(screen) {
   if (!screen || screen.id !== 's-signup') {
     stopAetherBackground();
