@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261012-signup-aether';
+const CACHE_NAME = 'mp-20261012-signup-aether-visible';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',
