@@ -1,6 +1,9 @@
 const path = require('path');
 const crypto = require('crypto');
+const { signInAgainEmail } = require('../email-templates');
+const { logAdminAction } = require('../lib/admin-auth');
 const REPORT_STATUSES = new Set(['open', 'reviewed', 'dismissed', 'escalated', 'resolved']);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function registerAdminRoutes(app, deps) {
   const {
@@ -24,7 +27,9 @@ function registerAdminRoutes(app, deps) {
     deleteMatchData,
     sendWaitlistAccepted,
     attemptMatch,
-    broadcastPush
+    broadcastPush,
+    sendSignInAgain,
+    emailServiceEnabled
   } = deps;
 
   const appLink = process.env.APP_BASE_URL || 'https://mymentallyprepare.com/app';
@@ -130,6 +135,102 @@ function registerAdminRoutes(app, deps) {
 
     return templates[status] || (partnerWaiting ? templates.partner_waiting : templates.missed_today);
   }
+
+  function reauthRecipients() {
+    const users = db.prepare("SELECT id, name, email FROM users WHERE COALESCE(account_status, 'active') != 'deleted' ORDER BY id").all();
+    return {
+      totalAccounts: users.length,
+      recipients: users.filter(user => EMAIL_RE.test(String(user.email || '').trim()))
+    };
+  }
+
+  const nextDelivery = db.prepare(`
+    SELECT d.campaign_id, d.user_id, d.email, d.name
+    FROM reauth_campaign_deliveries d
+    JOIN reauth_campaigns c ON c.id = d.campaign_id
+    WHERE c.status = 'sending' AND d.status = 'pending'
+    ORDER BY d.campaign_id, d.user_id LIMIT 1
+  `);
+  const claimDelivery = db.prepare("UPDATE reauth_campaign_deliveries SET status = 'sending', attempted_at = datetime('now') WHERE campaign_id = ? AND user_id = ? AND status = 'pending'");
+  const finishDelivery = db.prepare('UPDATE reauth_campaign_deliveries SET status = ? WHERE campaign_id = ? AND user_id = ?');
+  let sendingReauthEmail = false;
+
+  function reconcileReauthCampaigns() {
+    // A crash can leave one claimed delivery without a known outcome. Keep it
+    // visible for human review and never resend it automatically.
+    db.prepare("UPDATE reauth_campaign_deliveries SET status = 'uncertain' WHERE status = 'sending' AND attempted_at <= datetime('now', '-10 minutes')").run();
+    db.exec(`UPDATE reauth_campaigns SET
+      sent = (SELECT COUNT(*) FROM reauth_campaign_deliveries WHERE campaign_id = reauth_campaigns.id AND status = 'sent'),
+      failed = (SELECT COUNT(*) FROM reauth_campaign_deliveries WHERE campaign_id = reauth_campaigns.id AND status IN ('failed', 'uncertain'))
+      WHERE status = 'sending';
+      UPDATE reauth_campaigns SET status = CASE WHEN failed > 0 THEN 'completed_with_errors' ELSE 'completed' END
+      WHERE status = 'sending' AND NOT EXISTS (SELECT 1 FROM reauth_campaign_deliveries WHERE campaign_id = reauth_campaigns.id AND status IN ('pending', 'sending'));`);
+  }
+
+  async function processReauthEmail() {
+    if (sendingReauthEmail || !emailServiceEnabled || typeof sendSignInAgain !== 'function') return;
+    reconcileReauthCampaigns();
+    const delivery = nextDelivery.get();
+    if (!delivery) return;
+    if (claimDelivery.run(delivery.campaign_id, delivery.user_id).changes !== 1) return;
+    sendingReauthEmail = true;
+    let status = 'sent';
+    try {
+      await sendSignInAgain(delivery.email, delivery.name);
+    } catch (error) {
+      status = 'failed';
+      console.error('Sign-in campaign delivery failed; check delivery status in Founder admin.');
+    } finally {
+      try {
+        finishDelivery.run(status, delivery.campaign_id, delivery.user_id);
+        db.prepare(`UPDATE reauth_campaigns SET
+          sent = (SELECT COUNT(*) FROM reauth_campaign_deliveries WHERE campaign_id = ? AND status = 'sent'),
+          failed = (SELECT COUNT(*) FROM reauth_campaign_deliveries WHERE campaign_id = ? AND status IN ('failed', 'uncertain'))
+          WHERE id = ?`).run(delivery.campaign_id, delivery.campaign_id, delivery.campaign_id);
+        db.prepare(`UPDATE reauth_campaigns SET status = CASE WHEN failed > 0 THEN 'completed_with_errors' ELSE 'completed' END
+          WHERE id = ? AND NOT EXISTS (SELECT 1 FROM reauth_campaign_deliveries WHERE campaign_id = ? AND status IN ('pending', 'sending'))`).run(delivery.campaign_id, delivery.campaign_id);
+      } finally {
+        sendingReauthEmail = false;
+      }
+    }
+  }
+
+  // One recipient at a time. Persistent rows survive a restart; uncertain in-flight
+  // deliveries are left for review rather than silently sent twice.
+  const reauthTimer = setInterval(() => processReauthEmail().catch(error => console.error('Sign-in campaign worker failed:', error)), 1800);
+  if (reauthTimer.unref) reauthTimer.unref();
+
+  app.get('/admin/reauth-campaign/preview', authLimiter, requireAdmin, (req, res) => {
+    if (req.admin.role !== 'admin' || req.admin.legacy) return res.status(403).json({ error: 'A named founder admin is required' });
+    const { totalAccounts, recipients } = reauthRecipients();
+    const campaign = db.prepare('SELECT id, created_at, status, total, sent, failed FROM reauth_campaigns ORDER BY id DESC LIMIT 1').get() || null;
+    const blocked = db.prepare("SELECT id FROM reauth_campaigns WHERE status = 'sending' OR created_at >= datetime('now', '-30 days') LIMIT 1").get();
+    const deliveries = campaign ? db.prepare('SELECT user_id AS userId, email, status, attempted_at AS attemptedAt FROM reauth_campaign_deliveries WHERE campaign_id = ? ORDER BY user_id').all(campaign.id) : [];
+    res.json({ ok: true, totalAccounts, recipientCount: recipients.length, skippedCount: totalAccounts - recipients.length,
+      subject: 'Please sign in to Mentally Prepare again', sampleHtml: signInAgainEmail('friend'),
+      recipients: recipients.map(user => ({ userId: user.id, email: user.email })), campaign, deliveries, canStart: !blocked && recipients.length > 0 && !!emailServiceEnabled });
+  });
+
+  app.post('/admin/reauth-campaign/start', authLimiter, requireAdmin, (req, res) => {
+    if (req.admin.role !== 'admin' || req.admin.legacy) return res.status(403).json({ error: 'A named founder admin is required' });
+    if (!emailServiceEnabled || typeof sendSignInAgain !== 'function') return res.status(503).json({ error: 'Email delivery is not configured' });
+    if (!req.body || req.body.confirmation !== 'REQUIRE SIGN-IN') return res.status(400).json({ error: 'Type REQUIRE SIGN-IN to confirm' });
+    const previous = db.prepare("SELECT id FROM reauth_campaigns WHERE status = 'sending' OR created_at >= datetime('now', '-30 days') ORDER BY id DESC LIMIT 1").get();
+    if (previous) return res.status(409).json({ error: 'A sign-in campaign is running or was started in the last 30 days' });
+    const { recipients } = reauthRecipients();
+    if (!recipients.length) return res.status(409).json({ error: 'No deliverable account email addresses found' });
+    const startedAt = Math.floor(Date.now() / 1000);
+    const campaignId = db.transaction(() => {
+      const campaign = db.prepare('INSERT INTO reauth_campaigns (started_by, total) VALUES (?, ?)').run(req.admin.email, recipients.length);
+      db.prepare("UPDATE users SET auth_version = COALESCE(auth_version, 0) + 1, auth_reset_at = ? WHERE COALESCE(account_status, 'active') != 'deleted'").run(startedAt);
+      const insert = db.prepare('INSERT INTO reauth_campaign_deliveries (campaign_id, user_id, email, name) VALUES (?, ?, ?, ?)');
+      for (const user of recipients) insert.run(campaign.lastInsertRowid, user.id, user.email.trim(), user.name || 'friend');
+      return Number(campaign.lastInsertRowid);
+    })();
+    logAdminAction(db, req, 'auth.force_signin_all', { metadata: { campaignId, recipients: recipients.length } });
+    res.status(202).json({ ok: true, campaignId, queued: recipients.length });
+    processReauthEmail().catch(error => console.error('Sign-in campaign worker failed:', error));
+  });
 
   app.get('/admin', (req, res) => {
     res.sendFile(path.join(rootDir, 'public', 'admin.html'));

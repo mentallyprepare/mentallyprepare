@@ -6,7 +6,16 @@ async function api(method, path, body) {
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   const res = await fetch('/api' + path, opts);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Something did not save. Try once more.');
+  if (!res.ok) {
+    const error = new Error(data.error || 'Something did not save. Try once more.');
+    error.reauthRequired = data.reauthRequired === true;
+    if (error.reauthRequired && state && state.user) {
+      state = null;
+      if (firebaseAuthClient) firebaseAuthClient.signOut().catch(() => {});
+      go('s-login');
+    }
+    throw error;
+  }
   return data;
 }
 
@@ -269,6 +278,11 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
       openAppAfterGoogleLogin();
       return true;
     } catch (e) {
+      if (e && e.reauthRequired && firebaseAuthClient) {
+        await firebaseAuthClient.signOut().catch(() => {});
+        state = null;
+        go('s-login');
+      }
       console.error('[GoogleAuth] Firebase session exchange failed:', {
         code: e && e.code,
         message: e && e.message,

@@ -75,10 +75,12 @@ test('malformed input is rejected without throwing', () => {
 });
 
 test('issueTokenPair returns an access + refresh pair', () => {
-  const pair = tokens.issueTokenPair(11);
+  const pair = tokens.issueTokenPair(11, 3);
   assert.ok(pair.accessToken && pair.refreshToken, 'both tokens present');
   assert.strictEqual(tokens.verifyToken(pair.accessToken, { type: 'access' }).valid, true);
   assert.strictEqual(tokens.verifyToken(pair.refreshToken, { type: 'refresh' }).valid, true);
+  assert.strictEqual(tokens.verifyToken(pair.accessToken).payload.av, 3);
+  assert.strictEqual(tokens.verifyToken(pair.refreshToken).payload.av, 3);
   assert.strictEqual(pair.expiresIn, tokens.ACCESS_TTL_SECONDS);
 });
 

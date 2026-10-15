@@ -408,6 +408,8 @@ db.exec(`
     auth_provider TEXT DEFAULT 'password',
     last_login_at TEXT,
     account_status TEXT DEFAULT 'active',
+    auth_version INTEGER NOT NULL DEFAULT 0,
+    auth_reset_at INTEGER NOT NULL DEFAULT 0,
     deleted_at TEXT,
     deleted_reason TEXT,
     created_at TEXT DEFAULT (datetime('now'))
@@ -453,6 +455,26 @@ db.exec(`
     day INTEGER NOT NULL CHECK(day BETWEEN 1 AND 21),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, match_id, day)
+  );
+
+  CREATE TABLE IF NOT EXISTS reauth_campaigns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    started_by TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'sending',
+    total INTEGER NOT NULL DEFAULT 0,
+    sent INTEGER NOT NULL DEFAULT 0,
+    failed INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS reauth_campaign_deliveries (
+    campaign_id INTEGER NOT NULL REFERENCES reauth_campaigns(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempted_at TEXT,
+    PRIMARY KEY (campaign_id, user_id)
   );
 
   CREATE TABLE IF NOT EXISTS waiting_entries (
@@ -722,6 +744,8 @@ ensureColumn('users', 'profile_photo', 'TEXT');
 ensureColumn('users', 'auth_provider', "TEXT DEFAULT 'password'");
 ensureColumn('users', 'last_login_at', 'TEXT');
 ensureColumn('users', 'account_status', "TEXT DEFAULT 'active'");
+ensureColumn('users', 'auth_version', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('users', 'auth_reset_at', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('users', 'deleted_at', 'TEXT');
 ensureColumn('users', 'deleted_reason', 'TEXT');
 ensureColumn('matches', 'matched_at', 'TEXT');
@@ -1854,6 +1878,7 @@ tokens.configure(sessionConfig.secret);
 
 function requireAuth(req, res, next) {
   let userId = req.session && req.session.userId;
+  let authVersion = req.session && req.session.authVersion;
 
   // Native clients cannot ride browser cookies, so they send
   // `Authorization: Bearer <token>` instead. Web is untouched: this path only
@@ -1864,6 +1889,7 @@ function requireAuth(req, res, next) {
       const result = tokens.verifyToken(bearer, { type: 'access' });
       if (result.valid) {
         userId = result.payload.sub;
+        authVersion = result.payload.av;
         // Publish it where the existing read-sites expect it, but
         // non-enumerably: express-session serialises via JSON.stringify, which
         // skips non-enumerable props, so this never persists a cookie session
@@ -1888,6 +1914,10 @@ function requireAuth(req, res, next) {
   if (!user || user.account_status === 'deleted') {
     if (req.session && typeof req.session.destroy === 'function') req.session.destroy(() => {});
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+  if (Number(authVersion || 0) !== Number(user.auth_version || 0)) {
+    if (req.session && typeof req.session.destroy === 'function') req.session.destroy(() => {});
+    return res.status(401).json({ error: 'Please sign in again.', reauthRequired: true });
   }
   next();
 }
@@ -3385,7 +3415,9 @@ registerAdminRoutes(app, {
   deleteMatchData,
   sendWaitlistAccepted,
   attemptMatch,
-  broadcastPush
+  broadcastPush,
+  sendSignInAgain: require('./lib/email').sendSignInAgain,
+  emailServiceEnabled: require('./lib/smtp').smtpEnabled
 });
 
 registerWaitlistRoutes(app, {

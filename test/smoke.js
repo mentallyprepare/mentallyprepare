@@ -574,6 +574,40 @@ async function run() {
     ok('Quiet night choice and partner privacy');
   } catch (e) { fail('Quiet night choice and partner privacy', e); }
 
+  // Forced sign-in must invalidate old browser and native sessions while
+  // allowing the same account to sign in again with its existing password.
+  try {
+    const email = uniqueEmail('reauth');
+    const password = 'reauthpass123';
+    const userId = Number(db.prepare("INSERT INTO users (name, email, password, college, year, consent_given, consent_date, email_verified) VALUES ('Reauth Tester', ?, ?, 'Test University', '2nd', 1, datetime('now'), 1)").run(email, require('bcryptjs').hashSync(password, 4)).lastInsertRowid);
+    const firstLogin = await request('POST', '/api/login', { email, password });
+    assert.strictEqual(firstLogin.status, 200, firstLogin.raw);
+    const oldCookie = extractCookie(firstLogin.headers);
+    const oldAccess = firstLogin.json.auth.accessToken;
+    const oldRefresh = firstLogin.json.auth.refreshToken;
+    assert.strictEqual((await request('GET', '/api/me', null, { cookie: oldCookie })).status, 200);
+    db.prepare('UPDATE users SET auth_version = auth_version + 1, auth_reset_at = ? WHERE id = ?').run(Math.floor(Date.now() / 1000), userId);
+    const staleCookie = await request('GET', '/api/me', null, { cookie: oldCookie });
+    assert.strictEqual(staleCookie.status, 401);
+    assert.strictEqual(staleCookie.json.reauthRequired, true);
+    const staleToken = await request('GET', '/api/me', null, { Authorization: `Bearer ${oldAccess}` });
+    assert.strictEqual(staleToken.status, 401);
+    assert.strictEqual(staleToken.json.reauthRequired, true);
+    const staleRefresh = await request('POST', '/api/auth/token/refresh', { refreshToken: oldRefresh });
+    assert.strictEqual(staleRefresh.status, 401);
+    const nextLogin = await request('POST', '/api/login', { email, password });
+    assert.strictEqual(nextLogin.status, 200, nextLogin.raw);
+    assert.strictEqual((await request('GET', '/api/me', null, { cookie: extractCookie(nextLogin.headers) })).status, 200);
+    assert.strictEqual((await request('GET', '/api/me', null, { Authorization: `Bearer ${nextLogin.json.auth.accessToken}` })).status, 200);
+    const verifyToken = 'v'.repeat(40);
+    db.prepare("INSERT INTO users (name, email, password, college, year, consent_given, consent_date, email_verified, email_verification_token, email_verification_sent_at, auth_version, auth_reset_at) VALUES ('Verify After Reset', ?, ?, 'Test University', '2nd', 1, datetime('now'), 0, ?, ?, 1, ?)").run(uniqueEmail('verify-reauth'), require('bcryptjs').hashSync(password, 4), verifyToken, new Date().toISOString(), Math.floor(Date.now() / 1000));
+    const verified = await request('GET', `/api/verify-email?token=${verifyToken}`);
+    assert.strictEqual(verified.status, 302);
+    assert.strictEqual(verified.headers.location, '/app?screen=s-login&verified=1');
+    assert.ok(!extractCookie(verified.headers), 'email verification must not bypass forced sign-in');
+    ok('Forced sign-in invalidates old web and native sessions');
+  } catch (e) { fail('Forced sign-in invalidates old web and native sessions', e); }
+
   // 16. Analytics include named retention milestones
   try {
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get('smoke@test.example');
