@@ -2254,7 +2254,7 @@ function renderJournal() {
 
   // Check if partner hasn't written for 3+ days
   let partnerInactiveCard = '';
-  if (state.partnerEntries && state.partnerEntries.length > 0) {
+  if (!state.partnerStatus?.partnerTakingNightOff && state.partnerEntries && state.partnerEntries.length > 0) {
     const lastPartnerDay = Math.max(...state.partnerEntries.map(e => e.day));
     if (day - lastPartnerDay >= 3) {
       partnerInactiveCard = `
@@ -2283,7 +2283,7 @@ function renderJournal() {
     ${renderPromptChooser()}
     <div class="moon-block reveal-on-scroll">
       <div class="moon-base moon-sm" id="presence-moon" style="animation-delay:${moonBreathePhase}"></div>
-      <div class="presence-line">${partnerSealedToday ? 'your match sealed something for you tonight' : 'your match hasn\'t written yet'}</div>
+      <div class="presence-line">${partnerSealedToday ? 'your match sealed something for you tonight' : state.partnerStatus && state.partnerStatus.partnerTakingNightOff ? 'your match is taking tonight off' : 'your match hasn\'t written yet'}</div>
       <div class="cd" id="cd">—</div><div class="cd-sub">until midnight</div>
     </div>
     <div class="prompt-block reveal-on-scroll">
@@ -2320,6 +2320,10 @@ function renderJournal() {
     <div class="cta-block">
       <button class="btn" id="sealEntryBtn" type="button">Seal tonight's note</button>
       <button class="btn-ghost" id="saveDraftBtn" type="button" style="margin-top:8px;">Save draft</button>
+      <div class="quiet-night-choice">
+        <button class="quiet-night-button" id="quietNightBtn" type="button" aria-pressed="${state.quietTonight ? 'true' : 'false'}">${state.quietTonight ? 'Undo night off' : 'Take tonight off'}</button>
+        <p id="quietNightCopy">${state.quietTonight ? 'Your match can see that you are taking tonight off. You can still write a note.' : 'Your match will only see that you are taking tonight off. No reason needed.'}</p>
+      </div>
     </div>
     ${renderTabs('tonight')}`;
   document.querySelectorAll('#s-journal [data-mood]').forEach(function(btn) {
@@ -2333,6 +2337,8 @@ function renderJournal() {
   if (sealEntryBtn) sealEntryBtn.addEventListener('click', sealEntry);
   const saveDraftBtn = document.getElementById('saveDraftBtn');
   if (saveDraftBtn) saveDraftBtn.addEventListener('click', saveDraft);
+  const quietNightBtn = document.getElementById('quietNightBtn');
+  if (quietNightBtn) quietNightBtn.addEventListener('click', toggleQuietNight);
   bindPromptChooser();
   renderPartnerStatusModule('partner-status-module');
   // Nudge dismiss handlers
@@ -2356,6 +2362,27 @@ function renderJournal() {
     var noteContainer = document.getElementById('daily-note-container');
     if (noteContainer && noteData) renderDailyNoteCard(noteContainer, noteData);
   });
+}
+
+async function toggleQuietNight() {
+  const button = document.getElementById('quietNightBtn');
+  if (!button || !state || !state.match) return;
+  const nextQuiet = !state.quietTonight;
+  button.disabled = true;
+  try {
+    await api('POST', '/quiet-night', { action: nextQuiet ? 'take' : 'undo' });
+    state.quietTonight = nextQuiet;
+    button.setAttribute('aria-pressed', nextQuiet ? 'true' : 'false');
+    button.textContent = nextQuiet ? 'Undo night off' : 'Take tonight off';
+    const copy = document.getElementById('quietNightCopy');
+    if (copy) copy.textContent = nextQuiet
+      ? 'Your match can see that you are taking tonight off. You can still write a note.'
+      : 'Your match will only see that you are taking tonight off. No reason needed.';
+  } catch (e) {
+    toast(e.message || 'Could not save your choice. Please try again.');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function setMood(m, el) {
@@ -2499,6 +2526,8 @@ function renderSealed() {
     partnerCardHtml = `<div class="partner-card"><div class="p-moon">${matchArch.emoji}</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text">They wrote tonight. Their note unseals at ${formatUnsealAt(ps.nextUnsealAt)}</div></div></div>`;
   } else if (ps.partnerHasWrittenToday) {
     partnerCardHtml = `<div class="partner-card"><div class="p-moon">${matchArch.emoji}</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text">They wrote tonight.</div></div></div>`;
+  } else if (ps.partnerTakingNightOff) {
+    partnerCardHtml = `<div class="partner-card partner-waiting"><div class="p-moon">${matchArch.emoji}</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text">They are taking tonight off. You can still write.</div></div></div>`;
   } else if (ps.status === 'never_wrote') {
     partnerCardHtml = `<div class="partner-card partner-waiting"><div class="p-moon">${matchArch.emoji}</div><div><div class="p-ey">Your anonymous partner</div><div class="p-name">${matchArch.name}</div><div class="p-status" id="partner-status-text"><span class="waiting-dot"></span>Your partner hasn't started yet. Some people take a few days.</div></div></div>`;
   } else {
@@ -2931,10 +2960,10 @@ function partnerStatusHtml(ps, compact) {
   const copy = ps.friendlyMessage || ps.unsealMessage || 'You can keep writing while the room settles.';
   const visibleCount = ps.partnerEntriesVisible || 0;
   const totalCount = ps.partnerTotalEntries || ps.partnerEntryCount || 0;
-  const meta = ps.hasPartner ? (totalCount === 0 ? 'Your first notes open after midnight' : `${visibleCount} of ${totalCount} note${totalCount === 1 ? '' : 's'} unsealed`) : 'waiting room';
+  const meta = ps.hasPartner ? (totalCount === 0 ? (ps.partnerTakingNightOff ? 'No note expected tonight' : 'Your first notes open after midnight') : `${visibleCount} of ${totalCount} note${totalCount === 1 ? '' : 's'} unsealed`) : 'waiting room';
   const activity = ps.activityLabel ? `<span>${escapeHtml(ps.activityLabel)}</span>` : '';
-  const wroteToday = ps.hasPartner ? `<span>${ps.partnerHasWrittenToday ? 'They wrote tonight.' : "They haven't written yet. You can write first, they'll get it at midnight."}</span>` : '';
-  const nextOpen = ps.nextUnsealAt ? `<span>Their next note unseals at ${escapeHtml(formatUnsealAt(ps.nextUnsealAt))}</span>` : '<span>Unseals after midnight</span>';
+  const wroteToday = ps.hasPartner ? `<span>${ps.partnerHasWrittenToday ? 'They wrote tonight.' : ps.partnerTakingNightOff ? 'They are taking tonight off.' : "They haven't written yet. You can write first, they'll get it at midnight."}</span>` : '';
+  const nextOpen = ps.partnerTakingNightOff ? '' : ps.nextUnsealAt ? `<span>Their next note unseals at ${escapeHtml(formatUnsealAt(ps.nextUnsealAt))}</span>` : '<span>Unseals after midnight</span>';
   const reminderAction = ps.canRemindPartner ? '<button class="prompt-small-btn ghost" type="button" data-send-reminder>Send gentle reminder</button>' : '';
   const rescueActions = Array.isArray(ps.rescueActions) && ps.rescueActions.length ? `
     <div class="partner-rescue-actions" aria-label="Partner rescue options">
@@ -2942,7 +2971,7 @@ function partnerStatusHtml(ps, compact) {
       ${ps.canSwitch ? '<button class="prompt-small-btn" type="button" data-open-switch>Find new partner</button>' : '<button class="prompt-small-btn ghost" type="button" disabled>Find new partner</button>'}
       <button class="prompt-small-btn ghost" type="button" data-keep-waiting>Wait for partner</button>
     </div>` : '';
-  const switchActions = ps.canSwitch && !rescueActions ? `
+  const switchActions = ps.canSwitch && !ps.partnerTakingNightOff && !rescueActions ? `
     <div class="partner-status-actions">
       <button class="prompt-small-btn ghost" type="button" data-keep-waiting>Keep waiting</button>
       <button class="prompt-small-btn" type="button" data-open-switch>Find a new match</button>

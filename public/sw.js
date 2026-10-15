@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261012-signup-readability';
+const CACHE_NAME = 'mp-20261015-quiet-night';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',

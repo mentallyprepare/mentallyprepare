@@ -530,7 +530,51 @@ async function run() {
     ok('Partner rescue flow');
   } catch (e) { fail('Partner rescue flow', e); }
 
-  // 15. Analytics include named retention milestones
+  // 15. A night off is reversible, visible only as a status, and never a note.
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get('smoke@test.example');
+    clearMatchesForUser(db, user.id);
+    const partnerEmail = uniqueEmail('quiet-partner');
+    const partnerPassword = 'quiet-partner-test-password';
+    const partnerId = db.prepare("INSERT INTO users (name, email, password, college, year, consent_given, consent_date) VALUES ('Quiet Night Partner', ?, ?, 'Test University B', '2nd', 1, datetime('now'))").run(partnerEmail, require('bcryptjs').hashSync(partnerPassword, 4)).lastInsertRowid;
+    const partnerLogin = await request('POST', '/api/login', { email: partnerEmail, password: partnerPassword });
+    assert.strictEqual(partnerLogin.status, 200, partnerLogin.raw);
+    const partnerCookie = extractCookie(partnerLogin.headers);
+    assert.ok(partnerCookie);
+    const matchId = db.prepare("INSERT INTO matches (user1_id, user2_id, matched_at, started_at) VALUES (?, ?, datetime('now'), datetime('now', '-1 day'))").run(user.id, partnerId).lastInsertRowid;
+    const before = await request('GET', '/api/me', null, { cookie });
+    const day = before.json.match.day;
+    if (day > 1) db.prepare('INSERT INTO entries (user_id, match_id, day, text) VALUES (?, ?, ?, ?)').run(user.id, matchId, day - 1, 'previous note');
+    const bad = await request('POST', '/api/quiet-night', { action: 'maybe' }, { cookie });
+    assert.strictEqual(bad.status, 400);
+    const take = await request('POST', '/api/quiet-night', { action: 'take' }, { cookie });
+    assert.strictEqual(take.status, 200, take.raw);
+    assert.strictEqual(take.json.quietTonight, true);
+    const myState = await request('GET', '/api/me', null, { cookie });
+    assert.strictEqual(myState.json.quietTonight, true);
+    assert.strictEqual(myState.json.streak, day > 1 ? 1 : 0, 'quiet night preserves earlier written streak without counting as writing');
+    assert.strictEqual(myState.json.entries.some(e => e.day === day), false, 'night off is not a sealed entry');
+    const partnerState = await request('GET', '/api/me', null, { cookie: partnerCookie });
+    assert.strictEqual(partnerState.json.partnerStatus.partnerTakingNightOff, true);
+    assert.strictEqual(partnerState.json.partnerStatus.partnerHasWrittenToday, false);
+    assert.strictEqual(partnerState.json.partnerEntries.some(e => e.day === day), false);
+    db.prepare("UPDATE users SET last_active_date = date('now', '-3 days') WHERE id = ?").run(user.id);
+    const partnerStatus = await request('GET', '/api/partner-status', null, { cookie: partnerCookie });
+    assert.strictEqual(partnerStatus.json.canRemindPartner, false);
+    const reminder = await request('POST', '/api/partner-reminder', {}, { cookie: partnerCookie });
+    assert.strictEqual(reminder.status, 409, reminder.raw);
+    const undo = await request('POST', '/api/quiet-night', { action: 'undo' }, { cookie });
+    assert.strictEqual(undo.status, 200);
+    assert.strictEqual((await request('GET', '/api/me', null, { cookie: partnerCookie })).json.partnerStatus.partnerTakingNightOff, false);
+    assert.strictEqual((await request('POST', '/api/quiet-night', { action: 'take' }, { cookie })).status, 200);
+    const entry = await request('POST', '/api/entry', { text: 'I chose to write after all.', mood: 'Okay' }, { cookie });
+    assert.strictEqual(entry.status, 200, entry.raw);
+    assert.strictEqual((await request('GET', '/api/me', null, { cookie })).json.quietTonight, false);
+    assert.strictEqual((await request('POST', '/api/quiet-night', { action: 'take' }, { cookie })).status, 409);
+    ok('Quiet night choice and partner privacy');
+  } catch (e) { fail('Quiet night choice and partner privacy', e); }
+
+  // 16. Analytics include named retention milestones
   try {
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get('smoke@test.example');
     clearMatchesForUser(db, user.id);

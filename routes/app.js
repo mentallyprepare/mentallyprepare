@@ -249,6 +249,7 @@ function registerAppRoutes(app, deps) {
       return {
         hasPartner: false,
         partnerHasWrittenToday: false,
+        partnerTakingNightOff: false,
         partnerLastEntryDay: null,
         partnerLastEntryAt: null,
         partnerEntriesVisible: 0,
@@ -279,6 +280,7 @@ function registerAppRoutes(app, deps) {
     const partnerTotalEntries = partnerEntriesAll.length;
     const partnerLastEntry = partnerEntriesAll[0] || null;
     const todayPartnerEntry = partnerEntriesAll.find(e => Number(e.day) === Number(currentDay)) || null;
+    const partnerTakingNightOff = !todayPartnerEntry && !!stmts.getQuietNight.get(partnerId, match.id, currentDay);
     const myTodayEntry = stmts.getEntry.get(userId, match.id, currentDay);
     const partnerEntriesVisible = visiblePartnerEntries.length;
     const daysQuiet = daysSinceEntry(partnerLastEntry);
@@ -306,6 +308,11 @@ function registerAppRoutes(app, deps) {
       friendlyTitle = 'A note from your partner opened.';
       friendlyMessage = 'You can read the latest opened note now.';
       unsealMessage = 'A note from your partner opened.';
+    } else if (partnerTakingNightOff) {
+      status = 'quiet_night';
+      friendlyTitle = 'They are taking tonight off.';
+      friendlyMessage = 'You can still write your note. No reply is expected tonight.';
+      unsealMessage = 'They are taking tonight off. There is no note from them tonight.';
     } else if (!waitingForPartner && visiblePartnerEntries.some(e => Number(e.day) === Number(currentDay) - 1)) {
       status = 'opened';
       friendlyTitle = 'A note from your partner opened.';
@@ -325,13 +332,14 @@ function registerAppRoutes(app, deps) {
       unsealMessage = waitingForPartner ? 'Your note is sealed. Their side is still quiet.' : 'Your partner has not written yet tonight.';
     }
 
-    if (canSwitch) {
+    if (canSwitch && !partnerTakingNightOff) {
       friendlyMessage = 'You can keep waiting, or quietly look for someone new.';
     }
 
     return {
       hasPartner: true,
       partnerHasWrittenToday: !!todayPartnerEntry,
+      partnerTakingNightOff,
       partnerLastEntryDay: partnerLastEntry ? partnerLastEntry.day : null,
       partnerLastEntryAt: partnerLastEntry ? partnerLastEntry.created_at : null,
       partnerEntriesVisible,
@@ -342,8 +350,8 @@ function registerAppRoutes(app, deps) {
       daysSincePartnerEntry: daysQuiet,
       daysSincePartnerActive,
       activityLabel: getActivityLabel(daysInactive),
-      canRemindPartner: daysInactive !== null && daysInactive >= 2,
-      rescueActions: getRescueActions(daysInactive, canSwitch),
+      canRemindPartner: !partnerTakingNightOff && daysInactive !== null && daysInactive >= 2,
+      rescueActions: partnerTakingNightOff ? [] : getRescueActions(daysInactive, canSwitch),
       canSwitch,
       switchesRemaining,
       status,
@@ -430,6 +438,7 @@ function registerAppRoutes(app, deps) {
       let nudges = [];
       let connectionScore = 0;
       let specialDay = null;
+      let quietTonight = false;
       let unsentLetter = null;
       let partnerStatus = buildPartnerWritingStatus({
         userId,
@@ -471,6 +480,7 @@ function registerAppRoutes(app, deps) {
 
         entriesData = stmts.getEntries.all(userId, match.id)
           .map((e) => ({ day: e.day, text: e.text, mood: e.mood, prompt: e.prompt, created_at: e.created_at }));
+        quietTonight = !!stmts.getQuietNight.get(userId, match.id, day);
 
         // Partner entries — show entries from previous days (midnight unsealing)
         const allPartnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, unlockedJourneyDay);
@@ -518,9 +528,10 @@ function registerAppRoutes(app, deps) {
         }
 
         const entryDays = new Set(entriesData.map((e) => e.day));
-        if (entryDays.has(day)) streak++;
-        for (let d = day - 1; d >= 1; d--) {
+        const quietDays = new Set(stmts.getQuietNights.all(userId, match.id).map((e) => e.day));
+        for (let d = day; d >= 1; d--) {
           if (entryDays.has(d)) streak++;
+          else if (quietDays.has(d) || d === day) continue;
           else break;
         }
 
@@ -580,6 +591,7 @@ function registerAppRoutes(app, deps) {
           rooms: process.env.ROOMS_ENABLED === 'true'
         },
         match: matchData,
+        quietTonight,
         entries: entriesData,
         partnerEntries,
         partnerStatus,
@@ -733,6 +745,7 @@ function registerAppRoutes(app, deps) {
       if (trackEvent && !existingEntry && [3, 7, 14, 21].includes(day)) trackEvent(userId, `day_${day}`, { day });
       if (trackEvent && !existingEntry) trackEvent(userId, 'day_written', { day });
       stmts.upsertEntry.run(userId, match.id, day, text.trim(), mood || '🌓', prompt);
+      stmts.clearQuietNight.run(userId, match.id, day);
       stmts.clearGhostNudge.run(userId, match.id);
 
       const crisisData = safety.crisis ? getCrisisPayload(req) : null;
@@ -740,6 +753,31 @@ function registerAppRoutes(app, deps) {
     } catch (e) {
       console.error('Entry error:', e);
       res.status(500).json({ error: 'Failed to save entry' });
+    }
+  });
+
+  app.post('/api/quiet-night', apiLimiter, requireAuth, (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const match = stmts.getMatch.get(userId, userId);
+      if (!match) return res.status(400).json({ error: 'No active match found' });
+      const day = getMatchDay(match.started_at);
+      if (day > 21) return res.status(400).json({ error: 'Journey complete' });
+      const action = req.body && req.body.action;
+      if (action !== 'take' && action !== 'undo') return res.status(400).json({ error: 'Invalid night choice' });
+      if (action === 'take' && stmts.getEntry.get(userId, match.id, day)) {
+        return res.status(409).json({ error: 'You already sealed a note tonight.' });
+      }
+      if (action === 'take') {
+        stmts.setQuietNight.run(userId, match.id, day);
+        stmts.updateUserActivity.run(new Date().toISOString(), userId);
+      } else {
+        stmts.clearQuietNight.run(userId, match.id, day);
+      }
+      res.json({ ok: true, day, quietTonight: action === 'take' });
+    } catch (e) {
+      console.error('Quiet night error:', e);
+      res.status(500).json({ error: 'Could not save your choice. Please try again.' });
     }
   });
 
@@ -787,6 +825,9 @@ function registerAppRoutes(app, deps) {
       const partnerId = getPartnerId(match, userId);
       const partner = stmts.getUserById.get(partnerId);
       if (!partner) return res.status(400).json({ error: 'Partner not found' });
+      if (stmts.getQuietNight.get(partnerId, match.id, getMatchDay(match.started_at))) {
+        return res.status(409).json({ error: 'Your partner is taking tonight off. Give them space tonight.' });
+      }
       const daysInactive = daysSinceActivityDate(partner.last_active_date);
       if (daysInactive !== null && daysInactive < 2) {
         return res.status(400).json({ error: 'Your partner has been active recently. Give them a little time.' });

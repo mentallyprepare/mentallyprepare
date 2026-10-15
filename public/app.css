@@ -1099,6 +1099,11 @@ body.focus-writing .depth-fore{opacity:.38}
 .prompt-small-btn.ghost{background:transparent;color:var(--ink-m);border-color:var(--line)}
 .partner-status-panel{border-color:rgba(232,208,160,.13);background:linear-gradient(145deg,rgba(9,7,18,.98),rgba(20,13,34,.92))}
 .partner-status-panel.compact{margin:14px 24px 0}
+.quiet-night-choice{margin:12px 0 0;padding:14px 16px;border:1px solid var(--line);background:var(--card);text-align:center}
+.quiet-night-button{min-height:44px;padding:8px 18px;border:1px solid var(--rose);background:transparent;color:var(--rose);font:600 13px 'DM Sans',sans-serif;cursor:pointer}
+.quiet-night-button:hover,.quiet-night-button:focus-visible{background:rgba(235,180,194,.1);outline-offset:3px}
+.quiet-night-button:disabled{opacity:.5;cursor:wait}
+.quiet-night-choice p{margin:9px auto 0;max-width:30rem;color:var(--ink-m);font:12px/1.5 'DM Sans',sans-serif}
 .partner-status-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-s)}
 .mp-modal-overlay{position:fixed;inset:0;z-index:260;background:rgba(8,5,15,.78);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:center;padding:20px}
 .mp-modal-card{width:min(420px,100%);border:1px solid rgba(247,183,200,.18);border-radius:22px;background:linear-gradient(145deg,#0e0a18,#171023);padding:24px;position:relative;box-shadow:0 24px 80px rgba(0,0,0,.45)}

@@ -447,6 +447,14 @@ db.exec(`
     UNIQUE(user_id, match_id, day)
   );
 
+  CREATE TABLE IF NOT EXISTS quiet_nights (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    day INTEGER NOT NULL CHECK(day BETWEEN 1 AND 21),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, match_id, day)
+  );
+
   CREATE TABLE IF NOT EXISTS waiting_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
@@ -1216,6 +1224,10 @@ const stmts = {
   getEntries: db.prepare('SELECT * FROM entries WHERE user_id = ? AND match_id = ? ORDER BY day DESC'),
   getPartnerEntries: db.prepare('SELECT * FROM entries WHERE user_id = ? AND match_id = ? AND day < ? ORDER BY day DESC'),
   getEntry: db.prepare('SELECT * FROM entries WHERE user_id = ? AND match_id = ? AND day = ?'),
+  getQuietNight: db.prepare('SELECT 1 FROM quiet_nights WHERE user_id = ? AND match_id = ? AND day = ?'),
+  getQuietNights: db.prepare('SELECT day FROM quiet_nights WHERE user_id = ? AND match_id = ?'),
+  setQuietNight: db.prepare('INSERT OR IGNORE INTO quiet_nights (user_id, match_id, day) VALUES (?, ?, ?)'),
+  clearQuietNight: db.prepare('DELETE FROM quiet_nights WHERE user_id = ? AND match_id = ? AND day = ?'),
   upsertEntry: db.prepare(`
     INSERT INTO entries (user_id, match_id, day, text, mood, prompt)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -2437,6 +2449,7 @@ function deleteUserOwnedData(userId) {
   runDeleteIfPossible('DELETE FROM waiting_entries WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM password_reset_tokens WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM entries WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM quiet_nights WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM reveals WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM comments WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM reactions WHERE user_id = ?', [userId]);
@@ -2970,7 +2983,7 @@ function send9pmReminders() {
     const match = stmts.getMatch.get(row.id, row.id);
     if (!match) continue;
     const todayEntry = stmts.getEntry.get(row.id, match.id, day);
-    if (!todayEntry) {
+    if (!todayEntry && !stmts.getQuietNight.get(row.id, match.id, day)) {
       const user = parseUser(stmts.getUserById.get(row.id));
       const prefs = parsePushPreferences(row.push_preferences);
       if (user && user.email_verified && prefs.emailReminders) {
@@ -2993,7 +3006,7 @@ function send10pmReminders() {
     const match = stmts.getMatch.get(row.id, row.id);
     if (!match) continue;
     const todayEntry = stmts.getEntry.get(row.id, match.id, day);
-    if (todayEntry) continue; // already wrote
+    if (todayEntry || stmts.getQuietNight.get(row.id, match.id, day)) continue;
 
     const partnerId = getPartnerId(match, row.id);
     const partnerEntry = stmts.getEntry.get(partnerId, match.id, day);
@@ -3024,7 +3037,7 @@ function sendQuietPartnerNudges() {
     // Check: user missed last 2 days
     const userYesterday = stmts.getEntry.get(row.id, match.id, day - 1);
     const userToday = stmts.getEntry.get(row.id, match.id, day);
-    if (userYesterday || userToday) continue;
+    if (userYesterday || userToday || stmts.getQuietNight.get(row.id, match.id, day) || stmts.getQuietNight.get(row.id, match.id, day - 1)) continue;
 
     // Check: partner wrote at least one of those days
     const partnerYesterday = stmts.getEntry.get(partnerId, match.id, day - 1);
