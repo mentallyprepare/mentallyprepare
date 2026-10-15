@@ -239,13 +239,13 @@ function matchFoundEmail(name, partnerArchetype) {
   return buildTemplate({ content: body });
 }
 
-function dailyPromptReminderEmail(name, dayNumber) {
+function dailyPromptReminderEmail(name, dayNumber, unsubscribeUrl) {
   const first = firstName(name);
-  const emoji = getMoonForDay(dayNumber);
+  const emoji = getMoonForDay(dayNumber || 1);
   const body = `
     <div style="text-align:center; font-size:40px; line-height:1; margin-bottom:12px;">${emoji}</div>
     <h1 style="margin:0; font-size:32px; text-transform:none;">a quiet minute for yourself</h1>
-    <p style="margin:8px 0 0; color:${BRAND.violet}; font-weight:600;">day ${dayNumber} of 21</p>
+    ${dayNumber ? `<p style="margin:8px 0 0; color:${BRAND.violet}; font-weight:600;">day ${dayNumber} of 21</p>` : ''}
     ${dividerHtml(BRAND.purple, BRAND.violet)}
     <p style="margin:16px 0 16px;">${first}, if today has been full, you can pause here. Tonight's prompt is ready whenever you want to write.</p>
     <div style="text-align:center; margin:24px 0;">
@@ -259,7 +259,7 @@ function dailyPromptReminderEmail(name, dayNumber) {
         text-decoration:none;
       ">View tonight's prompt →</a>
     </div>
-    <p style="margin:16px 0 0; color:${BRAND.muted}; font-size:13px;">You can turn off email reminders at any time in your app's notification settings.</p>
+    <p style="margin:16px 0 0; color:${BRAND.muted}; font-size:13px;">You can turn off email reminders at any time in your app's notification settings.${unsubscribeUrl ? ` <a href="${unsubscribeUrl}" style="color:${BRAND.rose};">Unsubscribe from these emails</a>.` : ''}</p>
   `;
   return buildTemplate({ content: body });
 }
@@ -314,20 +314,20 @@ function signInAgainEmail(name) {
   const first = firstName(name);
   const body = `
     <div style="text-align:center;color:${BRAND.rose};font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">A note from Mentally Prepare</div>
-    <h1 style="font:normal 36px/1.15 Georgia,serif;text-align:center;margin:0 0 18px;color:${BRAND.text};">Your space is here.<br><em style="color:${BRAND.rose};">Sign in again.</em></h1>
+    <h1 style="font:normal 36px/1.15 Georgia,serif;text-align:center;margin:0 0 18px;color:${BRAND.text};">A new journey begins.<br><em style="color:${BRAND.rose};">Your words remain yours.</em></h1>
     <p style="margin:0 0 14px;line-height:1.7;">Hi ${first},</p>
-    <p style="margin:0 0 18px;line-height:1.7;">We have refreshed sign-in for everyone. The next time you open Mentally Prepare, please sign in again with your usual email and password or Google account. Your account and private writing remain in place.</p>
+    <p style="margin:0 0 18px;line-height:1.7;">We are starting a new 21-day journey. Please sign in again with your usual email and password or Google account. You can take the scan again and, when someone new is available, begin with a new anonymous match. Earlier writing stays in your private archive.</p>
     ${dividerHtml(BRAND.rose, BRAND.purple)}
     <p style="margin:0 0 12px;font-weight:600;color:${BRAND.rose};">A small reminder of what you can do here</p>
     <p style="margin:0 0 10px;line-height:1.7;">✦ Write in your private room with a gentle prompt.<br>✦ Connect anonymously with one match during a 21-day journey.<br>✦ Take a night off when you need to, without explaining why.<br>✦ Choose what to reveal when the journey ends.</p>
-    <p style="margin:18px 0;line-height:1.7;">You can return at your own pace.</p>
+    <p style="margin:18px 0;line-height:1.7;">We will send a gentle daily email when your next journey is active. You can turn these emails off from any reminder or in your notification settings. You can return at your own pace.</p>
     <div style="text-align:center;margin:28px 0 20px;">
       <a href="${SITE_URL}/app?screen=s-login" style="display:inline-block;padding:14px 28px;border-radius:4px;background:linear-gradient(135deg,${BRAND.roseDark},${BRAND.purple});color:${BRAND.text};font-weight:700;text-decoration:none;">Sign in to your space</a>
     </div>
     <p style="margin:0;color:${BRAND.muted};font-size:13px;line-height:1.6;">Forgot your password? <a href="${SITE_URL}/app?screen=s-forgot" style="color:${BRAND.rose};">Reset it here</a>. If you did not expect this email, you can reply to us at hello@mymentallyprepare.com.</p>
     <p style="margin:22px 0 0;color:${BRAND.muted};font-size:12px;line-height:1.6;">This one-time account notice was sent to the email address on your Mentally Prepare account. No private journal content is included.</p>
   `;
-  return buildTemplate({ preheader: 'Please sign in again. Your private writing is still here.', content: body });
+  return buildTemplate({ preheader: 'Sign in for a new journey. Your earlier writing stays private.', content: body });
 }
 
 module.exports = {

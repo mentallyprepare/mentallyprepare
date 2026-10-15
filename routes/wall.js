@@ -72,7 +72,7 @@ function registerWallRoutes(app, deps) {
        VALUES (?, ?, datetime('now'), 1, datetime('now', '+${MATCH_DURATION_DAYS} days'))`
     ),
     hasActiveMatch: db.prepare(
-      `SELECT 1 FROM matches WHERE (user1_id = ? OR user2_id = ?)
+      `SELECT 1 FROM matches WHERE archived_at IS NULL AND (user1_id = ? OR user2_id = ?)
        AND (
          (wall_origin = 1 AND wall_expires_at > datetime('now'))
          OR (COALESCE(wall_origin, 0) = 0 AND started_at > datetime('now', '-21 days'))

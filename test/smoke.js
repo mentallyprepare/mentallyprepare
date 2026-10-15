@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const vm = require('vm');
 const Database = require('better-sqlite3');
+const crypto = require('crypto');
 
 const PORT = 9876;
 const DB_PATH = path.join(__dirname, 'smoke-test.db');
@@ -287,6 +288,10 @@ async function run() {
     const optedOut = await request('POST', '/api/push/preferences', { preferences: { enabled: false } }, { cookie });
     assert.strictEqual(optedOut.status, 200);
     assert.strictEqual(optedOut.json.preferences.emailReminders, false, 'turn off notifications must stop email reminders');
+    const emailOnly = await request('POST', '/api/push/preferences', { preferences: { enabled: false, emailReminders: true } }, { cookie });
+    assert.strictEqual(emailOnly.status, 200);
+    assert.strictEqual(emailOnly.json.preferences.emailReminders, true, 'email reminder can be on while push stays off');
+    assert.strictEqual(emailOnly.json.preferences.enabled, false);
     ok('Email reminders require opt-in and honor notification opt-out');
   } catch (e) { fail('Email reminder preference lifecycle', e); }
 
@@ -1006,6 +1011,33 @@ async function run() {
   } catch (e) { fail('Display font has tighter letter-spacing', e); }
 
   // Clean up
+  try {
+    const other = db.prepare("INSERT INTO users (name, email, password, college) VALUES ('Other', 'archive-other@test.example', 'hash', 'Other University')").run().lastInsertRowid;
+    const oldMatch = db.prepare("INSERT INTO matches (user1_id, user2_id, archived_at) VALUES (1, ?, datetime('now'))").run(other).lastInsertRowid;
+    db.prepare("INSERT INTO entries (user_id, match_id, day, text) VALUES (1, ?, 1, 'my earlier note')").run(oldMatch);
+    db.prepare("INSERT INTO entries (user_id, match_id, day, text) VALUES (?, ?, 1, 'other private note')").run(other, oldMatch);
+    const mine = await request('GET', '/api/journey/archive', null, { cookie });
+    assert.strictEqual(mine.status, 200);
+    assert.ok(JSON.stringify(mine.json).includes('my earlier note'));
+    assert.ok(!JSON.stringify(mine.json).includes('other private note'), 'partner writing stays private');
+    const anonymous = await request('GET', '/api/journey/archive');
+    assert.strictEqual(anonymous.status, 401);
+    ok('Private journey archive contains only the account holder’s writing');
+  } catch (e) { fail('Private journey archive', e); }
+
+  try {
+    db.prepare("UPDATE users SET push_preferences = '{\"enabled\":false,\"emailReminders\":true}' WHERE id = 1").run();
+    const token = crypto.createHmac('sha256', process.env.SESSION_SECRET).update('daily-email:1').digest('hex');
+    const path = `/email/reminders/unsubscribe/1/${token}`;
+    assert.strictEqual((await request('GET', path)).status, 200);
+    assert.strictEqual(JSON.parse(db.prepare('SELECT push_preferences FROM users WHERE id = 1').get().push_preferences).emailReminders, true, 'link preview does not unsubscribe');
+    assert.strictEqual((await request('POST', path)).status, 200);
+    const preferences = JSON.parse(db.prepare('SELECT push_preferences FROM users WHERE id = 1').get().push_preferences);
+    assert.strictEqual(preferences.emailReminders, false);
+    assert.strictEqual(preferences.enabled, false, 'push preference preserved');
+    ok('Daily email unsubscribe requires a click and preserves push choice');
+  } catch (e) { fail('Daily email unsubscribe', e); }
+
   db.close();
   for (const ext of ['', '-wal', '-shm']) {
     try { fs.unlinkSync(DB_PATH + ext); } catch {}

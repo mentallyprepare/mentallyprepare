@@ -46,7 +46,7 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-startup-image" href="/icon-512x512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/app.css?v=20261015-reauth"/>
+<link rel="stylesheet" href="/app.css?v=20261015-fresh-start"/>
 <link rel="stylesheet" href="/refine.css"/>
 <link rel="stylesheet" href="/brand-buttons.css?v=20261011"/>
 <script>
@@ -678,6 +678,7 @@ html.mp-app-route #app-area{display:block}
       <div style="text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--rose-l);">4</div><div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-s);margin-top:2px;">Dimensions</div></div>
     </div>
     <button class="btn" onclick="startScan()">Start the quiet scan</button>
+    <button class="btn-ghost" onclick="showJourneyArchive()" style="margin-top:12px;">Read a previous journey</button>
     <p style="font-size:10px;color:var(--ink-s);margin-top:16px;line-height:1.6;font-style:italic;">Free · Results appear instantly · Your responses stay private</p>
   </div>
 </div>
@@ -701,6 +702,7 @@ html.mp-app-route #app-area{display:block}
 <div class="screen" id="s-journal"></div>
 <div class="screen" id="s-sealed"></div>
 <div class="screen" id="s-past"></div>
+<div class="screen" id="s-journey-archive"></div>
 
 <!-- PROFILE -->
 <div class="screen" id="s-profile"></div>
@@ -852,6 +854,6 @@ html.mp-app-route #app-area{display:block}
 
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
-<script src="/app.js?v=20261015-reauth" defer></script>
+<script src="/app.js?v=20261015-fresh-start" defer></script>
 </body>
 </html>

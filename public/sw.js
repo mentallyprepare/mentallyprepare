@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261015-reauth';
+const CACHE_NAME = 'mp-20261015-fresh-start';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',

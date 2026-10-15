@@ -144,6 +144,23 @@ function registerAdminRoutes(app, deps) {
     };
   }
 
+  function freshStartCounts() {
+    return {
+      activeMatches: db.prepare('SELECT COUNT(*) AS n FROM matches WHERE archived_at IS NULL').get().n,
+      matchEntries: db.prepare('SELECT COUNT(*) AS n FROM entries e JOIN matches m ON m.id = e.match_id WHERE m.archived_at IS NULL').get().n,
+      standaloneReflections: ['waiting_entries', 'tonights_question_entries', 'daily_notes'].reduce((sum, table) =>
+        sum + db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0)
+    };
+  }
+
+  function archiveStandaloneRecords() {
+    const insert = db.prepare('INSERT INTO archived_user_records (user_id, source, content_json) VALUES (?, ?, ?)');
+    for (const [table, source] of [['waiting_entries', 'waiting'], ['tonights_question_entries', 'tonights_question'], ['daily_notes', 'daily_note']]) {
+      for (const row of db.prepare(`SELECT * FROM ${table}`).all()) insert.run(row.user_id, source, JSON.stringify(row));
+      db.prepare(`DELETE FROM ${table}`).run();
+    }
+  }
+
   const nextDelivery = db.prepare(`
     SELECT d.campaign_id, d.user_id, d.email, d.name
     FROM reauth_campaign_deliveries d
@@ -207,7 +224,8 @@ function registerAdminRoutes(app, deps) {
     const blocked = db.prepare("SELECT id FROM reauth_campaigns WHERE status = 'sending' OR created_at >= datetime('now', '-30 days') LIMIT 1").get();
     const deliveries = campaign ? db.prepare('SELECT user_id AS userId, email, status, attempted_at AS attemptedAt FROM reauth_campaign_deliveries WHERE campaign_id = ? ORDER BY user_id').all(campaign.id) : [];
     res.json({ ok: true, totalAccounts, recipientCount: recipients.length, skippedCount: totalAccounts - recipients.length,
-      subject: 'Please sign in to Mentally Prepare again', sampleHtml: signInAgainEmail('friend'),
+      freshStart: freshStartCounts(), dailyEmailRecipients: recipients.length,
+      subject: 'A new Mentally Prepare journey is ready', sampleHtml: signInAgainEmail('friend'),
       recipients: recipients.map(user => ({ userId: user.id, email: user.email })), campaign, deliveries, canStart: !blocked && recipients.length > 0 && !!emailServiceEnabled });
   });
 
@@ -222,6 +240,14 @@ function registerAdminRoutes(app, deps) {
     const startedAt = Math.floor(Date.now() / 1000);
     const campaignId = db.transaction(() => {
       const campaign = db.prepare('INSERT INTO reauth_campaigns (started_by, total) VALUES (?, ?)').run(req.admin.email, recipients.length);
+      archiveStandaloneRecords();
+      db.prepare("UPDATE matches SET archived_at = datetime('now') WHERE archived_at IS NULL").run();
+      const updateFreshStart = db.prepare("UPDATE users SET archetype = NULL, scores = NULL, switch_count = 0, last_active_date = NULL, push_preferences = ? WHERE id = ? AND COALESCE(account_status, 'active') != 'deleted'");
+      for (const user of db.prepare("SELECT id, push_preferences FROM users WHERE COALESCE(account_status, 'active') != 'deleted'").all()) {
+        let preferences = {};
+        try { preferences = user.push_preferences ? JSON.parse(user.push_preferences) : {}; } catch {}
+        updateFreshStart.run(JSON.stringify({ ...preferences, emailReminders: true }), user.id);
+      }
       db.prepare("UPDATE users SET auth_version = COALESCE(auth_version, 0) + 1, auth_reset_at = ? WHERE COALESCE(account_status, 'active') != 'deleted'").run(startedAt);
       const insert = db.prepare('INSERT INTO reauth_campaign_deliveries (campaign_id, user_id, email, name) VALUES (?, ?, ?, ?)');
       for (const user of recipients) insert.run(campaign.lastInsertRowid, user.id, user.email.trim(), user.name || 'friend');
@@ -265,14 +291,14 @@ function registerAdminRoutes(app, deps) {
           u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at,
           (
             SELECT m.id FROM matches m
-            WHERE m.user1_id = u.id OR m.user2_id = u.id
+            WHERE m.archived_at IS NULL AND (m.user1_id = u.id OR m.user2_id = u.id)
             ORDER BY m.started_at DESC
             LIMIT 1
           ) as match_id,
           (
             SELECT CASE WHEN m.user1_id = u.id THEN m.user2_id ELSE m.user1_id END
             FROM matches m
-            WHERE m.user1_id = u.id OR m.user2_id = u.id
+            WHERE m.archived_at IS NULL AND (m.user1_id = u.id OR m.user2_id = u.id)
             ORDER BY m.started_at DESC
             LIMIT 1
           ) as partner_id,
@@ -280,7 +306,7 @@ function registerAdminRoutes(app, deps) {
             SELECT p.name
             FROM matches m
             JOIN users p ON p.id = CASE WHEN m.user1_id = u.id THEN m.user2_id ELSE m.user1_id END
-            WHERE m.user1_id = u.id OR m.user2_id = u.id
+            WHERE m.archived_at IS NULL AND (m.user1_id = u.id OR m.user2_id = u.id)
             ORDER BY m.started_at DESC
             LIMIT 1
           ) as partner_name
@@ -604,7 +630,7 @@ function registerAdminRoutes(app, deps) {
       // Get all unmatched users who have an archetype
       const waiting = db.prepare(`
         SELECT u.id FROM users u
-        LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
+        LEFT JOIN matches m ON m.archived_at IS NULL AND (m.user1_id = u.id OR m.user2_id = u.id)
         WHERE m.id IS NULL AND u.archetype IS NOT NULL
         ORDER BY u.created_at ASC
       `).all();
@@ -697,7 +723,7 @@ function registerAdminRoutes(app, deps) {
     try {
       const matchId = Number(req.body.match_id);
       if (!Number.isInteger(matchId) || matchId <= 0) return res.status(400).json({ error: 'Valid match ID required' });
-      const match = db.prepare('SELECT id FROM matches WHERE id = ?').get(matchId);
+      const match = db.prepare('SELECT id FROM matches WHERE id = ? AND archived_at IS NULL').get(matchId);
       if (!match) return res.status(404).json({ error: 'Match not found' });
       db.transaction(() => deleteMatchData(matchId))();
       res.json({ ok: true });

@@ -630,7 +630,7 @@ function setMotionMode(mode) {
 function modeForScreen(id) {
   if (id === 's-journal') return 'writing';
   if (id === 's-waiting') return 'waiting';
-  if (id === 's-sealed' || id === 's-past' || id === 's-profile') return 'archive';
+  if (id === 's-sealed' || id === 's-past' || id === 's-journey-archive' || id === 's-profile') return 'archive';
   if (id && id.indexOf('reveal') >= 0) return 'reveal';
   if (id && id.indexOf('silent') >= 0) return 'silent';
   return 'idle';
@@ -1595,6 +1595,7 @@ function renderEmailVerification() {
       <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;line-height:1;margin-bottom:16px;">Welcome to<br/><em style="font-style:italic;color:var(--rose-l);">Mentally Prepare</em></h1>
       <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:24px;max-width:360px;">We sent a verification link to ${escapeHtml(email)}. Verify when you get a chance — everything works without it.</p>
       <button class="btn" onclick="routeToScreen()">Continue to your scan</button>
+      <button class="btn-ghost" onclick="showJourneyArchive()" style="margin-top:12px;">Read a previous journey</button>
       <div style="margin-top:16px;">
         <button class="btn-ghost" onclick="resendVerification()">Resend verification email</button>
         <div id="verification-status" class="field-error" style="min-height:18px;margin-top:8px;text-align:center;"></div>
@@ -2703,6 +2704,29 @@ function renderPast() {
   initScrollReveal('#s-past');
 }
 
+async function showJourneyArchive() {
+  const el = document.getElementById('s-journey-archive');
+  if (!el) return;
+  el.innerHTML = '<div style="padding:40px 24px;color:var(--ink-m);">Opening your private archive…</div>';
+  go('s-journey-archive');
+  try {
+    const data = await api('GET', '/journey/archive');
+    const journeys = Array.isArray(data.journeys) ? data.journeys : [];
+    const standalone = Array.isArray(data.standalone) ? data.standalone : [];
+    const ownEntries = journeys.flatMap(journey => (journey.entries || []).map(entry => ({ ...entry, journey })));
+    const otherEntries = standalone.filter(item => (item.source === 'waiting' || item.source === 'tonights_question') || (item.source === 'daily_note' && item.record && item.record.landed));
+    el.innerHTML = `<div class="nav"><div class="nav-logo">mentally prepare</div></div>
+      <main style="padding:28px 24px 80px;max-width:620px;margin:0 auto;">
+        <button class="btn-ghost" onclick="routeToScreen()">← Back to your room</button>
+        <h1 style="font-family:'Playfair Display',serif;font-weight:400;margin:30px 0 8px;">Previous journeys</h1>
+        <p style="color:var(--ink-m);line-height:1.6;">Your earlier writing stays private. A new journey begins with a new scan.</p>
+        ${ownEntries.length || otherEntries.length ? `${ownEntries.map(({ journey, ...entry }) => `<article style="border:1px solid var(--line);border-radius:8px;padding:18px;margin-top:16px;background:var(--card);"><div style="color:var(--rose);font-size:12px;margin-bottom:9px;">Previous journey · Day ${Number(entry.day) || 1}</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;">${escapeHtml(entry.text || '')}</div></article>`).join('')}${otherEntries.map(item => `<article style="border:1px solid var(--line);border-radius:8px;padding:18px;margin-top:16px;background:var(--card);"><div style="color:var(--rose);font-size:12px;margin-bottom:9px;">Earlier private reflection</div><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;">${escapeHtml(item.record && (item.record.text || item.record.landed) || '')}</div></article>`).join('')}` : '<p style="margin-top:28px;color:var(--ink-m);">No earlier writing is saved yet.</p>'}
+      </main>`;
+  } catch (error) {
+    el.innerHTML = '<div style="padding:40px 24px;"><p>We could not open your archive right now.</p><button class="btn-ghost" onclick="routeToScreen()">Back to your room</button></div>';
+  }
+}
+
 // ═══════════════════════════════════════
 // PROFILE
 // ═══════════════════════════════════════
@@ -2760,6 +2784,7 @@ function renderProfile() {
       <div class="stat reveal-on-scroll"><div class="stat-n" data-target="${state.streak}" data-prefix="🔥">🔥0</div><div class="stat-l">Day streak</div></div>
       <div class="stat reveal-on-scroll"><div class="stat-n" data-target="${Math.max(0,21-day)}">0</div><div class="stat-l">Days left</div></div>
     </div>
+    <div style="padding:12px 24px;"><button class="btn-ghost" onclick="showJourneyArchive()">Read previous journeys</button></div>
     ${state.insights ? `<div class="mood-chart-section reveal-on-scroll">
       <div class="mood-chart-card">
         <div class="mood-chart-top">
