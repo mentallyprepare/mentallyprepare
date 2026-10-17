@@ -316,10 +316,11 @@ function signInAgainEmail(name) {
     <div style="text-align:center;color:${BRAND.rose};font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">A note from Mentally Prepare</div>
     <h1 style="font:normal 36px/1.15 Georgia,serif;text-align:center;margin:0 0 18px;color:${BRAND.text};">A new journey begins.<br><em style="color:${BRAND.rose};">Your words remain yours.</em></h1>
     <p style="margin:0 0 14px;line-height:1.7;">Hi ${first},</p>
-    <p style="margin:0 0 18px;line-height:1.7;">We are starting a new 21-day journey. Please sign in again with your usual email and password or Google account. You can take the scan again and, when someone new is available, begin with a new anonymous match. Earlier writing stays in your private archive.</p>
+    <p style="margin:0 0 14px;line-height:1.7;">Mentally Prepare is a private space for students aged 18 and over to write honestly and connect beyond profiles, likes, or followers. A short reflection scan helps us find one anonymous partner for a 21-day journey when a match is available.</p>
+    <p style="margin:0 0 18px;line-height:1.7;">We are starting a new journey. Please sign in again with your usual email and password or Google account, then take the scan again. Your earlier writing stays in your private archive, and your next partner and journal begin fresh.</p>
     ${dividerHtml(BRAND.rose, BRAND.purple)}
     <p style="margin:0 0 12px;font-weight:600;color:${BRAND.rose};">A small reminder of what you can do here</p>
-    <p style="margin:0 0 10px;line-height:1.7;">✦ Write in your private room with a gentle prompt.<br>✦ Connect anonymously with one match during a 21-day journey.<br>✦ Take a night off when you need to, without explaining why.<br>✦ Choose what to reveal when the journey ends.</p>
+    <p style="margin:0 0 10px;line-height:1.7;">✦ Write in your private room with a gentle daily prompt.<br>✦ Share a 21-day journey with one anonymous partner when matched.<br>✦ Leave a line in the Silent Room without expecting a reply.<br>✦ Take a night off when you need to, and choose what to reveal on Day 21.</p>
     <p style="margin:18px 0;line-height:1.7;">We will send a gentle daily email when your next journey is active. You can turn these emails off from any reminder or in your notification settings. You can return at your own pace.</p>
     <div style="text-align:center;margin:28px 0 20px;">
       <a href="${SITE_URL}/app?screen=s-login" style="display:inline-block;padding:14px 28px;border-radius:4px;background:linear-gradient(135deg,${BRAND.roseDark},${BRAND.purple});color:${BRAND.text};font-weight:700;text-decoration:none;">Sign in to your space</a>
