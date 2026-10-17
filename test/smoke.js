@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const vm = require('vm');
 const Database = require('better-sqlite3');
+const crypto = require('crypto');
 
 const PORT = 9876;
 const DB_PATH = path.join(__dirname, 'smoke-test.db');
@@ -287,6 +288,10 @@ async function run() {
     const optedOut = await request('POST', '/api/push/preferences', { preferences: { enabled: false } }, { cookie });
     assert.strictEqual(optedOut.status, 200);
     assert.strictEqual(optedOut.json.preferences.emailReminders, false, 'turn off notifications must stop email reminders');
+    const emailOnly = await request('POST', '/api/push/preferences', { preferences: { enabled: false, emailReminders: true } }, { cookie });
+    assert.strictEqual(emailOnly.status, 200);
+    assert.strictEqual(emailOnly.json.preferences.emailReminders, true, 'email reminder can be on while push stays off');
+    assert.strictEqual(emailOnly.json.preferences.enabled, false);
     ok('Email reminders require opt-in and honor notification opt-out');
   } catch (e) { fail('Email reminder preference lifecycle', e); }
 
@@ -573,6 +578,40 @@ async function run() {
     assert.strictEqual((await request('POST', '/api/quiet-night', { action: 'take' }, { cookie })).status, 409);
     ok('Quiet night choice and partner privacy');
   } catch (e) { fail('Quiet night choice and partner privacy', e); }
+
+  // Forced sign-in must invalidate old browser and native sessions while
+  // allowing the same account to sign in again with its existing password.
+  try {
+    const email = uniqueEmail('reauth');
+    const password = 'reauthpass123';
+    const userId = Number(db.prepare("INSERT INTO users (name, email, password, college, year, consent_given, consent_date, email_verified) VALUES ('Reauth Tester', ?, ?, 'Test University', '2nd', 1, datetime('now'), 1)").run(email, require('bcryptjs').hashSync(password, 4)).lastInsertRowid);
+    const firstLogin = await request('POST', '/api/login', { email, password });
+    assert.strictEqual(firstLogin.status, 200, firstLogin.raw);
+    const oldCookie = extractCookie(firstLogin.headers);
+    const oldAccess = firstLogin.json.auth.accessToken;
+    const oldRefresh = firstLogin.json.auth.refreshToken;
+    assert.strictEqual((await request('GET', '/api/me', null, { cookie: oldCookie })).status, 200);
+    db.prepare('UPDATE users SET auth_version = auth_version + 1, auth_reset_at = ? WHERE id = ?').run(Math.floor(Date.now() / 1000), userId);
+    const staleCookie = await request('GET', '/api/me', null, { cookie: oldCookie });
+    assert.strictEqual(staleCookie.status, 401);
+    assert.strictEqual(staleCookie.json.reauthRequired, true);
+    const staleToken = await request('GET', '/api/me', null, { Authorization: `Bearer ${oldAccess}` });
+    assert.strictEqual(staleToken.status, 401);
+    assert.strictEqual(staleToken.json.reauthRequired, true);
+    const staleRefresh = await request('POST', '/api/auth/token/refresh', { refreshToken: oldRefresh });
+    assert.strictEqual(staleRefresh.status, 401);
+    const nextLogin = await request('POST', '/api/login', { email, password });
+    assert.strictEqual(nextLogin.status, 200, nextLogin.raw);
+    assert.strictEqual((await request('GET', '/api/me', null, { cookie: extractCookie(nextLogin.headers) })).status, 200);
+    assert.strictEqual((await request('GET', '/api/me', null, { Authorization: `Bearer ${nextLogin.json.auth.accessToken}` })).status, 200);
+    const verifyToken = 'v'.repeat(40);
+    db.prepare("INSERT INTO users (name, email, password, college, year, consent_given, consent_date, email_verified, email_verification_token, email_verification_sent_at, auth_version, auth_reset_at) VALUES ('Verify After Reset', ?, ?, 'Test University', '2nd', 1, datetime('now'), 0, ?, ?, 1, ?)").run(uniqueEmail('verify-reauth'), require('bcryptjs').hashSync(password, 4), verifyToken, new Date().toISOString(), Math.floor(Date.now() / 1000));
+    const verified = await request('GET', `/api/verify-email?token=${verifyToken}`);
+    assert.strictEqual(verified.status, 302);
+    assert.strictEqual(verified.headers.location, '/app?screen=s-login&verified=1');
+    assert.ok(!extractCookie(verified.headers), 'email verification must not bypass forced sign-in');
+    ok('Forced sign-in invalidates old web and native sessions');
+  } catch (e) { fail('Forced sign-in invalidates old web and native sessions', e); }
 
   // 16. Analytics include named retention milestones
   try {
@@ -972,6 +1011,33 @@ async function run() {
   } catch (e) { fail('Display font has tighter letter-spacing', e); }
 
   // Clean up
+  try {
+    const other = db.prepare("INSERT INTO users (name, email, password, college) VALUES ('Other', 'archive-other@test.example', 'hash', 'Other University')").run().lastInsertRowid;
+    const oldMatch = db.prepare("INSERT INTO matches (user1_id, user2_id, archived_at) VALUES (1, ?, datetime('now'))").run(other).lastInsertRowid;
+    db.prepare("INSERT INTO entries (user_id, match_id, day, text) VALUES (1, ?, 1, 'my earlier note')").run(oldMatch);
+    db.prepare("INSERT INTO entries (user_id, match_id, day, text) VALUES (?, ?, 1, 'other private note')").run(other, oldMatch);
+    const mine = await request('GET', '/api/journey/archive', null, { cookie });
+    assert.strictEqual(mine.status, 200);
+    assert.ok(JSON.stringify(mine.json).includes('my earlier note'));
+    assert.ok(!JSON.stringify(mine.json).includes('other private note'), 'partner writing stays private');
+    const anonymous = await request('GET', '/api/journey/archive');
+    assert.strictEqual(anonymous.status, 401);
+    ok('Private journey archive contains only the account holder’s writing');
+  } catch (e) { fail('Private journey archive', e); }
+
+  try {
+    db.prepare("UPDATE users SET push_preferences = '{\"enabled\":false,\"emailReminders\":true}' WHERE id = 1").run();
+    const token = crypto.createHmac('sha256', process.env.SESSION_SECRET).update('daily-email:1').digest('hex');
+    const path = `/email/reminders/unsubscribe/1/${token}`;
+    assert.strictEqual((await request('GET', path)).status, 200);
+    assert.strictEqual(JSON.parse(db.prepare('SELECT push_preferences FROM users WHERE id = 1').get().push_preferences).emailReminders, true, 'link preview does not unsubscribe');
+    assert.strictEqual((await request('POST', path)).status, 200);
+    const preferences = JSON.parse(db.prepare('SELECT push_preferences FROM users WHERE id = 1').get().push_preferences);
+    assert.strictEqual(preferences.emailReminders, false);
+    assert.strictEqual(preferences.enabled, false, 'push preference preserved');
+    ok('Daily email unsubscribe requires a click and preserves push choice');
+  } catch (e) { fail('Daily email unsubscribe', e); }
+
   db.close();
   for (const ext of ['', '-wal', '-shm']) {
     try { fs.unlinkSync(DB_PATH + ext); } catch {}

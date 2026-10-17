@@ -408,6 +408,8 @@ db.exec(`
     auth_provider TEXT DEFAULT 'password',
     last_login_at TEXT,
     account_status TEXT DEFAULT 'active',
+    auth_version INTEGER NOT NULL DEFAULT 0,
+    auth_reset_at INTEGER NOT NULL DEFAULT 0,
     deleted_at TEXT,
     deleted_reason TEXT,
     created_at TEXT DEFAULT (datetime('now'))
@@ -454,6 +456,35 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (user_id, match_id, day)
   );
+
+  CREATE TABLE IF NOT EXISTS reauth_campaigns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    started_by TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'sending',
+    total INTEGER NOT NULL DEFAULT 0,
+    sent INTEGER NOT NULL DEFAULT 0,
+    failed INTEGER NOT NULL DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS reauth_campaign_deliveries (
+    campaign_id INTEGER NOT NULL REFERENCES reauth_campaigns(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempted_at TEXT,
+    PRIMARY KEY (campaign_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS archived_user_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    content_json TEXT NOT NULL,
+    archived_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_archived_user_records_user ON archived_user_records(user_id);
 
   CREATE TABLE IF NOT EXISTS waiting_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -722,9 +753,12 @@ ensureColumn('users', 'profile_photo', 'TEXT');
 ensureColumn('users', 'auth_provider', "TEXT DEFAULT 'password'");
 ensureColumn('users', 'last_login_at', 'TEXT');
 ensureColumn('users', 'account_status', "TEXT DEFAULT 'active'");
+ensureColumn('users', 'auth_version', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('users', 'auth_reset_at', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('users', 'deleted_at', 'TEXT');
 ensureColumn('users', 'deleted_reason', 'TEXT');
 ensureColumn('matches', 'matched_at', 'TEXT');
+ensureColumn('matches', 'archived_at', 'TEXT');
 ensureColumn('matches', 'updated_at', 'TEXT');
 ensureColumn('entries', 'updated_at', 'TEXT');
 ensureColumn('waiting_entries', 'scan_completed_at', 'TEXT');
@@ -1207,7 +1241,7 @@ const stmts = {
   updateLoginEmailTime: db.prepare('UPDATE users SET login_email_sent_at = ? WHERE id = ?'),
   deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
 
-  getMatch: db.prepare('SELECT * FROM matches WHERE user1_id = ? OR user2_id = ?'),
+  getMatch: db.prepare('SELECT * FROM matches WHERE archived_at IS NULL AND (user1_id = ? OR user2_id = ?) ORDER BY id DESC LIMIT 1'),
   insertMatch: db.prepare("INSERT INTO matches (user1_id, user2_id, matched_at) VALUES (?, ?, datetime('now'))"),
   deleteMatch: db.prepare('DELETE FROM matches WHERE id = ?'),
   updateMatchStart: db.prepare('UPDATE matches SET started_at = ? WHERE id = ?'),
@@ -1218,7 +1252,7 @@ const stmts = {
       AND COALESCE(college_normalized, LOWER(college)) != ?
       AND id != ?
       AND COALESCE(account_status, 'active') != 'deleted'
-      AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
+      AND id NOT IN (SELECT user1_id FROM matches WHERE archived_at IS NULL UNION SELECT user2_id FROM matches WHERE archived_at IS NULL)
   `),
 
   getEntries: db.prepare('SELECT * FROM entries WHERE user_id = ? AND match_id = ? ORDER BY day DESC'),
@@ -1322,8 +1356,9 @@ const stmts = {
   getActiveMatchUsers: db.prepare(`
     SELECT u.id, u.push_subscription, u.push_preferences, u.last_active_date, u.created_at, u.push_last_sent_at, u.push_last_sent_type, u.timezone, m.started_at, m.id as match_id
     FROM users u
-    JOIN matches m ON (m.user1_id = u.id OR m.user2_id = u.id)
+    JOIN matches m ON m.archived_at IS NULL AND (m.user1_id = u.id OR m.user2_id = u.id)
     WHERE u.push_subscription IS NOT NULL
+       OR (CASE WHEN json_valid(u.push_preferences) THEN json_extract(u.push_preferences, '$.emailReminders') ELSE 0 END) = 1
        OR EXISTS (
          SELECT 1 FROM native_push_devices d
          WHERE d.user_id = u.id AND d.active = 1
@@ -1854,6 +1889,7 @@ tokens.configure(sessionConfig.secret);
 
 function requireAuth(req, res, next) {
   let userId = req.session && req.session.userId;
+  let authVersion = req.session && req.session.authVersion;
 
   // Native clients cannot ride browser cookies, so they send
   // `Authorization: Bearer <token>` instead. Web is untouched: this path only
@@ -1864,6 +1900,7 @@ function requireAuth(req, res, next) {
       const result = tokens.verifyToken(bearer, { type: 'access' });
       if (result.valid) {
         userId = result.payload.sub;
+        authVersion = result.payload.av;
         // Publish it where the existing read-sites expect it, but
         // non-enumerably: express-session serialises via JSON.stringify, which
         // skips non-enumerable props, so this never persists a cookie session
@@ -1888,6 +1925,10 @@ function requireAuth(req, res, next) {
   if (!user || user.account_status === 'deleted') {
     if (req.session && typeof req.session.destroy === 'function') req.session.destroy(() => {});
     return res.status(401).json({ error: 'Not authenticated' });
+  }
+  if (Number(authVersion || 0) !== Number(user.auth_version || 0)) {
+    if (req.session && typeof req.session.destroy === 'function') req.session.destroy(() => {});
+    return res.status(401).json({ error: 'Please sign in again.', reauthRequired: true });
   }
   next();
 }
@@ -2189,8 +2230,12 @@ function attemptMatch(userId) {
   const targetType = complementary[user.archetype];
   if (!targetType) return null;
   const userCollegeKey = user.college_normalized || normalizeCollegeName(user.college);
+  const previousPartners = new Set(db.prepare(`
+    SELECT CASE WHEN user1_id = ? THEN user2_id ELSE user1_id END AS partner_id
+    FROM matches WHERE archived_at IS NOT NULL AND (user1_id = ? OR user2_id = ?)
+  `).all(userId, userId, userId).map(row => row.partner_id));
 
-  let candidates = stmts.findCandidates.all(targetType, userCollegeKey, userId).map(parseUser);
+  let candidates = stmts.findCandidates.all(targetType, userCollegeKey, userId).map(parseUser).filter(candidate => !previousPartners.has(candidate.id));
 
   // Fallback if no complementary candidate is available: keep different-college rule hard.
   if (candidates.length === 0) {
@@ -2199,9 +2244,9 @@ function attemptMatch(userId) {
       WHERE archetype IS NOT NULL
         AND COALESCE(college_normalized, LOWER(college)) != ?
         AND id != ?
-        AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
+        AND id NOT IN (SELECT user1_id FROM matches WHERE archived_at IS NULL UNION SELECT user2_id FROM matches WHERE archived_at IS NULL)
     `);
-    candidates = fallbackStmt.all(userCollegeKey, userId).map(parseUser);
+    candidates = fallbackStmt.all(userCollegeKey, userId).map(parseUser).filter(candidate => !previousPartners.has(candidate.id));
   }
 
   // Gender preference filtering
@@ -2238,8 +2283,8 @@ function attemptMatch(userId) {
       WHERE COALESCE(college_normalized, LOWER(college)) != ?
         AND id != ?
         AND archetype IS NOT NULL
-        AND id NOT IN (SELECT user1_id FROM matches UNION SELECT user2_id FROM matches)
-    `).all(userCollegeKey, userId).map(parseUser);
+        AND id NOT IN (SELECT user1_id FROM matches WHERE archived_at IS NULL UNION SELECT user2_id FROM matches WHERE archived_at IS NULL)
+    `).all(userCollegeKey, userId).map(parseUser).filter(candidate => !previousPartners.has(candidate.id));
 
     // Respect gender preferences on fallback too
     if (user.match_gender_pref && user.match_gender_pref !== 'any') {
@@ -2457,6 +2502,7 @@ function deleteUserOwnedData(userId) {
   runDeleteIfPossible('DELETE FROM daily_notes WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM sealed_room_picks WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM tonights_question_entries WHERE user_id = ?', [userId]);
+  runDeleteIfPossible('DELETE FROM archived_user_records WHERE user_id = ?', [userId]);
   runDeleteIfPossible('DELETE FROM native_push_devices WHERE user_id = ?', [userId]);
 }
 
@@ -2686,7 +2732,7 @@ function generateDailyNotesForAll() {
     }
   }
   // Also generate for waiting (unmatched) users
-  const waitingUsers = db.prepare(`SELECT u.id, u.archetype FROM users u LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id WHERE m.id IS NULL AND u.archetype IS NOT NULL`).all();
+  const waitingUsers = db.prepare(`SELECT u.id, u.archetype FROM users u LEFT JOIN matches m ON m.archived_at IS NULL AND (m.user1_id = u.id OR m.user2_id = u.id) WHERE m.id IS NULL AND u.archetype IS NOT NULL`).all();
   for (const u of waitingUsers) {
     const existing = stmts.getDailyNote.get(u.id, 1);
     if (!existing) {
@@ -2788,6 +2834,35 @@ app.get('/api/partner-wrote-today', apiLimiter, requireAuth, (req, res) => {
 
 // ─── Email Notification Scheduler Using Node-Cron ─────────────────────────────
 
+function reminderUnsubscribeToken(userId) {
+  return crypto.createHmac('sha256', sessionConfig.secret).update(`daily-email:${userId}`).digest('hex');
+}
+
+function reminderUnsubscribeUser(req) {
+  const userId = Number(req.params.userId);
+  const token = String(req.params.token || '');
+  if (!Number.isSafeInteger(userId) || userId <= 0 || !/^[a-f0-9]{64}$/.test(token)) return null;
+  const expected = reminderUnsubscribeToken(userId);
+  if (!crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected))) return null;
+  const row = stmts.getUserById.get(userId);
+  return row && row.account_status !== 'deleted' ? row : null;
+}
+
+app.get('/email/reminders/unsubscribe/:userId/:token', apiLimiter, (req, res) => {
+  if (!reminderUnsubscribeUser(req)) return res.status(404).send('Link not found');
+  // Mail clients preview links. A visit alone must not change preferences.
+  res.type('html').send(`<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Email reminders</title><body style="background:#08050F;color:#F8F2FF;font:16px/1.6 sans-serif;max-width:34rem;margin:3rem auto;padding:1rem"><h1>Turn off daily emails?</h1><p>Your account and private writing will stay as they are.</p><form method="post"><button style="padding:.8rem 1.2rem;background:#EBB4C2;color:#08050F;border:0;border-radius:4px;cursor:pointer">Turn off daily emails</button></form></body></html>`);
+});
+
+app.post('/email/reminders/unsubscribe/:userId/:token', apiLimiter, (req, res) => {
+  const row = reminderUnsubscribeUser(req);
+  if (!row) return res.status(404).send('Link not found');
+  const prefs = parsePushPreferences(row.push_preferences);
+  prefs.emailReminders = false;
+  stmts.updatePushPrefs.run(JSON.stringify(prefs), row.id);
+  res.type('html').send('<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Email reminders off</title><body style="background:#08050F;color:#F8F2FF;font:16px/1.6 sans-serif;max-width:34rem;margin:3rem auto;padding:1rem"><h1>Email reminders are off</h1><p>You will not receive daily writing reminders. Your account and private writing are unchanged.</p><a style="color:#EBB4C2" href="/app">Return to Mentally Prepare</a></body></html>');
+});
+
 // 9pm IST = 15:30 UTC — daily prompt reminder
 const DEFAULT_PUSH_PREFERENCES = {
   enabled: true,
@@ -2815,7 +2890,7 @@ function parsePushPreferences(raw) {
   try { prefs = raw ? JSON.parse(raw) : {}; } catch { prefs = {}; }
   const merged = { ...DEFAULT_PUSH_PREFERENCES, ...prefs };
   merged.enabled = merged.enabled !== false;
-  merged.emailReminders = merged.enabled && merged.emailReminders === true;
+  merged.emailReminders = merged.emailReminders === true;
   for (const key of ['morningReminder', 'eveningReminder', 'dailyReflection', 'streakReminder', 'silentRoomReminder']) {
     merged[key] = merged.enabled && merged[key] !== false;
   }
@@ -2986,8 +3061,10 @@ function send9pmReminders() {
     if (!todayEntry && !stmts.getQuietNight.get(row.id, match.id, day)) {
       const user = parseUser(stmts.getUserById.get(row.id));
       const prefs = parsePushPreferences(row.push_preferences);
-      if (user && user.email_verified && prefs.emailReminders) {
-        sendDailyPromptReminder(user.email, user.name, day).catch(err => console.error('Failed to send daily prompt reminder', err));
+      if (user && prefs.emailReminders) {
+        const unsubscribeUrl = `${BASE_URL.replace(/\/$/, '')}/email/reminders/unsubscribe/${user.id}/${reminderUnsubscribeToken(user.id)}`;
+        sendDailyPromptReminder(user.email, user.email_verified ? user.name : 'there', user.email_verified ? day : null, unsubscribeUrl)
+          .catch(() => console.error('Failed to send daily prompt reminder', { userId: user.id }));
       }
       if (prefs.enabled && (prefs.dailyReflection || prefs.eveningReminder)) {
         sendGentlePush(row, 'daily_reflection', PUSH_COPY.daily_reflection).catch(() => {});
@@ -3299,7 +3376,7 @@ app.get('/admin/me', requireAdmin, (req, res) => {
 function getAdminStats() {
   const totalUsers = db.prepare("SELECT COUNT(*) as c FROM users WHERE COALESCE(account_status, 'active') != 'deleted'").get().c;
   const verifiedUsers = db.prepare("SELECT COUNT(*) as c FROM users WHERE email_verified = 1 AND COALESCE(account_status, 'active') != 'deleted'").get().c;
-  const activeMatches = db.prepare('SELECT COUNT(*) as c FROM matches').get().c;
+  const activeMatches = db.prepare('SELECT COUNT(*) as c FROM matches WHERE archived_at IS NULL').get().c;
   const blockedUsers = db.prepare('SELECT COUNT(*) as c FROM blocked_users').get().c;
   const rematchRequests = db.prepare("SELECT COUNT(*) as c FROM rematch_requests WHERE status = 'open'").get().c;
   const crisisTriggers = db.prepare('SELECT COUNT(*) as c FROM crisis_review').get().c;
@@ -3337,7 +3414,7 @@ function getAdminStats() {
   const waitingUsers = db.prepare(`
     SELECT u.id, u.name, u.email, u.college, u.year, u.archetype, u.created_at
     FROM users u
-    LEFT JOIN matches m ON m.user1_id = u.id OR m.user2_id = u.id
+    LEFT JOIN matches m ON m.archived_at IS NULL AND (m.user1_id = u.id OR m.user2_id = u.id)
     WHERE m.id IS NULL AND u.archetype IS NOT NULL AND COALESCE(u.account_status, 'active') != 'deleted'
     ORDER BY u.created_at ASC
   `).all().map(user => ({
@@ -3385,7 +3462,9 @@ registerAdminRoutes(app, {
   deleteMatchData,
   sendWaitlistAccepted,
   attemptMatch,
-  broadcastPush
+  broadcastPush,
+  sendSignInAgain: require('./lib/email').sendSignInAgain,
+  emailServiceEnabled: require('./lib/smtp').smtpEnabled
 });
 
 registerWaitlistRoutes(app, {

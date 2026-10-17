@@ -125,7 +125,7 @@ function registerAppRoutes(app, deps) {
     try { prefs = raw ? JSON.parse(raw) : {}; } catch { prefs = {}; }
     const merged = { ...defaultPushPreferences, ...prefs };
     merged.enabled = merged.enabled !== false;
-    merged.emailReminders = merged.enabled && merged.emailReminders === true;
+    merged.emailReminders = merged.emailReminders === true;
     for (const key of ['morningReminder', 'eveningReminder', 'dailyReflection', 'streakReminder', 'silentRoomReminder']) {
       merged[key] = merged.enabled && merged[key] !== false;
     }
@@ -137,7 +137,7 @@ function registerAppRoutes(app, deps) {
     const enabled = raw.enabled !== false && raw.notificationsOff !== true;
     return {
       enabled,
-      emailReminders: enabled && (typeof raw.emailReminders === 'boolean' ? raw.emailReminders : previous.emailReminders === true),
+      emailReminders: typeof raw.emailReminders === 'boolean' ? raw.emailReminders : (enabled && previous.emailReminders === true),
       morningReminder: enabled && raw.morningReminder === true,
       eveningReminder: enabled && raw.eveningReminder !== false,
       dailyReflection: enabled && raw.dailyReflection !== false,
@@ -611,6 +611,24 @@ function registerAppRoutes(app, deps) {
       console.error('State error:', e);
       res.status(500).json({ error: 'Failed to load state' });
     }
+  });
+
+  app.get('/api/journey/archive', apiLimiter, requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const journeys = db.prepare(`
+      SELECT m.id, m.started_at, m.archived_at,
+        e.day, e.text, e.mood, e.prompt, e.created_at
+      FROM matches m LEFT JOIN entries e ON e.match_id = m.id AND e.user_id = ?
+      WHERE m.archived_at IS NOT NULL AND (m.user1_id = ? OR m.user2_id = ?)
+      ORDER BY m.archived_at DESC, m.id DESC, e.day ASC
+    `).all(userId, userId, userId);
+    const records = db.prepare('SELECT source, content_json, archived_at FROM archived_user_records WHERE user_id = ? ORDER BY archived_at DESC, id DESC').all(userId);
+    const byId = new Map();
+    for (const row of journeys) {
+      if (!byId.has(row.id)) byId.set(row.id, { id: row.id, startedAt: row.started_at, archivedAt: row.archived_at, entries: [] });
+      if (row.day != null) byId.get(row.id).entries.push({ day: row.day, text: row.text, mood: row.mood, prompt: row.prompt, createdAt: row.created_at });
+    }
+    res.json({ journeys: [...byId.values()], standalone: records.map(row => ({ source: row.source, archivedAt: row.archived_at, record: JSON.parse(row.content_json) })) });
   });
 
   app.post('/api/profile/basics', apiLimiter, requireAuth, (req, res) => {
@@ -1241,6 +1259,8 @@ function registerAppRoutes(app, deps) {
           updated_at: waitingDraft.updated_at
         } : null,
         journal_entries: myEntries,
+        archived_reflections: db.prepare('SELECT source, content_json, archived_at FROM archived_user_records WHERE user_id = ? ORDER BY id').all(userId)
+          .map(row => ({ source: row.source, archived_at: row.archived_at, record: JSON.parse(row.content_json) })),
         comments: myComments,
         reveal_choices: myReveals
       };

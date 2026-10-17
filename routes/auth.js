@@ -5,8 +5,8 @@ const tokens = require('../lib/tokens');
 // Native clients authenticate with bearer tokens. Attached to every successful
 // auth response as `auth: { accessToken, refreshToken, expiresIn }`. The web
 // client ignores the field and keeps using its cookie session.
-function authTokens(userId) {
-  const pair = tokens.issueTokenPair(userId);
+function authTokens(userId, authVersion = 0) {
+  const pair = tokens.issueTokenPair(userId, authVersion);
   return pair ? { auth: pair } : {};
 }
 
@@ -139,10 +139,10 @@ function hashResetToken(token) {
   return nodeCrypto.createHash('sha256').update(token).digest('hex');
 }
 
-function establishSession(req, userId) {
+function establishSession(req, userId, authVersion = 0) {
   return new Promise((resolve, reject) => {
     if (!req.session || typeof req.session.regenerate !== 'function') {
-      if (req.session) req.session.userId = userId;
+      if (req.session) { req.session.userId = userId; req.session.authVersion = authVersion; }
       return resolve();
     }
     req.session.regenerate((regenErr) => {
@@ -151,6 +151,7 @@ function establishSession(req, userId) {
         return reject(regenErr);
       }
       req.session.userId = userId;
+      req.session.authVersion = authVersion;
       req.session.save((saveErr) => {
         if (saveErr) {
           console.error('Session save after regenerate failed:', saveErr);
@@ -257,6 +258,10 @@ function registerAuthRoutes(app, deps) {
       let user = stmts.getUserByFirebaseUid.get(firebaseUid) || stmts.getUserByEmail.get(email);
       let created = false;
 
+      if (user && Number(user.auth_reset_at || 0) && Number(decoded.auth_time || 0) <= Number(user.auth_reset_at)) {
+        return res.status(401).json({ error: 'Please sign in with Google again to open your account.', reauthRequired: true });
+      }
+
       if (user) {
         stmts.updateFirebaseUserLogin.run(firebaseUid, photoUrl || null, now, now, now, user.id);
         authDebugLog('Backend user created/updated', {
@@ -307,14 +312,14 @@ function registerAuthRoutes(app, deps) {
         });
       }
 
-      await establishSession(req, user.id);
+      await establishSession(req, user.id, Number(user.auth_version || 0));
       trackEvent(user.id, 'login', { provider: GOOGLE_PROVIDER, created });
       authDebugLog('Backend login success', {
         userId: user.id,
         email,
         provider: GOOGLE_PROVIDER
       });
-      res.json({ ok: true, created, userId: user.id, ...authTokens(user.id) });
+      res.json({ ok: true, created, userId: user.id, ...authTokens(user.id, Number(user.auth_version || 0)) });
     } catch (e) {
       console.error('Firebase Google login error:', e);
       res.status(401).json({ error: 'Google login failed. Please try again.' });
@@ -412,10 +417,10 @@ function registerAuthRoutes(app, deps) {
         return res.redirect('/app?verify_error=expired');
       }
       stmts.verifyUserEmail.run(new Date().toISOString(), user.id);
-      if (req.session) { try { await establishSession(req, user.id); } catch(e) {} }
+      if (req.session && !Number(user.auth_version || 0)) { try { await establishSession(req, user.id); } catch(e) {} }
       trackEvent(user.id, 'email_verified');
       logVerification('Verification successful', { email: user.email });
-      res.redirect('/app?verified=1');
+      res.redirect(Number(user.auth_version || 0) ? '/app?screen=s-login&verified=1' : '/app?verified=1');
     } catch (e) {
       console.error('Verification failed with reason', { reason: 'system_error', error: e.message });
       res.redirect('/app?verify_error=system');
@@ -438,8 +443,8 @@ function registerAuthRoutes(app, deps) {
         trackEvent(user.id, 'email_verified', { method: 'manual_signed_link' });
         logVerification('Verification successful', { email: user.email, method: 'manual_signed_link' });
       }
-      if (req.session) await establishSession(req, user.id);
-      res.redirect('/app?verified=1');
+      if (req.session && !Number(user.auth_version || 0)) await establishSession(req, user.id);
+      res.redirect(Number(user.auth_version || 0) ? '/app?screen=s-login&verified=1' : '/app?verified=1');
     } catch (e) {
       console.error('Manual verify email error:', e);
       res.status(500).send('Email verification failed.');
@@ -483,8 +488,8 @@ function registerAuthRoutes(app, deps) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
 
-      await establishSession(req, user.id);
-      res.json({ ok: true, emailVerificationRequired: !user.email_verified, ...authTokens(user.id) });
+      await establishSession(req, user.id, Number(user.auth_version || 0));
+      res.json({ ok: true, emailVerificationRequired: !user.email_verified, ...authTokens(user.id, Number(user.auth_version || 0)) });
 
     } catch (e) {
       console.error('Login error:', e);
@@ -511,7 +516,10 @@ function registerAuthRoutes(app, deps) {
     if (!user || user.account_status === 'deleted') {
       return res.status(401).json({ error: 'Not authenticated' });
     }
-    const pair = tokens.issueTokenPair(user.id);
+    if (Number(result.payload.av || 0) !== Number(user.auth_version || 0)) {
+      return res.status(401).json({ error: 'Please sign in again.', reauthRequired: true });
+    }
+    const pair = tokens.issueTokenPair(user.id, Number(user.auth_version || 0));
     if (!pair) return res.status(503).json({ error: 'Token signing unavailable' });
     res.json({ ok: true, auth: pair });
   });
