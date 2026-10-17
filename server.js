@@ -464,7 +464,8 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'sending',
     total INTEGER NOT NULL DEFAULT 0,
     sent INTEGER NOT NULL DEFAULT 0,
-    failed INTEGER NOT NULL DEFAULT 0
+    failed INTEGER NOT NULL DEFAULT 0,
+    pause_until TEXT
   );
 
   CREATE TABLE IF NOT EXISTS reauth_campaign_deliveries (
@@ -755,6 +756,7 @@ ensureColumn('users', 'last_login_at', 'TEXT');
 ensureColumn('users', 'account_status', "TEXT DEFAULT 'active'");
 ensureColumn('users', 'auth_version', 'INTEGER NOT NULL DEFAULT 0');
 ensureColumn('users', 'auth_reset_at', 'INTEGER NOT NULL DEFAULT 0');
+ensureColumn('reauth_campaigns', 'pause_until', 'TEXT');
 ensureColumn('users', 'deleted_at', 'TEXT');
 ensureColumn('users', 'deleted_reason', 'TEXT');
 ensureColumn('matches', 'matched_at', 'TEXT');

@@ -166,11 +166,30 @@ function registerAdminRoutes(app, deps) {
     FROM reauth_campaign_deliveries d
     JOIN reauth_campaigns c ON c.id = d.campaign_id
     WHERE c.status = 'sending' AND d.status = 'pending'
+      AND (c.pause_until IS NULL OR c.pause_until <= datetime('now'))
     ORDER BY d.campaign_id, d.user_id LIMIT 1
   `);
   const claimDelivery = db.prepare("UPDATE reauth_campaign_deliveries SET status = 'sending', attempted_at = datetime('now') WHERE campaign_id = ? AND user_id = ? AND status = 'pending'");
   const finishDelivery = db.prepare('UPDATE reauth_campaign_deliveries SET status = ? WHERE campaign_id = ? AND user_id = ?');
   let sendingReauthEmail = false;
+
+  function sqliteUtc(date) {
+    return date.toISOString().replace('T', ' ').slice(0, 19);
+  }
+
+  function providerPauseUntil(error) {
+    if (error.statusCode !== 429) return null;
+    const now = new Date();
+    const code = String(error.providerCode || '').toLowerCase();
+    if (code === 'monthly_quota_exceeded') {
+      return sqliteUtc(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 5)));
+    }
+    if (code === 'daily_quota_exceeded') {
+      return sqliteUtc(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 5)));
+    }
+    const retrySeconds = Number(error.retryAfter);
+    return sqliteUtc(new Date(now.getTime() + (Number.isFinite(retrySeconds) && retrySeconds > 0 ? Math.max(retrySeconds, 60) : 300) * 1000));
+  }
 
   function reconcileReauthCampaigns() {
     // A crash can leave one claimed delivery without a known outcome. Keep it
@@ -195,8 +214,15 @@ function registerAdminRoutes(app, deps) {
     try {
       await sendSignInAgain(delivery.email, delivery.name);
     } catch (error) {
-      status = 'failed';
-      console.error('Sign-in campaign delivery failed; check delivery status in Founder admin.');
+      const pauseUntil = providerPauseUntil(error);
+      if (pauseUntil) {
+        status = 'pending';
+        db.prepare('UPDATE reauth_campaigns SET pause_until = ? WHERE id = ?').run(pauseUntil, delivery.campaign_id);
+        console.warn(`Sign-in campaign email provider limit reached; queued delivery will resume after ${pauseUntil}.`);
+      } else {
+        status = 'failed';
+        console.error('Sign-in campaign delivery failed; check delivery status in Founder admin.');
+      }
     } finally {
       try {
         finishDelivery.run(status, delivery.campaign_id, delivery.user_id);
@@ -220,7 +246,7 @@ function registerAdminRoutes(app, deps) {
   app.get('/admin/reauth-campaign/preview', authLimiter, requireAdmin, (req, res) => {
     if (req.admin.role !== 'admin' || req.admin.legacy) return res.status(403).json({ error: 'A named founder admin is required' });
     const { totalAccounts, recipients } = reauthRecipients();
-    const campaign = db.prepare('SELECT id, created_at, status, total, sent, failed FROM reauth_campaigns ORDER BY id DESC LIMIT 1').get() || null;
+    const campaign = db.prepare('SELECT id, created_at, status, total, sent, failed, pause_until AS pauseUntil FROM reauth_campaigns ORDER BY id DESC LIMIT 1').get() || null;
     const blocked = db.prepare("SELECT id FROM reauth_campaigns WHERE status = 'sending' OR created_at >= datetime('now', '-30 days') LIMIT 1").get();
     const deliveries = campaign ? db.prepare('SELECT user_id AS userId, email, status, attempted_at AS attemptedAt FROM reauth_campaign_deliveries WHERE campaign_id = ? ORDER BY user_id').all(campaign.id) : [];
     res.json({ ok: true, totalAccounts, recipientCount: recipients.length, skippedCount: totalAccounts - recipients.length,
