@@ -16,7 +16,7 @@ async function main() {
     CREATE TABLE tonights_question_entries (id INTEGER PRIMARY KEY, user_id INTEGER, text TEXT);
     CREATE TABLE daily_notes (id INTEGER PRIMARY KEY, user_id INTEGER, landed TEXT);
     CREATE TABLE archived_user_records (id INTEGER PRIMARY KEY, user_id INTEGER, source TEXT, content_json TEXT, archived_at TEXT DEFAULT (datetime('now')));
-    CREATE TABLE reauth_campaigns (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT DEFAULT (datetime('now')), started_by TEXT, status TEXT DEFAULT 'sending', total INTEGER DEFAULT 0, sent INTEGER DEFAULT 0, failed INTEGER DEFAULT 0);
+    CREATE TABLE reauth_campaigns (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT DEFAULT (datetime('now')), started_by TEXT, status TEXT DEFAULT 'sending', total INTEGER DEFAULT 0, sent INTEGER DEFAULT 0, failed INTEGER DEFAULT 0, pause_until TEXT);
     CREATE TABLE reauth_campaign_deliveries (campaign_id INTEGER, user_id INTEGER, email TEXT, name TEXT, status TEXT DEFAULT 'pending', attempted_at TEXT, PRIMARY KEY(campaign_id, user_id));
     CREATE TABLE admin_audit (actor_admin_id INTEGER, actor_label TEXT, action TEXT, target_type TEXT, target_id TEXT, metadata TEXT);
   `);
@@ -29,12 +29,22 @@ async function main() {
   db.prepare("INSERT INTO waiting_entries (user_id, text) VALUES (2, 'older waiting note')").run();
 
   const delivered = [];
+  let quotaHit = false;
   const app = express();
   app.use(express.json());
   const pass = (req, res, next) => next();
   const admin = (req, res, next) => { req.admin = { id: 1, email: 'founder@example.test', role: req.headers['x-role'] || 'admin', legacy: req.headers['x-legacy'] === '1' }; next(); };
   registerAdminRoutes(app, { db, rootDir: __dirname, authLimiter: pass, requireAdmin: admin,
-    emailServiceEnabled: true, sendSignInAgain: async (email, name) => { delivered.push({ email, name }); } });
+    emailServiceEnabled: true, sendSignInAgain: async (email, name) => {
+      if (!quotaHit) {
+        quotaHit = true;
+        const error = new Error('Daily limit reached');
+        error.statusCode = 429;
+        error.providerCode = 'daily_quota_exceeded';
+        throw error;
+      }
+      delivered.push({ email, name });
+    } });
   const server = await new Promise(resolve => { const started = app.listen(0, '127.0.0.1', () => resolve(started)); });
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
@@ -67,7 +77,12 @@ async function main() {
     assert.strictEqual(db.prepare('SELECT archetype FROM users WHERE id = 1').get().archetype, null);
     assert.strictEqual(JSON.parse(db.prepare('SELECT push_preferences FROM users WHERE id = 2').get().push_preferences).emailReminders, true);
     assert.strictEqual(JSON.parse(db.prepare('SELECT push_preferences FROM users WHERE id = 2').get().push_preferences).enabled, false, 'existing push choice preserved');
-    for (let i = 0; i < 20 && delivered.length < 1; i++) await new Promise(resolve => setTimeout(resolve, 20));
+    for (let i = 0; i < 20 && !db.prepare('SELECT pause_until FROM reauth_campaigns').get().pause_until; i++) await new Promise(resolve => setTimeout(resolve, 20));
+    assert.strictEqual(db.prepare('SELECT status FROM reauth_campaign_deliveries').get().status, 'pending');
+    assert.ok(db.prepare('SELECT pause_until FROM reauth_campaigns').get().pause_until, 'provider limit pauses remaining deliveries');
+    assert.strictEqual(delivered.length, 0);
+    db.prepare("UPDATE reauth_campaigns SET pause_until = datetime('now', '-1 minute')").run();
+    for (let i = 0; i < 120 && delivered.length < 1; i++) await new Promise(resolve => setTimeout(resolve, 20));
     assert.deepStrictEqual(delivered, [{ email: 'a@example.test', name: '<script>bad</script>' }]);
     assert.strictEqual(db.prepare('SELECT status FROM reauth_campaigns').get().status, 'completed');
     const after = await fetch(`${base}/admin/reauth-campaign/preview`).then(r => r.json());
