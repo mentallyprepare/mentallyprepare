@@ -1690,7 +1690,11 @@ function renderScan() {
 }
 
 function pickScanSlider(val) {
-  if (!mpTestStartedFired) { mpTestStartedFired = true; mpTrack('TestStarted'); }
+  if (!mpTestStartedFired) {
+    mpTestStartedFired = true;
+    mpTrack('TestStarted');
+    if (state && state.user) api('POST', '/scan/start', {}).catch(() => {});
+  }
   scanAnswers[scanIndex] = parseInt(val);
   const labels = ['','Strongly disagree','Disagree','Slightly disagree','Neutral','Slightly agree','Agree','Strongly agree'];
   const lbl = document.getElementById('slider-label');

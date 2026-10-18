@@ -10,6 +10,7 @@ async function main() {
   const db = new Database(':memory:');
   db.exec(`
     CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, account_status TEXT DEFAULT 'active', auth_version INTEGER DEFAULT 0, auth_reset_at INTEGER DEFAULT 0, archetype TEXT, scores TEXT, switch_count INTEGER DEFAULT 0, last_active_date TEXT, push_preferences TEXT);
+    CREATE TABLE analytics_events (id INTEGER PRIMARY KEY, user_id INTEGER, event_name TEXT, created_at TEXT DEFAULT (datetime('now')));
     CREATE TABLE matches (id INTEGER PRIMARY KEY, user1_id INTEGER, user2_id INTEGER, started_at TEXT, archived_at TEXT);
     CREATE TABLE entries (id INTEGER PRIMARY KEY, user_id INTEGER, match_id INTEGER, day INTEGER, text TEXT, mood TEXT, prompt TEXT, created_at TEXT);
     CREATE TABLE waiting_entries (id INTEGER PRIMARY KEY, user_id INTEGER, text TEXT);
@@ -88,6 +89,16 @@ async function main() {
     const after = await fetch(`${base}/admin/reauth-campaign/preview`).then(r => r.json());
     assert.strictEqual(after.deliveries[0].status, 'sent');
     assert.strictEqual(after.canStart, false);
+    const emptyProgress = await fetch(`${base}/admin/reauth-campaign/progress`).then(r => r.json());
+    assert.deepStrictEqual(emptyProgress.counts, { invited: 1, signedIn: 0, testStarted: 0, testCompleted: 0 });
+    const progressDenied = await fetch(`${base}/admin/reauth-campaign/progress`, { headers: { 'x-role': 'support' } });
+    assert.strictEqual(progressDenied.status, 403);
+    db.prepare("INSERT INTO analytics_events (user_id, event_name) VALUES (1, 'login'), (1, 'scan_started')").run();
+    let progress = await fetch(`${base}/admin/reauth-campaign/progress`).then(r => r.json());
+    assert.deepStrictEqual(progress.counts, { invited: 1, signedIn: 1, testStarted: 1, testCompleted: 0 });
+    db.prepare("UPDATE users SET archetype = 'connector' WHERE id = 1").run();
+    progress = await fetch(`${base}/admin/reauth-campaign/progress`).then(r => r.json());
+    assert.deepStrictEqual(progress.counts, { invited: 1, signedIn: 1, testStarted: 1, testCompleted: 1 });
     const duplicate = await fetch(`${base}/admin/reauth-campaign/start`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmation: 'REQUIRE SIGN-IN' }) });
     assert.strictEqual(duplicate.status, 409);
     assert.strictEqual(delivered.length, 1);
