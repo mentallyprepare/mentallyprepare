@@ -489,6 +489,7 @@ function registerAuthRoutes(app, deps) {
       }
 
       await establishSession(req, user.id, Number(user.auth_version || 0));
+      trackEvent(user.id, 'login', { provider: 'password' });
       res.json({ ok: true, emailVerificationRequired: !user.email_verified, ...authTokens(user.id, Number(user.auth_version || 0)) });
 
     } catch (e) {

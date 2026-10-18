@@ -693,6 +693,17 @@ function registerAppRoutes(app, deps) {
     }
   });
 
+  app.post('/api/scan/start', apiLimiter, requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    const user = stmts.getUserById.get(userId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    if (user.archetype) return res.json({ ok: true });
+    const started = db.prepare(`SELECT 1 FROM analytics_events WHERE user_id = ? AND event_name = 'scan_started'
+      AND created_at >= datetime(?, 'unixepoch') LIMIT 1`).get(userId, Number(user.auth_reset_at || 0));
+    if (!started && trackEvent) trackEvent(userId, 'scan_started');
+    res.json({ ok: true });
+  });
+
   app.post('/api/scan', apiLimiter, requireAuth, (req, res) => {
     try {
       const { scores, archetype, answers } = req.body;

@@ -255,6 +255,34 @@ function registerAdminRoutes(app, deps) {
       recipients: recipients.map(user => ({ userId: user.id, email: user.email })), campaign, deliveries, canStart: !blocked && recipients.length > 0 && !!emailServiceEnabled });
   });
 
+  app.get('/admin/reauth-campaign/progress', authLimiter, requireAdmin, (req, res) => {
+    if (req.admin.role !== 'admin' || req.admin.legacy) return res.status(403).json({ error: 'A named founder admin is required' });
+    const campaign = db.prepare('SELECT id, created_at, total, sent, failed FROM reauth_campaigns ORDER BY id DESC LIMIT 1').get();
+    if (!campaign) return res.json({ ok: true, campaign: null, counts: null, people: [] });
+    const rows = db.prepare(`
+      SELECT d.user_id AS userId, d.name, d.email, d.status AS emailStatus,
+        u.archetype,
+        EXISTS(SELECT 1 FROM analytics_events e WHERE e.user_id = d.user_id AND e.event_name = 'login'
+          AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch')) AS signedIn,
+        EXISTS(SELECT 1 FROM analytics_events e WHERE e.user_id = d.user_id AND e.event_name = 'scan_started'
+          AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch')) AS scanStarted
+      FROM reauth_campaign_deliveries d
+      JOIN users u ON u.id = d.user_id
+      WHERE d.campaign_id = ? ORDER BY d.user_id
+    `).all(campaign.id);
+    const people = rows.map(row => ({
+      userId: row.userId, name: row.name, email: row.email, emailStatus: row.emailStatus,
+      stage: row.archetype ? 'test_completed' : row.scanStarted ? 'test_started' : row.signedIn ? 'signed_in' : 'not_seen'
+    }));
+    const counts = { invited: campaign.total, signedIn: 0, testStarted: 0, testCompleted: 0 };
+    for (const person of people) {
+      if (person.stage !== 'not_seen') counts.signedIn++;
+      if (person.stage === 'test_started' || person.stage === 'test_completed') counts.testStarted++;
+      if (person.stage === 'test_completed') counts.testCompleted++;
+    }
+    res.json({ ok: true, campaign, counts, people });
+  });
+
   app.post('/admin/reauth-campaign/start', authLimiter, requireAdmin, (req, res) => {
     if (req.admin.role !== 'admin' || req.admin.legacy) return res.status(403).json({ error: 'A named founder admin is required' });
     if (!emailServiceEnabled || typeof sendSignInAgain !== 'function') return res.status(503).json({ error: 'Email delivery is not configured' });

@@ -369,6 +369,7 @@ async function run() {
     assert.strictEqual(reset.status, 200, `reset got ${reset.status}: ${reset.raw}`);
     assert.strictEqual((await request('POST', '/api/login', { email, password: 'oldpass123' })).status, 401, 'old password rejected');
     assert.strictEqual((await request('POST', '/api/login', { email, password: 'newpass123' })).status, 200, 'new password accepted');
+    assert.ok(db.prepare("SELECT 1 FROM analytics_events WHERE user_id = ? AND event_name = 'login'").get(user.id), 'email login is tracked');
 
     const reused = await request('POST', '/api/reset-password', { code: plainCode, newPassword: 'another123' });
     assert.strictEqual(reused.status, 400);
@@ -621,6 +622,9 @@ async function run() {
     const partnerId = db.prepare("INSERT INTO users (name, email, password, college, year, archetype, consent_given, consent_date, last_active_date) VALUES ('Analytics Partner', ?, 'seeded-password', 'Test University C', '2nd', 'connector', 1, datetime('now'), date('now'))").run(uniqueEmail('analytics-partner')).lastInsertRowid;
     const partnerUser = db.prepare('SELECT * FROM users WHERE id = ?').get(partnerId);
     db.prepare("UPDATE users SET archetype = NULL, scores = NULL, college = 'Test University A', college_normalized = 'test-university-a' WHERE id = ?").run(user.id);
+    assert.strictEqual((await request('POST', '/api/scan/start', {}, { cookie })).status, 200);
+    assert.strictEqual((await request('POST', '/api/scan/start', {}, { cookie })).status, 200);
+    assert.strictEqual(db.prepare("SELECT COUNT(*) AS n FROM analytics_events WHERE user_id = ? AND event_name = 'scan_started'").get(user.id).n, 1, 'test start is tracked once');
     const scan = await request('POST', '/api/scan', {
       archetype: 'protector',
       scores: { openness: 75, awareness: 65, guard: 25, reciprocity: 70 },
