@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261018-progress';
+const CACHE_NAME = 'mp-20261018-scanfirst';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',

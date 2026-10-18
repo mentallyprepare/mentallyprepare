@@ -185,12 +185,12 @@ async function run() {
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
     const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
-    assert.match(indexHtml, /href="\/app\?screen=s-signup"/, 'landing page links directly to signup');
+    assert.match(indexHtml, /href="\/app"[^>]*>Begin tonight/, 'landing page begins the public scan');
     assert.match(indexHtml, /href="\/app\?screen=s-login"/, 'landing page links directly to login');
     assert.match(appHtml, /id="s-signup"/, 'dedicated signup screen exists');
     assert.match(appHtml, /Create your Mentally Prepare account/, 'signup screen has clear heading');
     assert.match(appHtml, /Welcome back/, 'login screen has clear heading');
-    assert.match(appHtml, /Create Account[\s\S]*Take Scan[\s\S]*Get Matched[\s\S]*Write Daily[\s\S]*Reveal on Day 21/, 'journey preview appears before signup');
+    assert.match(appHtml, /Take Scan[\s\S]*Create Account[\s\S]*Get Matched[\s\S]*Write Daily[\s\S]*Reveal on Day 21/, 'journey preview shows scan before signup');
     assert.match(appJs, /consumeAuthScreenDeepLink/, 'app consumes auth screen deep links');
     assert.match(appJs, /s-signup[\s\S]*s-login[\s\S]*s-reset/, 'signup, login, and reset deep links are supported');
     assert.match(appJs, /function shouldOpenAuthDeepLinkBeforeSessionRestore\(\)/, 'auth deep links are checked before session restore');
@@ -226,6 +226,73 @@ async function run() {
     assert.strictEqual(routingContext.result.completedCycle.action, 'reveal', 'completed cycles go to post-cycle reveal flow');
     ok('Signup/login entry routing and CTAs');
   } catch (e) { fail('Signup/login entry routing and CTAs', e); }
+
+  // Personal questions must reflect awareness, not treat loneliness as a deficit.
+  try {
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const questionsStart = appJs.indexOf('const questions = [');
+    const questionsEnd = appJs.indexOf('\n];', questionsStart);
+    assert.ok(questionsStart >= 0 && questionsEnd > questionsStart, 'scan questions exist');
+    const scoringContext = { low: null, high: null };
+    vm.runInNewContext(`
+      ${appJs.slice(questionsStart, questionsEnd + 3)}
+      let scanAnswers = Array(questions.length).fill(4);
+      let localScores = {};
+      let localArchetype = '';
+      ${extractFunction(appJs, 'calculateScoresLocal')}
+      scanAnswers[4] = 1; scanAnswers[5] = 1;
+      calculateScoresLocal(); low = localScores.awareness;
+      scanAnswers[4] = 7; scanAnswers[5] = 7;
+      calculateScoresLocal(); high = localScores.awareness;
+    `, scoringContext);
+    assert.strictEqual(scoringContext.high > scoringContext.low, true, 'noticing loneliness and need for honesty increases awareness');
+    assert.match(appJs, /not a diagnosis or a fixed label/, 'public result avoids a clinical claim');
+    ok('Sensitive reflection questions score awareness consistently');
+  } catch (e) { fail('Sensitive reflection questions score awareness consistently', e); }
+
+  // Guest answers should survive a refresh in this tab but expire promptly.
+  try {
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const sessionData = new Map();
+    const localData = new Map();
+    const storage = (data) => ({
+      getItem: (key) => data.get(key) || null,
+      setItem: (key, value) => data.set(key, value),
+      removeItem: (key) => data.delete(key)
+    });
+    const pendingContext = {
+      sessionStorage: storage(sessionData), localStorage: storage(localData),
+      localScores: { openness: 50, awareness: 64, guard: 43, reciprocity: 71 },
+      localArchetype: 'connector', scanAnswers: Array(11).fill(4), result: null
+    };
+    vm.runInNewContext(`
+      const PENDING_SCAN_KEY = 'mp_pending_scan';
+      const PENDING_SCAN_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+      ${extractFunction(appJs, 'clearPendingScan')}
+      ${extractFunction(appJs, 'savePendingScan')}
+      ${extractFunction(appJs, 'getPendingScan')}
+      savePendingScan();
+      result = getPendingScan();
+    `, pendingContext);
+    assert.strictEqual(pendingContext.result.archetype, 'connector', 'guest result survives a same-tab read');
+    assert.strictEqual(localData.size, 0, 'guest answers are not kept in long-lived local storage');
+    const expired = JSON.parse(sessionData.get('mp_pending_scan'));
+    expired.ts -= 3 * 60 * 60 * 1000;
+    sessionData.set('mp_pending_scan', JSON.stringify(expired));
+    const expiredContext = {
+      sessionStorage: storage(sessionData), localStorage: storage(localData), result: undefined
+    };
+    vm.runInNewContext(`
+      const PENDING_SCAN_KEY = 'mp_pending_scan';
+      const PENDING_SCAN_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+      ${extractFunction(appJs, 'clearPendingScan')}
+      ${extractFunction(appJs, 'getPendingScan')}
+      result = getPendingScan();
+    `, expiredContext);
+    assert.strictEqual(expiredContext.result, null, 'expired guest result is rejected');
+    assert.strictEqual(sessionData.size, 0, 'expired guest answers are cleared');
+    ok('Guest scan stays in the tab and expires after two hours');
+  } catch (e) { fail('Guest scan stays in the tab and expires after two hours', e); }
 
 
   // 2. Register a user

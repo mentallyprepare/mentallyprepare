@@ -46,7 +46,7 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-startup-image" href="/icon-512x512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/app.css?v=20261018-progress"/>
+<link rel="stylesheet" href="/app.css?v=20261018-scanfirst"/>
 <link rel="stylesheet" href="/refine.css"/>
 <link rel="stylesheet" href="/brand-buttons.css?v=20261011"/>
 <script>
@@ -163,7 +163,7 @@ html.mp-app-route #app-area{display:block}
     <a href="#l-archetypes" data-nav-target="l-archetypes">Archetypes</a>
     <a href="#l-stories" data-nav-target="l-stories">Stories</a>
     <a href="/app?screen=s-login" data-auth-target="s-login">Log in</a>
-    <a href="/app?screen=s-signup" data-auth-target="s-signup">Sign up</a>
+    <a href="/app" data-auth-target="s-signup">Sign up</a>
   </div>
   <div class="site-nav-actions">
     <button class="site-nav-link-btn" id="navLoginBtn" type="button">Log in</button>
@@ -259,7 +259,7 @@ html.mp-app-route #app-area{display:block}
       <p class="section-p" style="margin:0 auto 20px">No profiles. No followers. No pressure. Just 21 days of radical honesty with someone matched to complement your blind spots.</p>
     </div>
     <div class="how-steps">
-      <div class="how-step reveal delay-1"><span class="how-step-num">01</span><span class="how-step-ico">&#128203;</span><h3 class="how-step-h">Take the ECP-11 (Emotional Connection Profile)</h3><p class="how-step-p">11 slider questions measure how you connect, open up, and protect yourself emotionally.</p></div>
+      <div class="how-step reveal delay-1"><span class="how-step-num">01</span><span class="how-step-ico">&#128203;</span><h3 class="how-step-h">Take the 11-question reflection</h3><p class="how-step-p">Honest questions explore how you connect, open up, and protect yourself emotionally.</p></div>
       <div class="how-step reveal delay-2"><span class="how-step-num">02</span><span class="how-step-ico">&#10022;</span><h3 class="how-step-h">Get Matched</h3><p class="how-step-p">You're paired with someone outside your everyday circle whose emotional pattern complements yours.</p></div>
       <div class="how-step reveal delay-3"><span class="how-step-num">03</span><span class="how-step-ico">&#128214;</span><h3 class="how-step-h">Write Daily</h3><p class="how-step-p">One prompt each day. You write honestly. They write back. Nobody knows who the other is.</p></div>
       <div class="how-step reveal delay-4"><span class="how-step-num">04</span><span class="how-step-ico">&#127765;</span><h3 class="how-step-h">Day 21: Choose</h3><p class="how-step-p">Both choose what to reveal: stay anonymous, first name only, name and college, or contact details with separate confirmation.</p></div>
@@ -389,7 +389,7 @@ html.mp-app-route #app-area{display:block}
     </div>
     <h1 class="splash-h">One honest line.<br/><em>Twenty-one nights.<br/>Your call.</em></h1>
     <p class="splash-p">A private writing ritual for students. Anonymous by default. No public profile. Reveal only if both people choose it.</p>
-    <button class="btn" onclick="go('s-signup')">Begin tonight</button>
+    <button class="btn" onclick="startSignup()">Begin tonight</button>
     <button class="btn-ghost" onclick="go('s-login')" style="margin-top:10px">I already have an account</button>
     <div class="splash-note">Free. Anonymous. Takes about 3 minutes.</div>
   </div>
@@ -405,10 +405,10 @@ html.mp-app-route #app-area{display:block}
       </nav>
       <div class="eyebrow">Start tonight</div>
       <h1 class="auth-title">Create your Mentally Prepare account</h1>
-      <p class="auth-copy">Before the scan, create a private account so your 21-day journey can be saved safely.</p>
+      <p class="auth-copy">Create a private account to save your result and begin your 21-day journey.</p>
       <div class="journey-preview" aria-label="Journey preview">
-        <div class="journey-step"><span>1</span><strong>Create Account</strong></div>
-        <div class="journey-step"><span>2</span><strong>Take Scan</strong></div>
+        <div class="journey-step"><span>1</span><strong>Take Scan</strong></div>
+        <div class="journey-step"><span>2</span><strong>Create Account</strong></div>
         <div class="journey-step"><span>3</span><strong>Get Matched</strong></div>
         <div class="journey-step"><span>4</span><strong>Write Daily</strong></div>
         <div class="journey-step"><span>5</span><strong>Reveal on Day 21</strong></div>
@@ -426,7 +426,7 @@ html.mp-app-route #app-area{display:block}
   <div class="auth-shell">
     <div class="auth-card">
     <nav class="auth-mode-tabs" aria-label="Account access">
-      <a href="/app?screen=s-signup" onclick="openAuthScreen('s-signup');return false;">Sign up</a>
+      <a href="/app" onclick="startSignup();return false;">Sign up</a>
       <a href="/app?screen=s-login" aria-current="page" onclick="openAuthScreen('s-login');return false;">Log in</a>
     </nav>
     <div class="eyebrow">Welcome back</div>
@@ -667,9 +667,9 @@ html.mp-app-route #app-area{display:block}
 <div class="screen" id="s-scan-intro">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
     <div class="moon-base" style="width:88px;height:88px;box-shadow:0 0 50px rgba(201,169,110,.55),0 0 100px rgba(201,169,110,.2);animation:float 5s ease-in-out infinite;margin-bottom:28px;"></div>
-    <div style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.8;margin-bottom:14px;">ECP-11 · Emotional Connection Profile</div>
+    <div style="font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);opacity:.8;margin-bottom:14px;">Your connection reflection</div>
     <h1 style="font-family:'Playfair Display',serif;font-size:32px;font-weight:400;line-height:1;margin-bottom:16px;">Tune your<br/><em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">emotional pattern</em><br/>quietly.</h1>
-    <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:28px;padding:0 8px;">Eleven gentle sliders about closeness, trust, distance, and how you protect yourself when things feel real.</p>
+    <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:28px;padding:0 8px;">Eleven honest questions about closeness, loneliness, trust, and what you keep to yourself. Your result is a reflection, not a diagnosis.</p>
     <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:32px;">
       <div style="text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--rose-l);">11</div><div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-s);margin-top:2px;">Questions</div></div>
       <div style="width:1px;height:32px;background:var(--line);"></div>
@@ -677,8 +677,10 @@ html.mp-app-route #app-area{display:block}
       <div style="width:1px;height:32px;background:var(--line);"></div>
       <div style="text-align:center;"><div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--rose-l);">4</div><div style="font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-s);margin-top:2px;">Dimensions</div></div>
     </div>
+    <label id="guest-scan-confirm" style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 18px;font-size:12px;color:var(--ink-m);"><input id="guest-scan-age" type="checkbox"/> I confirm I am 18 or older</label>
+    <button class="btn-ghost" id="retry-pending-scan" onclick="retryPendingScan()" style="display:none;margin-bottom:12px;">Save my earlier result</button>
     <button class="btn" onclick="startScan()">Start the quiet scan</button>
-    <button class="btn-ghost" onclick="showJourneyArchive()" style="margin-top:12px;">Read a previous journey</button>
+    <button class="btn-ghost" id="scan-archive-link" onclick="showJourneyArchive()" style="margin-top:12px;">Read a previous journey</button>
     <p style="font-size:10px;color:var(--ink-s);margin-top:16px;line-height:1.6;font-style:italic;">Free · Results appear instantly · Your responses stay private</p>
   </div>
 </div>
@@ -854,6 +856,6 @@ html.mp-app-route #app-area{display:block}
 
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
-<script src="/app.js?v=20261018-progress" defer></script>
+<script src="/app.js?v=20261018-scanfirst" defer></script>
 </body>
 </html>
