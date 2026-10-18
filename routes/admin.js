@@ -263,7 +263,8 @@ function registerAdminRoutes(app, deps) {
       SELECT d.user_id AS userId, d.name, d.email, d.status AS emailStatus,
         u.archetype,
         EXISTS(SELECT 1 FROM analytics_events e WHERE e.user_id = d.user_id AND e.event_name = 'login'
-          AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch')) AS signedIn,
+          AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch'))
+          OR datetime(u.last_login_at) >= datetime(u.auth_reset_at, 'unixepoch') AS signedIn,
         EXISTS(SELECT 1 FROM analytics_events e WHERE e.user_id = d.user_id AND e.event_name = 'scan_started'
           AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch')) AS scanStarted
       FROM reauth_campaign_deliveries d
@@ -406,11 +407,12 @@ function registerAdminRoutes(app, deps) {
         ORDER BY created_at DESC
       `).all();
 
-      const matches = db.prepare('SELECT * FROM matches ORDER BY started_at DESC').all();
+      const matches = db.prepare('SELECT * FROM matches WHERE archived_at IS NULL ORDER BY started_at DESC').all();
       const entries = db.prepare(`
-        SELECT id, user_id, match_id, day, created_at
-        FROM entries
-        ORDER BY created_at DESC
+        SELECT e.id, e.user_id, e.match_id, e.day, e.created_at
+        FROM entries e JOIN matches m ON m.id = e.match_id
+        WHERE m.archived_at IS NULL
+        ORDER BY e.created_at DESC
       `).all();
 
       const matchByUser = new Map();
@@ -523,7 +525,7 @@ function registerAdminRoutes(app, deps) {
 
   app.get('/admin/matches-debug', authLimiter, requireAdmin, (req, res) => {
     try {
-      const matches = db.prepare('SELECT * FROM matches ORDER BY started_at DESC').all();
+      const matches = db.prepare('SELECT * FROM matches WHERE archived_at IS NULL ORDER BY started_at DESC').all();
       const rows = matches.map(match => {
         const user1Entries = db.prepare('SELECT day, created_at FROM entries WHERE user_id = ? AND match_id = ? ORDER BY day DESC').all(match.user1_id, match.id);
         const user2Entries = db.prepare('SELECT day, created_at FROM entries WHERE user_id = ? AND match_id = ? ORDER BY day DESC').all(match.user2_id, match.id);
