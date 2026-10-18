@@ -22,6 +22,7 @@ async function api(method, path, body) {
 // ── Ad-funnel tracking + pending scan (test-before-signup) ──
 const META_PIXEL_ID = ''; // TODO: set real Meta pixel ID before ad launch
 const PENDING_SCAN_KEY = 'mp_pending_scan';
+const PENDING_SCAN_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 let mpTestStartedFired = false;
 function mpTrack(eventName, standard) {
   try {
@@ -31,14 +32,31 @@ function mpTrack(eventName, standard) {
 }
 function getPendingScan() {
   try {
-    const p = JSON.parse(localStorage.getItem(PENDING_SCAN_KEY) || 'null');
-    if (p && p.archetype && p.scores && Array.isArray(p.answers) && p.answers.length === 11) return p;
+    const raw = sessionStorage.getItem(PENDING_SCAN_KEY) || localStorage.getItem(PENDING_SCAN_KEY);
+    const p = JSON.parse(raw || 'null');
+    if (p && Number.isFinite(p.ts) && Date.now() - p.ts >= 0 && Date.now() - p.ts < PENDING_SCAN_MAX_AGE_MS &&
+      ['protector', 'connector', 'performer', 'disconnector'].includes(p.archetype) &&
+      p.scores && ['openness', 'awareness', 'guard', 'reciprocity'].every(key => Number.isFinite(p.scores[key]) && p.scores[key] >= 0 && p.scores[key] <= 100) &&
+      Array.isArray(p.answers) && p.answers.length === 11 &&
+      p.answers.every(answer => Number.isInteger(answer) && answer >= 1 && answer <= 7)) {
+      if (!sessionStorage.getItem(PENDING_SCAN_KEY)) sessionStorage.setItem(PENDING_SCAN_KEY, raw);
+      localStorage.removeItem(PENDING_SCAN_KEY);
+      return p;
+    }
   } catch {}
+  clearPendingScan();
   return null;
 }
-function clearPendingScan() { try { localStorage.removeItem(PENDING_SCAN_KEY); } catch {} }
-function isTestEntry() {
-  return new URLSearchParams(window.location.search).get('src') === 'test' || window.location.hash === '#test';
+function savePendingScan() {
+  try {
+    sessionStorage.setItem(PENDING_SCAN_KEY, JSON.stringify({ scores: localScores, archetype: localArchetype, answers: scanAnswers.slice(), ts: Date.now() }));
+    localStorage.removeItem(PENDING_SCAN_KEY);
+    return true;
+  } catch { return false; }
+}
+function clearPendingScan() {
+  try { sessionStorage.removeItem(PENDING_SCAN_KEY); } catch {}
+  try { localStorage.removeItem(PENDING_SCAN_KEY); } catch {}
 }
 
 let state = null;
@@ -406,10 +424,10 @@ const questions = [
     category:'Support Seeking', axis:'openness', reverse:false },
   { text:'I can usually identify exactly what I\'m feeling.',
     category:'Emotional Awareness', axis:'awareness', reverse:false },
-  { text:'I often wish I had someone I could be completely honest with.',
-    category:'Connection Need', axis:'awareness', reverse:true },
-  { text:'I sometimes feel alone even when I\'m surrounded by people.',
-    category:'Loneliness Recognition', axis:'awareness', reverse:true },
+  { text:'I notice when I feel lonely, even when I\'m surrounded by people.',
+    category:'Loneliness Recognition', axis:'awareness', reverse:false },
+  { text:'I can tell when I need someone I can be completely honest with.',
+    category:'Connection Awareness', axis:'awareness', reverse:false },
   { text:'I worry people will judge me if they see the real me.',
     category:'Fear of Judgment', axis:'guard', reverse:false },
   { text:'I keep my feelings to myself even when they\'re overwhelming.',
@@ -746,6 +764,14 @@ function go(id) {
     showAppError();
     return;
   }
+  if (id === 's-scan-intro') {
+    const guestConfirm = document.getElementById('guest-scan-confirm');
+    if (guestConfirm) guestConfirm.style.display = state ? 'none' : 'flex';
+    const archiveLink = document.getElementById('scan-archive-link');
+    if (archiveLink) archiveLink.style.display = state ? '' : 'none';
+    const retry = document.getElementById('retry-pending-scan');
+    if (retry) retry.style.display = state && getPendingScan() ? '' : 'none';
+  }
   if (prev === el) { syncAetherBackground(el); return; }
   if (prev) prev.classList.remove('active','entering');
   if (id !== 's-waiting' && id !== 's-journal') clearInterval(matchPollTimer);
@@ -793,7 +819,10 @@ function openAuthScreen(id) {
 }
 
 function startSignup() {
-  openAuthScreen('s-signup');
+  if (state) { routeToScreen(); return; }
+  if (getPendingScan()) { openAuthScreen('s-signup'); return; }
+  showAppShell();
+  go('s-scan-intro');
 }
 
 function startLogin() {
@@ -968,7 +997,8 @@ function startApp() {
   if (navLinks) navLinks.classList.remove('open');
   // If already logged in, route to correct screen
   if (state) { routeToScreen(); }
-  else { go('s-signup'); }
+  else if (getPendingScan()) { renderScanPartial(); go('s-scan-partial'); }
+  else { go('s-scan-intro'); }
   window.scrollTo(0, 0);
   setTimeout(showInstallPromptIfUseful, 900);
 }
@@ -1085,7 +1115,8 @@ function bindStaticUi() {
   document.querySelectorAll('[data-auth-target]').forEach(function(link) {
     link.addEventListener('click', function(e) {
       e.preventDefault();
-      openAuthScreen(link.getAttribute('data-auth-target'));
+      if (link.getAttribute('data-auth-target') === 's-signup') startSignup();
+      else openAuthScreen(link.getAttribute('data-auth-target'));
       const navLinks = document.querySelector('.site-nav-links');
       const menuBtn = document.getElementById('siteMenuBtn');
       if (navLinks) navLinks.classList.remove('open');
@@ -1172,13 +1203,7 @@ var aetherBackground = null;
   }
   if (!loggedIn) {
     if (window.location.pathname.indexOf('/app') === 0) {
-      if (isTestEntry()) {
-        showAppShell();
-        if (getPendingScan()) { renderScanPartial(); go('s-scan-partial'); }
-        else { mpTrack('LandingPageView'); go('s-scan-intro'); }
-      } else {
-        startApp();
-      }
+      startApp();
     }
     consumeVerificationQueryNotice();
     return;
@@ -1640,6 +1665,15 @@ injectUrgentHelpButton();
 // SCAN
 // ═══════════════════════════════════════
 function startScan() {
+  if (!state) {
+    const ageConfirm = document.getElementById('guest-scan-age');
+    if (!ageConfirm || !ageConfirm.checked) {
+      toast('Please confirm that you are 18 or older before starting.');
+      if (ageConfirm) ageConfirm.focus();
+      return;
+    }
+    clearPendingScan();
+  }
   scanIndex = 0;
   scanAnswers = Array(questions.length).fill(null);
   renderScan(); go('s-scan');
@@ -1723,7 +1757,7 @@ function calculateScoresLocal() {
   const a = counts.awareness ? Math.round((totals.awareness / counts.awareness) * 100) : 50;
   const g = counts.guard ? Math.round((totals.guard / counts.guard) * 100) : 50;
   const r = counts.reciprocity ? Math.round((totals.reciprocity / counts.reciprocity) * 100) : 50;
-  localScores = { openness:o, awareness:a, guard:g, reciprocity:r };
+  localScores = { openness:o, awareness:a, guard:g, reciprocity:r, version:'ecp11-2' };
 
   // Map to archetype based on dominant pattern
   // High guard + low openness → protector (pulls back to protect)
@@ -1741,7 +1775,10 @@ async function submitScan() {
   calculateScoresLocal();
   mpTrack('TestCompleted');
   if (!state || !state.user || !state.user.id) {
-    try { localStorage.setItem(PENDING_SCAN_KEY, JSON.stringify({ scores: localScores, archetype: localArchetype, answers: scanAnswers.slice(), ts: Date.now() })); } catch {}
+    if (!savePendingScan()) {
+      toast('Your browser could not keep this result. Please allow session storage and try again.');
+      return;
+    }
     renderScanPartial();
     go('s-scan-partial');
     return;
@@ -1788,6 +1825,7 @@ function renderScanPartial() {
   const pending = getPendingScan();
   const archKey = (pending && pending.archetype) || localArchetype;
   const info = partialArchetypeCopy[archKey] || partialArchetypeCopy.connector;
+  const scores = (pending && pending.scores) || localScores;
   const el = document.getElementById('s-scan-partial');
   if (!el) return;
   el.innerHTML = `
@@ -1795,34 +1833,49 @@ function renderScanPartial() {
       <div class="moon-base" style="width:72px;height:72px;box-shadow:0 0 50px rgba(201,169,110,.55),0 0 100px rgba(201,169,110,.2);animation:float 5s ease-in-out infinite;margin-bottom:24px;"></div>
       <h1 style="font-family:'Playfair Display',serif;font-size:30px;font-weight:400;line-height:1.15;margin-bottom:14px;">You may be a<br/><em style="font-style:italic;background:linear-gradient(135deg,var(--rose-l),var(--gold-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${info.label} ${info.moon}</em></h1>
       <p style="font-family:'Lora',serif;font-style:italic;font-size:14px;color:var(--ink-m);line-height:1.8;margin-bottom:26px;max-width:320px;">${info.line}</p>
-      <div class="scan-partial-locked">
-        <div class="scan-partial-lock-row"><span>🔒</span><span class="scan-lock-blur">Your strengths</span></div>
-        <div class="scan-partial-lock-row"><span>🔒</span><span class="scan-lock-blur">Your growth areas</span></div>
-        <div class="scan-partial-lock-row"><span>🔒</span><span class="scan-lock-blur">Your matching pattern</span></div>
+      <div class="scan-partial-locked" aria-label="Your reflection scores">
+        ${[['Openness', scores.openness], ['Awareness', scores.awareness], ['Guard', scores.guard], ['Listening', scores.reciprocity]].map(([label, score]) => `<div class="scan-partial-lock-row"><span>${label}</span><strong>${score}%</strong></div>`).join('')}
       </div>
-      <p style="font-family:'Playfair Display',serif;font-size:16px;color:var(--gold-l);margin:22px 0 14px;">Your full result is ready.</p>
-      <button class="btn" onclick="mpTrack('SignupStarted');startSignup()">Unlock my full result</button>
-      <p style="font-size:10px;color:var(--ink-s);margin-top:14px;">Free. Takes ten seconds.</p>
-      <p style="font-size:10px;color:var(--ink-s);margin-top:6px;font-style:italic;">This is a pattern, not a label. Patterns shift.</p>
+      <p style="font-size:11px;color:var(--ink-s);line-height:1.6;margin:20px 0 14px;max-width:320px;">This reflects your answers today. It is not a diagnosis or a fixed label. Your answers stay in this browser tab until you choose to create an account.</p>
+      <button class="btn" onclick="mpTrack('SignupStarted');startSignup()">Start my 21-day journey</button>
+      <button class="btn-ghost" onclick="go('s-scan-intro')" style="margin-top:10px;">Take the scan again</button>
+      <p style="font-size:10px;color:var(--ink-s);margin-top:14px;">Free · Your result will be saved when you sign up</p>
     </div>`;
   mpTrack('ResultViewed');
 }
 
 async function completePendingScanAfterAuth() {
   const pending = getPendingScan();
-  if (!pending) return false;
+  if (!pending || !state || !state.user) return false;
+  if (hasCompletedScan(state.user)) { clearPendingScan(); routeToScreen(); return true; }
+  if (needsGoogleProfileBasics(state.user)) return false;
   try {
     const { matched } = await api('POST', '/scan', { scores: pending.scores, archetype: pending.archetype, answers: pending.answers });
+    const previousState = state;
+    if (!await loadState()) {
+      state = previousState;
+      throw new Error('Could not reload your saved result.');
+    }
     clearPendingScan();
     mpTrack('CompleteRegistration', true);
-    await loadState();
     renderArchetypeReveal(matched);
     go('s-archetype-reveal');
     return true;
   } catch (e) {
-    clearPendingScan();
+    const previousState = state;
+    if (!await loadState()) state = previousState;
+    if (state && hasCompletedScan(state.user)) {
+      clearPendingScan();
+      routeToScreen();
+      return true;
+    }
+    console.warn('Could not save the pre-signup scan:', e);
     return false;
   }
+}
+
+async function retryPendingScan() {
+  if (!await completePendingScanAfterAuth()) toast('Your result is still saved in this tab. Please try again.');
 }
 
 function renderConstellationCorners() {
@@ -1862,7 +1915,7 @@ function renderResult(matched) {
     </div>
     <div style="padding:0 24px;margin-bottom:14px;"><div style="font-family:'Lora',serif;font-style:italic;font-size:13.5px;color:var(--ink-m);line-height:1.85;text-align:center;">${arch.description}</div></div>
     <div class="result-card">
-      <div style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:14px;">ECP-11 · Emotional Connection Profile</div>
+      <div style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);opacity:.7;margin-bottom:14px;">11-question connection reflection</div>
       <div class="trait-row">
         <div class="trait"><div class="trait-top"><span class="trait-name">Openness</span><span class="trait-pct">${s.openness}%</span></div><div class="trait-bar"><div class="trait-fill" style="width:0%" data-w="${s.openness}%"></div></div></div>
         <div class="trait"><div class="trait-top"><span class="trait-name">Awareness</span><span class="trait-pct">${s.awareness}%</span></div><div class="trait-bar"><div class="trait-fill" style="width:0%" data-w="${s.awareness}%"></div></div></div>
