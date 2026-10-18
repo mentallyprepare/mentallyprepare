@@ -40,6 +40,7 @@ const context = {
 vm.createContext(context);
 loadFunction('renderUsersTable', context);
 loadFunction('renderReengagement', context);
+loadFunction('renderFreshStartPeople', context);
 
 context.renderUsersTable([{ id: 1, name: malicious, college: 'College', year: '1st', created_at: 'today' }]);
 const userHtml = element('users-tbody').innerHTML;
@@ -53,4 +54,17 @@ assert.match(reHtml, /onclick="copyText\(&quot;Alice/);
 assert.doesNotMatch(reHtml, /onclick="copyText\("/);
 assert.doesNotMatch(reHtml, /onmouseover="alert\(1\)"/);
 
-console.log('2/2 admin rendering tests passed.');
+context.freshProgressPeople = [
+  { name: malicious, email: 'alice@example.test', stage: 'test_completed' },
+  { name: 'Bob', email: 'bob@example.test', stage: 'not_seen' }
+];
+element('fresh-progress-filter').value = 'signed_in';
+element('fresh-progress-search').value = '';
+context.renderFreshStartPeople();
+const progressHtml = element('fresh-progress-list').innerHTML;
+assert.match(progressHtml, /Test completed/);
+assert.doesNotMatch(progressHtml, /bob@example\.test/);
+assert.doesNotMatch(progressHtml, /onmouseover="alert\(1\)"/);
+assert.ok(html.indexOf('Fresh-start campaign') < html.indexOf('Partner Unseal Debug'), 'campaign appears before debug data');
+
+console.log('3/3 admin rendering tests passed.');

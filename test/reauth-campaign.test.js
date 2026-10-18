@@ -9,7 +9,7 @@ const { signInAgainEmail } = require('../email-templates');
 async function main() {
   const db = new Database(':memory:');
   db.exec(`
-    CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, account_status TEXT DEFAULT 'active', auth_version INTEGER DEFAULT 0, auth_reset_at INTEGER DEFAULT 0, archetype TEXT, scores TEXT, switch_count INTEGER DEFAULT 0, last_active_date TEXT, push_preferences TEXT);
+    CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, college TEXT, year TEXT, created_at TEXT DEFAULT (datetime('now')), account_status TEXT DEFAULT 'active', auth_version INTEGER DEFAULT 0, auth_reset_at INTEGER DEFAULT 0, archetype TEXT, scores TEXT, switch_count INTEGER DEFAULT 0, last_active_date TEXT, last_login_at TEXT, push_preferences TEXT);
     CREATE TABLE analytics_events (id INTEGER PRIMARY KEY, user_id INTEGER, event_name TEXT, created_at TEXT DEFAULT (datetime('now')));
     CREATE TABLE matches (id INTEGER PRIMARY KEY, user1_id INTEGER, user2_id INTEGER, started_at TEXT, archived_at TEXT);
     CREATE TABLE entries (id INTEGER PRIMARY KEY, user_id INTEGER, match_id INTEGER, day INTEGER, text TEXT, mood TEXT, prompt TEXT, created_at TEXT);
@@ -72,6 +72,12 @@ async function main() {
     assert.strictEqual((await started.json()).queued, 1);
     assert.deepStrictEqual(db.prepare('SELECT id, auth_version FROM users ORDER BY id').all(), [{ id: 1, auth_version: 1 }, { id: 2, auth_version: 1 }, { id: 3, auth_version: 0 }]);
     assert.ok(db.prepare('SELECT archived_at FROM matches WHERE id = 1').get().archived_at);
+    const activeMatchDebug = await fetch(`${base}/admin/matches-debug`).then(r => r.json());
+    assert.deepStrictEqual(activeMatchDebug.matches, [], 'archived partners stay out of active match diagnostics');
+    const reengagement = await fetch(`${base}/api/admin/reengagement-users`).then(r => r.json());
+    const restartedUser = reengagement.users.find(user => user.id === 1);
+    assert.strictEqual(restartedUser.matchId, null, 'archived partner is not an active match');
+    assert.strictEqual(restartedUser.totalEntries, 0, 'archived journal entries are not current activity');
     assert.strictEqual(db.prepare('SELECT text FROM entries WHERE id = 1').get().text, 'private note', 'matched writing preserved');
     assert.strictEqual(db.prepare('SELECT COUNT(*) AS n FROM waiting_entries').get().n, 0);
     assert.strictEqual(JSON.parse(db.prepare("SELECT content_json FROM archived_user_records WHERE source = 'waiting'").get().content_json).text, 'older waiting note');
