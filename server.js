@@ -1565,7 +1565,7 @@ const baseContentSecurityDirectives = {
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       connectSrc: ["'self'", "https://api.razorpay.com", "https://lumberjack-cx.razorpay.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com", "https://www.googleapis.com", "https://*.googleapis.com", "https://*.firebaseapp.com"],
-      imgSrc: ["'self'", "data:", "https://lh3.googleusercontent.com"],
+      imgSrc: ["'self'", "data:", "https://lh3.googleusercontent.com", "https://r2.direasy-multi-tenant.focusapps.app", "https://launchigniter.com"],
       frameSrc: ["'self'", "https://api.razorpay.com", "https://checkout.razorpay.com", "https://accounts.google.com", "https://*.firebaseapp.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"]

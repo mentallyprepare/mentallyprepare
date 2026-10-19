@@ -342,6 +342,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 .footer-links{display:flex;gap:18px}
 .footer-links a{transition:color .2s}
 .footer-links a:hover{color:var(--ink)}
+.footer-badges{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.footer-badge{display:inline-flex;align-items:center;transition:opacity .2s,transform .2s}
+.footer-badge:hover{opacity:.86;transform:translateY(-1px)}
+.footer-badge img{display:block;width:auto;max-width:100%}
 
 /* ===== RESPONSIVE ===== */
 @media(max-width:900px){
@@ -747,6 +751,14 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 <footer class="footer">
   <div class="footer-inner">
     <div>Mentally Prepare &middot; 2026</div>
+    <div class="footer-badges">
+      <a class="footer-badge" href="https://tinyhunt.dev/projects/mentally-prepare?utm_source=badge" target="_blank" rel="noopener noreferrer" aria-label="Mentally Prepare featured on TinyHunt">
+        <img src="https://r2.direasy-multi-tenant.focusapps.app/uploads/616d0b1a-3979-4b8c-94d1-b4f1fedd3ead/1783232956807/nynif7cioz/featured-on-light.svg" alt="Featured on TinyHunt" width="176" height="44" loading="lazy">
+      </a>
+      <a class="footer-badge" href="https://launchigniter.com/product/mentally-prepare?ref=badge-mentally-prepare" target="_blank" rel="noopener noreferrer" aria-label="Mentally Prepare featured on LaunchIgniter">
+        <img src="https://launchigniter.com/api/badge/mentally-prepare?theme=light" alt="Featured on LaunchIgniter" width="212" height="55" loading="lazy">
+      </a>
+    </div>
     <div class="footer-links">
       <a href="/blog">Blog</a>
       <a href="/about">About</a>
