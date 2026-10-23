@@ -397,6 +397,10 @@ function registerAdminRoutes(app, deps) {
     res.sendFile(path.join(rootDir, 'public', 'admin.html'));
   });
 
+  app.get('/admin/reminders', (req, res) => {
+    res.sendFile(path.join(rootDir, 'public', 'admin-reminders.html'));
+  });
+
   app.get('/admin/reports', authLimiter, requireAdmin, (req, res) => {
     try {
       const rows = db.prepare(`
