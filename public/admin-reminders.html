@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Past-user reminders · Mentally Prepare</title>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#0d0920;color:#f8f2ff;font:16px/1.6 Arial,sans-serif;padding:24px}main{max-width:640px;margin:8vh auto;background:#171127;border:1px solid #594271;padding:clamp(24px,5vw,42px)}h1{font:38px Georgia,serif;margin:0 0 12px}p{color:#d1c3dc}a{color:#ecb4c9}button{background:#aa739c;border:0;color:#fff;padding:14px 20px;font:inherit;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}.small{font-size:13px;color:#b9aac6}.counts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:24px 0}.counts div{padding:16px;border:1px solid #594271}.counts strong{display:block;font-size:27px}#message{min-height:24px}
+  </style>
+</head>
+<body><main>
+  <a href="/admin">← Founder dashboard</a>
+  <h1>Past-user reminders</h1>
+  <p>One email to earlier fresh-start recipients who have not signed in again. People who disabled email reminders are excluded.</p>
+  <div class="counts" aria-live="polite"><div><strong id="eligible">–</strong>Eligible now</div><div><strong id="sent">–</strong>Accepted by provider</div><div><strong id="queued">–</strong>Queued</div><div><strong id="failed">–</strong>Failed or unconfirmed</div></div>
+  <p id="message" role="status">Checking...</p>
+  <button id="send" type="button" disabled>Send sign-in reminders</button>
+  <p class="small">The mail provider sends gradually and pauses at its limit. Each person can receive this follow-up only once. “Accepted” does not prove inbox delivery.</p>
+</main><script>
+async function request(url, options){const response=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.error||'Request failed');return body}
+async function refresh(){const button=document.getElementById('send'),message=document.getElementById('message');try{const data=await request('/admin/reauth-campaign/follow-up/preview');const statuses=Object.fromEntries((data.statuses||[]).map(row=>[row.status,row.count]));document.getElementById('eligible').textContent=data.eligible;document.getElementById('sent').textContent=statuses.sent||0;document.getElementById('queued').textContent=statuses.pending||0;document.getElementById('failed').textContent=(statuses.failed||0)+(statuses.uncertain||0);button.disabled=!data.canStart;button.textContent='Send one reminder to '+data.eligible+' eligible users';message.textContent=data.nextAttemptAt?'Provider paused until '+data.nextAttemptAt+' UTC.':data.eligible?'Ready to send.':'No eligible users remain.'}catch(error){button.disabled=true;message.textContent=error.message==='A named founder admin is required'?'Sign in to the Founder dashboard with your named admin account first.':error.message}}
+document.getElementById('send').addEventListener('click',async()=>{const button=document.getElementById('send'),message=document.getElementById('message');button.disabled=true;try{const result=await request('/admin/reauth-campaign/follow-up/start',{method:'POST',body:JSON.stringify({confirmation:'SEND FOLLOWUP'})});message.textContent=result.queued+' reminders queued. The provider is sending them gradually.';await refresh()}catch(error){message.textContent=error.message;await refresh()}});
+refresh();setInterval(refresh,15000);
+</script></body></html>
