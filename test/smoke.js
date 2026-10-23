@@ -159,7 +159,7 @@ async function run() {
       'mentally-prepare-web-production.up.railway.app'
     ]) {
       const redirect = await request('GET', '/app?screen=s-login', null, { Host: host });
-      assert.strictEqual(redirect.status, 302, `${host} should redirect before showing login`);
+      assert.strictEqual(redirect.status, host === 'www.mymentallyprepare.com' ? 301 : 302, `${host} should redirect before showing login`);
       assert.strictEqual(redirect.headers.location, 'https://mymentallyprepare.com/app?screen=s-login');
     }
     const canonical = await request('GET', '/app?screen=s-login', null, { Host: 'mymentallyprepare.com' });
@@ -873,6 +873,13 @@ async function run() {
     assert.ok(missing.raw.includes('href="/blog"'), '404 offers a way back to content');
     ok('Unknown public URLs return a useful, noindex 404');
   } catch (e) { fail('Unknown public URLs return a useful, noindex 404', e); }
+
+  try {
+    const www = await request('GET', '/blog?source=seo', null, { host: 'www.mymentallyprepare.com' });
+    assert.strictEqual(www.status, 301);
+    assert.strictEqual(www.headers.location, 'https://mymentallyprepare.com/blog?source=seo');
+    ok('www page requests redirect to the canonical host');
+  } catch (e) { fail('www page requests redirect to the canonical host', e); }
 
   // Google Analytics can load only on public pages after the local consent script allows it.
   try {
