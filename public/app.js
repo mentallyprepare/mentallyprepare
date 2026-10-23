@@ -1838,6 +1838,7 @@ function renderScanPartial() {
       </div>
       <p style="font-size:11px;color:var(--ink-s);line-height:1.6;margin:20px 0 14px;max-width:320px;">This reflects your answers today. It is not a diagnosis or a fixed label. Your answers stay in this browser tab until you choose to create an account.</p>
       <button class="btn" onclick="mpTrack('SignupStarted');startSignup()">Start my 21-day journey</button>
+      <button class="share-btn" onclick="shareArchetype()" style="margin-top:12px;">Share my result</button>
       <button class="btn-ghost" onclick="go('s-scan-intro')" style="margin-top:10px;">Take the scan again</button>
       <p style="font-size:10px;color:var(--ink-s);margin-top:14px;">Free · Your result will be saved when you sign up</p>
     </div>`;
@@ -3612,12 +3613,19 @@ function getStreakNudge(streak) {
 }
 
 function shareArchetype() {
-  if (!state) return;
-  const arch = archetypes[state.user.archetype];
-  const text = `I got ${arch.name} on the ECP-11. mymentallyprepare.com`;
-  if (navigator.share) { navigator.share({ title: 'My Connection Profile', text }).catch(() => {}); }
-  else if (navigator.clipboard) { navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard ✓')); }
-  else { toast('Sharing not supported'); }
+  const pending = !state && getPendingScan();
+  const archKey = state && state.user ? state.user.archetype : pending && pending.archetype;
+  const info = partialArchetypeCopy[archKey];
+  if (!info) return;
+  const url = `${location.origin}/app`;
+  const text = `I got ${info.label} on Mentally Prepare's 3-minute reflection scan. It isn't a diagnosis or a fixed label. Take the free 18+ scan too:`;
+  if (navigator.share) {
+    navigator.share({ title: 'Mentally Prepare reflection scan', text, url }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(`${text} ${url}`).then(() => toast('Share link copied')).catch(() => toast('Could not copy the link'));
+  } else {
+    toast('Sharing is not supported in this browser');
+  }
 }
 
 function exportEntries() {
