@@ -1685,11 +1685,17 @@ function setStaticCacheHeaders(res, filePath) {
 
 app.use(compression());
 
+// Once Railway serves the www domain with a valid certificate, keep one
+// canonical public host for search and shared links. Do not redirect writes.
+app.use((req, res, next) => {
+  if (!['GET', 'HEAD'].includes(req.method) || getRequestHost(req) !== 'www.mymentallyprepare.com') return next();
+  return res.redirect(301, 'https://mymentallyprepare.com' + req.originalUrl);
+});
+
 // OAuth on the public app must start on the domain authorised in Firebase.
 // Railway and www addresses remain useful for health checks and assets, but
 // showing an interactive login there leads to auth/unauthorized-domain.
 const NON_CANONICAL_AUTH_HOSTS = new Set([
-  'www.mymentallyprepare.com',
   'mentallyprepare-production.up.railway.app',
   'mentally-prepare-web-production.up.railway.app'
 ]);
@@ -3506,7 +3512,8 @@ app.use('/api', (req, res) => {
 
 // 404 catch-all
 app.use((req, res) => {
-  res.status(404).sendFile(path.join(__dirname, 'public', 'app.html'));
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 // Silent Room: hard-delete expired lines daily at 3am IST (21:30 UTC)

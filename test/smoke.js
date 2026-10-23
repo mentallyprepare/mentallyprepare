@@ -159,7 +159,7 @@ async function run() {
       'mentally-prepare-web-production.up.railway.app'
     ]) {
       const redirect = await request('GET', '/app?screen=s-login', null, { Host: host });
-      assert.strictEqual(redirect.status, 302, `${host} should redirect before showing login`);
+      assert.strictEqual(redirect.status, host === 'www.mymentallyprepare.com' ? 301 : 302, `${host} should redirect before showing login`);
       assert.strictEqual(redirect.headers.location, 'https://mymentallyprepare.com/app?screen=s-login');
     }
     const canonical = await request('GET', '/app?screen=s-login', null, { Host: 'mymentallyprepare.com' });
@@ -798,6 +798,10 @@ async function run() {
     const appR = await request('GET', '/app');
     assert.match(appR.headers['x-robots-tag'] || '', /noindex/, '/app has noindex');
     assert.match(appR.raw, /<meta name="robots" content="noindex, nofollow"\/>/, '/app HTML has noindex');
+    for (const route of ['/login', '/signup', '/forgot', '/onboarding', '/scan', '/room']) {
+      const alias = await request('GET', route);
+      assert.match(alias.headers['x-robots-tag'] || '', /noindex/, `${route} has noindex`);
+    }
     ok('X-Robots-Tag headers correct');
   } catch (e) { fail('X-Robots-Tag headers correct', e); }
 
@@ -853,10 +857,29 @@ async function run() {
     const r = await request('GET', '/robots.txt');
     assert.strictEqual(r.status, 200);
     assert.ok(!/^Disallow: \/app(?:\/|$)/m.test(r.raw), 'robots.txt permits /app and /app/ to be crawled');
+    for (const route of ['/login', '/signup', '/forgot', '/onboarding', '/scan', '/room']) {
+      assert.ok(!r.raw.includes(`Disallow: ${route}`), `robots.txt permits ${route} to be crawled for noindex`);
+    }
     assert.ok(r.raw.includes('Disallow: /admin'), 'robots.txt blocks /admin');
     assert.ok(r.raw.includes('Disallow: /api/'), 'robots.txt blocks /api');
     ok('/robots.txt permits /app and blocks /admin and /api');
   } catch (e) { fail('/robots.txt permits /app and blocks /admin and /api', e); }
+
+  try {
+    const missing = await request('GET', '/missing-page-seo-check');
+    assert.strictEqual(missing.status, 404);
+    assert.match(missing.headers['x-robots-tag'] || '', /noindex/);
+    assert.ok(missing.raw.includes('This page isn\'t here.'), 'missing page has a useful 404');
+    assert.ok(missing.raw.includes('href="/blog"'), '404 offers a way back to content');
+    ok('Unknown public URLs return a useful, noindex 404');
+  } catch (e) { fail('Unknown public URLs return a useful, noindex 404', e); }
+
+  try {
+    const www = await request('GET', '/blog?source=seo', null, { host: 'www.mymentallyprepare.com' });
+    assert.strictEqual(www.status, 301);
+    assert.strictEqual(www.headers.location, 'https://mymentallyprepare.com/blog?source=seo');
+    ok('www page requests redirect to the canonical host');
+  } catch (e) { fail('www page requests redirect to the canonical host', e); }
 
   // Google Analytics can load only on public pages after the local consent script allows it.
   try {
