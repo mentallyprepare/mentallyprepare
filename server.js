@@ -3506,7 +3506,8 @@ app.use('/api', (req, res) => {
 
 // 404 catch-all
 app.use((req, res) => {
-  res.status(404).sendFile(path.join(__dirname, 'public', 'app.html'));
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 // Silent Room: hard-delete expired lines daily at 3am IST (21:30 UTC)

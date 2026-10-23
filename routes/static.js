@@ -45,15 +45,18 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
   });
 
   app.get('/app', (req, res) => {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
     res.sendFile(path.join(rootDir, 'public', 'app.html'));
   });
 
   app.get('/app/*', (req, res) => {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
     res.sendFile(path.join(rootDir, 'public', 'app.html'));
   });
 
   ['/signup', '/login', '/forgot', '/onboarding', '/scan', '/room'].forEach((route) => {
     app.get(route, (req, res) => {
+      res.set('X-Robots-Tag', 'noindex, nofollow');
       res.sendFile(path.join(rootDir, 'public', 'app.html'));
     });
   });
@@ -81,16 +84,10 @@ ${blogUrls}
     res.send([
       'User-agent: *',
       'Allow: /',
-      // Google must crawl /app to read its noindex response and remove the URL from search.
+      // Private app routes remain crawlable so search engines can read their noindex response.
       'Disallow: /admin',
       'Disallow: /admin/',
       'Disallow: /api/',
-      'Disallow: /signup',
-      'Disallow: /login',
-      'Disallow: /forgot',
-      'Disallow: /onboarding',
-      'Disallow: /scan',
-      'Disallow: /room',
       '',
       `Sitemap: ${baseUrl}/sitemap.xml`
     ].join('\n'));
