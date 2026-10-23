@@ -29,6 +29,7 @@ function registerAdminRoutes(app, deps) {
     attemptMatch,
     broadcastPush,
     sendSignInAgain,
+    sendSignInFollowUp,
     emailServiceEnabled
   } = deps;
 
@@ -242,6 +243,85 @@ function registerAdminRoutes(app, deps) {
   // deliveries are left for review rather than silently sent twice.
   const reauthTimer = setInterval(() => processReauthEmail().catch(error => console.error('Sign-in campaign worker failed:', error)), 1800);
   if (reauthTimer.unref) reauthTimer.unref();
+
+  const followUpEligibleSql = `
+    SELECT d.campaign_id, d.user_id, d.email, d.name
+    FROM reauth_campaign_deliveries d
+    JOIN users u ON u.id = d.user_id
+    WHERE d.campaign_id = (SELECT MAX(id) FROM reauth_campaigns)
+      AND d.status = 'sent' AND d.attempted_at <= datetime('now', '-3 days')
+      AND COALESCE(u.account_status, 'active') != 'deleted'
+      AND CASE WHEN json_valid(u.push_preferences) THEN json_extract(u.push_preferences, '$.emailReminders') ELSE 0 END = 1
+      AND u.archetype IS NULL
+      AND (u.last_login_at IS NULL OR datetime(u.last_login_at) < datetime(u.auth_reset_at, 'unixepoch'))
+      AND NOT EXISTS (SELECT 1 FROM analytics_events e WHERE e.user_id = u.id AND e.event_name = 'login'
+        AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch'))
+      AND NOT EXISTS (SELECT 1 FROM reauth_followup_deliveries f WHERE f.user_id = u.id)
+    ORDER BY d.user_id`;
+  const followUpEligible = db.prepare(followUpEligibleSql);
+  const followUpStillEligible = db.prepare(`SELECT 1 FROM users u WHERE u.id = ?
+    AND COALESCE(u.account_status, 'active') != 'deleted'
+    AND CASE WHEN json_valid(u.push_preferences) THEN json_extract(u.push_preferences, '$.emailReminders') ELSE 0 END = 1
+    AND u.archetype IS NULL
+    AND (u.last_login_at IS NULL OR datetime(u.last_login_at) < datetime(u.auth_reset_at, 'unixepoch'))
+    AND NOT EXISTS (SELECT 1 FROM analytics_events e WHERE e.user_id = u.id AND e.event_name = 'login'
+      AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch'))`);
+  let sendingFollowUp = false;
+  async function processSignInFollowUp() {
+    if (sendingFollowUp || !emailServiceEnabled || typeof sendSignInFollowUp !== 'function') return;
+    db.prepare("UPDATE reauth_followup_deliveries SET status = 'uncertain' WHERE status = 'sending' AND attempted_at <= datetime('now', '-10 minutes')").run();
+    const delivery = db.prepare("SELECT * FROM reauth_followup_deliveries WHERE status = 'pending' ORDER BY user_id LIMIT 1").get();
+    if (!delivery || (delivery.next_attempt_at && delivery.next_attempt_at > sqliteUtc(new Date()))) return;
+    if (db.prepare("UPDATE reauth_followup_deliveries SET status = 'sending', attempted_at = datetime('now') WHERE user_id = ? AND status = 'pending'").run(delivery.user_id).changes !== 1) return;
+    sendingFollowUp = true;
+    try {
+      if (!followUpStillEligible.get(delivery.user_id)) {
+        db.prepare("UPDATE reauth_followup_deliveries SET status = 'skipped' WHERE user_id = ?").run(delivery.user_id);
+        return;
+      }
+      await sendSignInFollowUp(delivery.email, delivery.name);
+      db.prepare("UPDATE reauth_followup_deliveries SET status = 'sent' WHERE user_id = ?").run(delivery.user_id);
+    } catch (error) {
+      const pauseUntil = providerPauseUntil(error);
+      if (pauseUntil) {
+        db.prepare("UPDATE reauth_followup_deliveries SET status = 'pending', next_attempt_at = ? WHERE user_id = ?").run(pauseUntil, delivery.user_id);
+        console.warn(`Sign-in follow-up provider limit reached; queued delivery resumes after ${pauseUntil}.`);
+      } else {
+        db.prepare("UPDATE reauth_followup_deliveries SET status = 'failed' WHERE user_id = ?").run(delivery.user_id);
+        console.error('Sign-in follow-up delivery failed; review Founder dashboard.');
+      }
+    } finally {
+      sendingFollowUp = false;
+    }
+  }
+  const followUpTimer = setInterval(() => processSignInFollowUp().catch(error => console.error('Sign-in follow-up worker failed:', error)), 1800);
+  if (followUpTimer.unref) followUpTimer.unref();
+
+  app.get('/admin/reauth-campaign/follow-up/preview', authLimiter, requireAdmin, (req, res) => {
+    if (req.admin.role !== 'admin' || req.admin.legacy) return res.status(403).json({ error: 'A named founder admin is required' });
+    const eligible = followUpEligible.all();
+    const statuses = db.prepare('SELECT status, COUNT(*) AS count FROM reauth_followup_deliveries GROUP BY status').all();
+    const nextAttempt = db.prepare("SELECT next_attempt_at FROM reauth_followup_deliveries WHERE status = 'pending' AND next_attempt_at IS NOT NULL ORDER BY next_attempt_at DESC LIMIT 1").get();
+    res.json({ ok: true, eligible: eligible.length, statuses, nextAttemptAt: nextAttempt?.next_attempt_at || null,
+      canStart: eligible.length > 0 && !!emailServiceEnabled, subject: 'Your Mentally Prepare space is here' });
+  });
+
+  app.post('/admin/reauth-campaign/follow-up/start', authLimiter, requireAdmin, (req, res) => {
+    if (req.admin.role !== 'admin' || req.admin.legacy) return res.status(403).json({ error: 'A named founder admin is required' });
+    if (!emailServiceEnabled || typeof sendSignInFollowUp !== 'function') return res.status(503).json({ error: 'Email delivery is not configured' });
+    if (req.body?.confirmation !== 'SEND FOLLOWUP') return res.status(400).json({ error: 'Confirm SEND FOLLOWUP' });
+    const queued = db.transaction(() => {
+      const eligible = followUpEligible.all();
+      const insert = db.prepare('INSERT OR IGNORE INTO reauth_followup_deliveries (campaign_id, user_id, email, name) VALUES (?, ?, ?, ?)');
+      let count = 0;
+      for (const person of eligible) count += insert.run(person.campaign_id, person.user_id, person.email, person.name).changes;
+      return count;
+    })();
+    if (!queued) return res.status(409).json({ error: 'No eligible past users remain' });
+    logAdminAction(db, req, 'auth.followup_queued', { metadata: { queued } });
+    res.status(202).json({ ok: true, queued });
+    processSignInFollowUp().catch(error => console.error('Sign-in follow-up worker failed:', error));
+  });
 
   app.get('/admin/reauth-campaign/preview', authLimiter, requireAdmin, (req, res) => {
     if (req.admin.role !== 'admin' || req.admin.legacy) return res.status(403).json({ error: 'A named founder admin is required' });

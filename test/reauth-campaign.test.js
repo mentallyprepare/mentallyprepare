@@ -19,6 +19,7 @@ async function main() {
     CREATE TABLE archived_user_records (id INTEGER PRIMARY KEY, user_id INTEGER, source TEXT, content_json TEXT, archived_at TEXT DEFAULT (datetime('now')));
     CREATE TABLE reauth_campaigns (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT DEFAULT (datetime('now')), started_by TEXT, status TEXT DEFAULT 'sending', total INTEGER DEFAULT 0, sent INTEGER DEFAULT 0, failed INTEGER DEFAULT 0, pause_until TEXT);
     CREATE TABLE reauth_campaign_deliveries (campaign_id INTEGER, user_id INTEGER, email TEXT, name TEXT, status TEXT DEFAULT 'pending', attempted_at TEXT, PRIMARY KEY(campaign_id, user_id));
+    CREATE TABLE reauth_followup_deliveries (user_id INTEGER PRIMARY KEY, campaign_id INTEGER, email TEXT, name TEXT, status TEXT DEFAULT 'pending', attempted_at TEXT, next_attempt_at TEXT, created_at TEXT DEFAULT (datetime('now')));
     CREATE TABLE admin_audit (actor_admin_id INTEGER, actor_label TEXT, action TEXT, target_type TEXT, target_id TEXT, metadata TEXT);
   `);
   db.prepare('INSERT INTO users (id, name, email) VALUES (1, ?, ?)').run('<script>bad</script>', 'a@example.test');
@@ -30,13 +31,14 @@ async function main() {
   db.prepare("INSERT INTO waiting_entries (user_id, text) VALUES (2, 'older waiting note')").run();
 
   const delivered = [];
+  const followUps = [];
   let quotaHit = false;
   const app = express();
   app.use(express.json());
   const pass = (req, res, next) => next();
   const admin = (req, res, next) => { req.admin = { id: 1, email: 'founder@example.test', role: req.headers['x-role'] || 'admin', legacy: req.headers['x-legacy'] === '1' }; next(); };
   registerAdminRoutes(app, { db, rootDir: __dirname, authLimiter: pass, requireAdmin: admin,
-    emailServiceEnabled: true, sendSignInAgain: async (email, name) => {
+    emailServiceEnabled: true, sendSignInFollowUp: async (email, name) => followUps.push({ email, name }), sendSignInAgain: async (email, name) => {
       if (!quotaHit) {
         quotaHit = true;
         const error = new Error('Daily limit reached');
@@ -95,6 +97,16 @@ async function main() {
     const after = await fetch(`${base}/admin/reauth-campaign/preview`).then(r => r.json());
     assert.strictEqual(after.deliveries[0].status, 'sent');
     assert.strictEqual(after.canStart, false);
+    db.prepare("UPDATE reauth_campaign_deliveries SET attempted_at = datetime('now', '-4 days') WHERE user_id = 1").run();
+    const followUpPreview = await fetch(`${base}/admin/reauth-campaign/follow-up/preview`).then(r => r.json());
+    assert.strictEqual(followUpPreview.eligible, 1);
+    const followUpStart = await fetch(`${base}/admin/reauth-campaign/follow-up/start`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmation: 'SEND FOLLOWUP' }) });
+    assert.strictEqual(followUpStart.status, 202);
+    for (let i = 0; i < 120 && followUps.length < 1; i++) await new Promise(resolve => setTimeout(resolve, 20));
+    assert.deepStrictEqual(followUps, [{ email: 'a@example.test', name: '<script>bad</script>' }]);
+    assert.strictEqual(db.prepare('SELECT status FROM reauth_followup_deliveries WHERE user_id = 1').get().status, 'sent');
+    assert.strictEqual((await fetch(`${base}/admin/reauth-campaign/follow-up/preview`).then(r => r.json())).eligible, 0);
+    assert.strictEqual((await fetch(`${base}/admin/reauth-campaign/follow-up/start`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirmation: 'SEND FOLLOWUP' }) })).status, 409);
     const emptyProgress = await fetch(`${base}/admin/reauth-campaign/progress`).then(r => r.json());
     assert.deepStrictEqual(emptyProgress.counts, { invited: 1, signedIn: 0, testStarted: 0, testCompleted: 0 });
     const progressDenied = await fetch(`${base}/admin/reauth-campaign/progress`, { headers: { 'x-role': 'support' } });

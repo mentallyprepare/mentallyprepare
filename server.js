@@ -478,6 +478,17 @@ db.exec(`
     PRIMARY KEY (campaign_id, user_id)
   );
 
+  CREATE TABLE IF NOT EXISTS reauth_followup_deliveries (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    campaign_id INTEGER NOT NULL REFERENCES reauth_campaigns(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempted_at TEXT,
+    next_attempt_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS archived_user_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -3472,6 +3483,7 @@ registerAdminRoutes(app, {
   attemptMatch,
   broadcastPush,
   sendSignInAgain: require('./lib/email').sendSignInAgain,
+  sendSignInFollowUp: require('./lib/email').sendSignInFollowUp,
   emailServiceEnabled: require('./lib/smtp').smtpEnabled
 });
 
