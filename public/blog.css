@@ -1,3 +1,6 @@
+@font-face { font-family:'Inter'; font-style:normal; font-weight:400 600; font-display:swap; src:url('/fonts/inter-latin.woff2') format('woff2'); }
+@font-face { font-family:'Playfair Display'; font-style:normal; font-weight:400; font-display:swap; src:url('/fonts/playfair-display-latin.woff2') format('woff2'); }
+@font-face { font-family:'Playfair Display'; font-style:italic; font-weight:400; font-display:swap; src:url('/fonts/playfair-display-italic-latin.woff2') format('woff2'); }
 :root { --bg:#0d0b10; --ink:#f8f2ff; --ink-m:#c4b8d4; --ink-s:#8a7ea0; --rose-l:#e8a7b8; --gold:#c9a96e; --line:rgba(248,242,255,.08); }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--ink); line-height:1.8; -webkit-font-smoothing:antialiased; }
