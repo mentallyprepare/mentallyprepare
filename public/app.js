@@ -757,6 +757,21 @@ function setSiteNavCurrent(kind, target) {
   });
 }
 
+function getSharedReflectionKind(search) {
+  const params = new URLSearchParams(search || '');
+  if (params.get('from') !== 'reflection') return null;
+  const kind = params.get('kind');
+  return ['protector', 'connector', 'performer', 'disconnector'].includes(kind) ? kind : null;
+}
+
+function renderSharedReflectionInvite() {
+  const invite = document.getElementById('shared-reflection-invite');
+  if (!invite) return;
+  const kind = !state && getSharedReflectionKind(location.search);
+  invite.style.display = kind ? 'block' : 'none';
+  if (kind) invite.textContent = `Someone shared their ${kind.charAt(0).toUpperCase() + kind.slice(1)} reflection with you. Take the free scan to discover your own.`;
+}
+
 function go(id) {
   const prev = document.querySelector('.screen.active');
   const el = document.getElementById(id);
@@ -765,6 +780,7 @@ function go(id) {
     return;
   }
   if (id === 's-scan-intro') {
+    renderSharedReflectionInvite();
     const guestConfirm = document.getElementById('guest-scan-confirm');
     if (guestConfirm) guestConfirm.style.display = state ? 'none' : 'flex';
     const archiveLink = document.getElementById('scan-archive-link');
@@ -3655,7 +3671,7 @@ function shareArchetype() {
   const archKey = state && state.user ? state.user.archetype : pending && pending.archetype;
   const info = partialArchetypeCopy[archKey];
   if (!info) return;
-  const url = `${location.origin}/app`;
+  const url = `${location.origin}/app?from=reflection&kind=${encodeURIComponent(archKey)}`;
   const text = `I got ${info.label} on Mentally Prepare's 3-minute reflection scan. It isn't a diagnosis or a fixed label. Take the free 18+ scan too:`;
   if (navigator.share) {
     navigator.share({ title: 'Mentally Prepare reflection scan', text, url }).catch(() => {});

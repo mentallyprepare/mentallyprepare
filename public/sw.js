@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261025-return-write';
+const CACHE_NAME = 'mp-20261025-shared-reflection';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',
