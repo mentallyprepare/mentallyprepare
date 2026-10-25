@@ -348,7 +348,10 @@ function registerAdminRoutes(app, deps) {
         EXISTS(SELECT 1 FROM analytics_events e WHERE e.user_id = d.user_id AND e.event_name = 'scan_started'
           AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch')) AS scanStarted,
         EXISTS(SELECT 1 FROM analytics_events e WHERE e.user_id = d.user_id AND e.event_name = 'day_1_written'
-          AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch')) AS firstNote
+          AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch')) AS firstNote,
+        (SELECT COUNT(DISTINCT date(e.created_at, '+330 minutes')) FROM analytics_events e
+          WHERE e.user_id = d.user_id AND e.event_name IN ('day_1_written', 'day_written')
+          AND e.created_at >= datetime(u.auth_reset_at, 'unixepoch')) AS writingDays
       FROM reauth_campaign_deliveries d
       JOIN users u ON u.id = d.user_id
       WHERE d.campaign_id = ? ORDER BY d.user_id
@@ -356,12 +359,14 @@ function registerAdminRoutes(app, deps) {
     const people = rows.map(row => ({
       userId: row.userId, name: row.name, email: row.email, emailStatus: row.emailStatus,
       firstNote: !!row.firstNote,
+      writingDays: Number(row.writingDays || 0),
       stage: row.archetype ? 'test_completed' : row.scanStarted ? 'test_started' : row.firstNote ? 'first_note' : row.signedIn ? 'signed_in' : 'not_seen'
     }));
-    const counts = { invited: campaign.total, signedIn: 0, firstNote: 0, testStarted: 0, testCompleted: 0 };
+    const counts = { invited: campaign.total, signedIn: 0, firstNote: 0, wroteOnTwoDays: 0, testStarted: 0, testCompleted: 0 };
     for (const person of people) {
       if (person.stage !== 'not_seen') counts.signedIn++;
       if (person.firstNote) counts.firstNote++;
+      if (person.writingDays >= 2) counts.wroteOnTwoDays++;
       if (person.stage === 'test_started' || person.stage === 'test_completed') counts.testStarted++;
       if (person.stage === 'test_completed') counts.testCompleted++;
     }
