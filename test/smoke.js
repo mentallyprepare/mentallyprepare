@@ -297,6 +297,22 @@ async function run() {
     ok('Guest scan stays in the tab and expires after two hours');
   } catch (e) { fail('Guest scan stays in the tab and expires after two hours', e); }
 
+  try {
+    const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const context = { URLSearchParams, valid: null, invalid: null, ordinary: null };
+    vm.runInNewContext(`
+      ${extractFunction(appJs, 'getSharedReflectionKind')}
+      valid = getSharedReflectionKind('?from=reflection&kind=connector');
+      invalid = getSharedReflectionKind('?from=reflection&kind=%3Cscript%3E');
+      ordinary = getSharedReflectionKind('?kind=protector');
+    `, context);
+    assert.strictEqual(context.valid, 'connector');
+    assert.strictEqual(context.invalid, null, 'unknown shared labels are ignored');
+    assert.strictEqual(context.ordinary, null, 'ordinary app visits do not show a shared result');
+    assert.match(appJs, /\/app\?from=reflection&kind=\$\{encodeURIComponent\(archKey\)\}/, 'shared results link to a contextual guest scan');
+    ok('Shared reflection links are contextual and contain no user data');
+  } catch (e) { fail('Shared reflection links', e); }
+
 
   // 2. Register a user
   let cookie;
