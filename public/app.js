@@ -1300,7 +1300,9 @@ function hasCompletedScan(user) {
 function getPostAuthDestination(currentState) {
   if (!currentState || !currentState.user) return { screen: 's-splash' };
   if (needsGoogleProfileBasics(currentState.user)) return { screen: 's-profile', action: 'google-profile-basics' };
-  if (!hasCompletedScan(currentState.user)) return { screen: 's-scan-intro', action: 'scan' };
+  if (!hasCompletedScan(currentState.user)) return currentState.user.returningAfterReset
+    ? { screen: 's-return-write', action: 'return-write' }
+    : { screen: 's-scan-intro', action: 'scan' };
   if (!currentState.match) return { screen: 's-waiting', action: 'waiting' };
   if (Number(currentState.match.day) >= 21) return { screen: 's-reveal-wait', action: 'reveal' };
   const entries = Array.isArray(currentState.entries) ? currentState.entries : [];
@@ -1528,7 +1530,8 @@ function routeToScreen() {
   if (state && state.user && archetypes[state.user.archetype]) clearPendingScan();
   const destination = getPostAuthDestination(state);
   if (destination.action === 'google-profile-basics') { renderGoogleProfileBasics(); go(destination.screen); return; }
-  if (destination.action === 'scan') {
+  if (destination.action === 'return-write' && !getPendingScan()) { renderReturnWrite(); go(destination.screen); return; }
+  if (destination.action === 'scan' || destination.action === 'return-write') {
     if (getPendingScan()) {
       completePendingScanAfterAuth().then(function(done) {
         if (!done) { injectVerificationPendingNotice('s-scan-intro'); go('s-scan-intro'); }
@@ -1545,6 +1548,41 @@ function routeToScreen() {
   if (destination.action === 'sealed') { renderSealed(); go(destination.screen); return; }
   if (destination.action === 'journal') { renderJournal(); go(destination.screen); return; }
   go(destination.screen);
+}
+
+function renderReturnWrite() {
+  const area = document.getElementById('return-write-text');
+  const status = document.getElementById('return-write-status');
+  const saved = state && state.waitingInfo && state.waitingInfo.savedEntry || '';
+  if (area) area.value = saved;
+  if (status) status.textContent = saved ? 'Your note is saved. You can edit it or take the scan when ready.' : '';
+}
+
+async function saveReturnWrite() {
+  const area = document.getElementById('return-write-text');
+  const status = document.getElementById('return-write-status');
+  const button = document.getElementById('return-write-save');
+  const note = area && area.value.trim();
+  if (!note) { if (status) status.textContent = 'Write a few words first.'; return; }
+  let piiConfirmed = false;
+  if (detectClientPii(note)) {
+    piiConfirmed = confirm('This may reveal who you are to a future anonymous partner. Please remove names or contact details. Continue only if you understand the risk.');
+    if (!piiConfirmed) return;
+  }
+  if (button) button.disabled = true;
+  if (status) status.textContent = 'Saving your note…';
+  try {
+    const result = await api('POST', '/waiting-entry', {
+      text: note, mood: '🌓', selectedPrompt: 'What is one thing on your mind today?', piiConfirmed
+    });
+    if (state && state.waitingInfo) state.waitingInfo.savedEntry = note;
+    if (status) status.textContent = 'Saved. Take the scan whenever you are ready to find a new partner.';
+    if (result.safety && result.safety.crisis) showSafety();
+  } catch (error) {
+    if (status) status.textContent = error.message;
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════

@@ -46,7 +46,7 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-startup-image" href="/icon-512x512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/app.css?v=20261023-guest-share"/>
+<link rel="stylesheet" href="/app.css?v=20261025-return-write"/>
 <link rel="stylesheet" href="/refine.css"/>
 <link rel="stylesheet" href="/brand-buttons.css?v=20261011"/>
 <script>
@@ -663,6 +663,22 @@ html.mp-app-route #app-area{display:block}
   </div>
 </div>
 
+<!-- RETURNING USER: WRITE BEFORE THE NEW SCAN -->
+<div class="screen" id="s-return-write">
+  <main style="flex:1;display:flex;flex-direction:column;justify-content:center;max-width:540px;width:100%;margin:auto;padding:48px 24px 72px;">
+    <div class="eyebrow" style="margin-bottom:18px;">Welcome back</div>
+    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(32px,8vw,48px);font-weight:400;line-height:1.12;margin-bottom:16px;">Start with <em style="color:var(--rose-l);">one honest line.</em></h1>
+    <p style="color:var(--ink-m);line-height:1.7;margin-bottom:24px;">You can write before taking the new reflection scan. Your earlier journey is safe in your private archive.</p>
+    <label for="return-write-text" style="font-size:13px;color:var(--ink);margin-bottom:10px;">What is one thing on your mind today?</label>
+    <textarea id="return-write-text" maxlength="5000" rows="5" placeholder="A few words are enough…" style="width:100%;resize:vertical;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);padding:16px;font:inherit;line-height:1.6;"></textarea>
+    <p style="font-size:12px;color:var(--ink-m);line-height:1.6;margin:10px 0 18px;">This note is not shown to another user while you wait. If you later match, it becomes your Day 1 entry and your anonymous partner can read it. Avoid names and contact details.</p>
+    <div id="return-write-status" role="status" aria-live="polite" style="min-height:22px;color:var(--rose-l);font-size:13px;margin-bottom:10px;"></div>
+    <button class="btn" id="return-write-save" onclick="saveReturnWrite()">Save my first note</button>
+    <button class="btn-ghost" onclick="go('s-scan-intro')" style="margin-top:12px;">Take the scan to find a new partner</button>
+    <button class="btn-ghost" onclick="showJourneyArchive()" style="margin-top:8px;">Read my previous journey</button>
+  </main>
+</div>
+
 <!-- SCAN INTRO -->
 <div class="screen" id="s-scan-intro">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;">
@@ -856,6 +872,6 @@ html.mp-app-route #app-area{display:block}
 
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
-<script src="/app.js?v=20261023-guest-share" defer></script>
+<script src="/app.js?v=20261025-return-write" defer></script>
 </body>
 </html>

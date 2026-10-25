@@ -421,6 +421,7 @@ function registerAppRoutes(app, deps) {
         scores: user.scores,
         profilePhoto: rawUser.profile_photo || null,
         authProvider: rawUser.auth_provider || 'password',
+        returningAfterReset: Number(rawUser.auth_reset_at || 0) > 0,
         pushPreferences: parsePushPreferences(rawUser.push_preferences),
         pushSubscribed: !!rawUser.push_subscription,
         region: rawUser.region || 'IN',
