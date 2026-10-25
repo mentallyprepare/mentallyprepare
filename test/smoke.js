@@ -211,6 +211,7 @@ async function run() {
       ${extractFunction(appJs, 'getPostAuthDestination')}
       result = {
         newUser: getPostAuthDestination({ user: { authProvider: 'password' }, entries: [] }),
+        resetUser: getPostAuthDestination({ user: { authProvider: 'password', returningAfterReset: true }, entries: [] }),
         googleNeedsBasics: getPostAuthDestination({ user: { authProvider: 'google', college: 'Not Provided', year: '' }, entries: [] }),
         completedScanNoMatch: getPostAuthDestination({ user: { authProvider: 'password', archetype: 'protector', scores: null }, entries: [] }),
         activeMatchOpenToday: getPostAuthDestination({ user: { archetype: 'connector' }, match: { day: 4 }, entries: [{ day: 3 }] }),
@@ -219,6 +220,8 @@ async function run() {
       };
     `, routingContext);
     assert.strictEqual(routingContext.result.newUser.screen, 's-scan-intro', 'new users without scan go to scan');
+    assert.strictEqual(routingContext.result.resetUser.screen, 's-return-write', 'returning reset users can write before a new scan');
+    assert.match(appHtml, /id="s-return-write"[\s\S]*?not shown to another user while you wait[\s\S]*?anonymous partner can read it/, 'the return note explains when a future partner can see it');
     assert.strictEqual(routingContext.result.googleNeedsBasics.screen, 's-profile', 'Google users missing basics finish profile first');
     assert.strictEqual(routingContext.result.completedScanNoMatch.screen, 's-waiting', 'completed-scan users without match go to waiting');
     assert.strictEqual(routingContext.result.activeMatchOpenToday.screen, 's-journal', 'active matches with no entry today go to journal');
@@ -386,6 +389,7 @@ async function run() {
     const r = await request('GET', '/api/me', null, { cookie });
     assert.strictEqual(r.status, 200);
     assert.ok(r.json.user, 'user object present');
+    assert.strictEqual(r.json.user.returningAfterReset, false, 'new users keep the normal scan path');
     // Main surfaces the waiting entry text via waitingInfo.savedEntry
     assert.ok(r.json.waitingInfo, 'waitingInfo present for unmatched user');
     assert.strictEqual(r.json.waitingInfo.savedEntry, 'Smoke test waiting entry');
@@ -670,7 +674,14 @@ async function run() {
     assert.strictEqual(staleRefresh.status, 401);
     const nextLogin = await request('POST', '/api/login', { email, password });
     assert.strictEqual(nextLogin.status, 200, nextLogin.raw);
-    assert.strictEqual((await request('GET', '/api/me', null, { cookie: extractCookie(nextLogin.headers) })).status, 200);
+    const resetState = await request('GET', '/api/me', null, { cookie: extractCookie(nextLogin.headers) });
+    assert.strictEqual(resetState.status, 200);
+    assert.strictEqual(resetState.json.user.returningAfterReset, true, 'reset users see the write-first return path');
+    const returnCookie = extractCookie(nextLogin.headers);
+    const firstNote = await request('POST', '/api/waiting-entry', { text: 'A new first line after returning.' }, { cookie: returnCookie });
+    assert.strictEqual(firstNote.status, 200, 'returning users can save a note before taking the new scan');
+    const savedReturnState = await request('GET', '/api/me', null, { cookie: returnCookie });
+    assert.strictEqual(savedReturnState.json.waitingInfo.savedEntry, 'A new first line after returning.');
     assert.strictEqual((await request('GET', '/api/me', null, { Authorization: `Bearer ${nextLogin.json.auth.accessToken}` })).status, 200);
     const verifyToken = 'v'.repeat(40);
     db.prepare("INSERT INTO users (name, email, password, college, year, consent_given, consent_date, email_verified, email_verification_token, email_verification_sent_at, auth_version, auth_reset_at) VALUES ('Verify After Reset', ?, ?, 'Test University', '2nd', 1, datetime('now'), 0, ?, ?, 1, ?)").run(uniqueEmail('verify-reauth'), require('bcryptjs').hashSync(password, 4), verifyToken, new Date().toISOString(), Math.floor(Date.now() / 1000));
