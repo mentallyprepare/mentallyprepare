@@ -779,6 +779,8 @@ function go(id) {
     showAppError();
     return;
   }
+  const startup = document.getElementById('app-startup');
+  if (startup) startup.hidden = true;
   if (id === 's-scan-intro') {
     renderSharedReflectionInvite();
     const guestConfirm = document.getElementById('guest-scan-confirm');
@@ -798,7 +800,7 @@ function go(id) {
   setSiteNavCurrent('auth', authTarget);
   setMotionMode(modeForScreen(id));
   afterRenderMotion(el);
-  if (el.classList.contains('auth-screen')) {
+  if (el.classList.contains('auth-screen') || !state || !state.user) {
     const card = document.getElementById('pwa-install-card');
     if (card) card.remove();
   }
@@ -887,6 +889,8 @@ function dismissInstallPrompt(days) {
 function showInstallPromptIfUseful() {
   if (installPromptShown || isStandaloneApp() || Date.now() < getInstallDismissedUntil()) return;
   if (!document.body.classList.contains('app-active')) return;
+  // Ask after someone has entered the private app, not during the guest scan.
+  if (!state || !state.user) return;
   if (!deferredInstallPrompt && !isIosDevice()) return;
   var active = document.querySelector('.screen.active');
   if (active && active.classList.contains('auth-screen')) return;

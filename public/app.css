@@ -95,6 +95,9 @@ body.app-active #landing{display:none}
 /* ── Screens ── */
 .screen{position:relative;z-index:1;display:none;flex-direction:column;min-height:calc(100vh - 72px);opacity:0;transform:translateY(12px);transition:opacity .3s ease,transform .3s ease}
 .screen.active{display:flex;opacity:1;transform:translateY(0)}
+.app-startup{min-height:calc(100dvh - 72px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;color:var(--ink-m);font-size:13px}
+.app-startup[hidden]{display:none}
+.app-startup-moon{width:64px;height:64px;animation:float 5s ease-in-out infinite}
 .screen.entering{animation:fadeUp .35s ease forwards}
 
 /* ── Toast ── */

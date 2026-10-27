@@ -46,7 +46,7 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-startup-image" href="/icon-512x512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/app.css?v=20261025-shared-reflection"/>
+<link rel="stylesheet" href="/app.css?v=20261027-scan-first-loading"/>
 <link rel="stylesheet" href="/refine.css"/>
 <link rel="stylesheet" href="/brand-buttons.css?v=20261011"/>
 <script>
@@ -378,8 +378,13 @@ html.mp-app-route #app-area{display:block}
 <div id="app-area">
 <div class="app-wrap">
 
+<div class="app-startup" id="app-startup" role="status" aria-live="polite">
+  <div class="moon-base app-startup-moon" aria-hidden="true"></div>
+  <p>Opening your space…</p>
+</div>
+
 <!-- SPLASH -->
-<div class="screen active" id="s-splash">
+<div class="screen" id="s-splash">
   <div class="splash-inner">
     <div class="splash-logo">mentally prepare</div>
     <div class="splash-moon-wrap">
@@ -873,6 +878,6 @@ html.mp-app-route #app-area{display:block}
 
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
-<script src="/app.js?v=20261025-shared-reflection" defer></script>
+<script src="/app.js?v=20261027-scan-first-loading" defer></script>
 </body>
 </html>

@@ -185,6 +185,9 @@ async function run() {
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
     const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    assert.match(appHtml, /id="app-startup"[\s\S]*id="s-splash"/, 'the startup state is shown before any screen');
+    assert.doesNotMatch(appHtml, /class="screen active" id="s-splash"/, 'the old welcome screen must not flash during session restore');
+    assert.match(appJs, /else \{ go\('s-scan-intro'\); \}/, 'guests open the scan after loading');
     assert.match(indexHtml, /href="\/app"[^>]*>Begin tonight/, 'landing page begins the public scan');
     assert.match(indexHtml, /href="\/app\?screen=s-login"/, 'landing page links directly to login');
     assert.match(appHtml, /id="s-signup"/, 'dedicated signup screen exists');
