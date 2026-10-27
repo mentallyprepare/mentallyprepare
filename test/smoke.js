@@ -191,6 +191,7 @@ async function run() {
     assert.match(indexHtml, /href="\/app"[^>]*>Begin tonight/, 'landing page begins the public scan');
     assert.match(indexHtml, /href="\/app\?screen=s-login"/, 'landing page links directly to login');
     assert.match(appHtml, /id="s-signup"/, 'dedicated signup screen exists');
+    assert.match(appHtml, /id="scan-login-link"[\s\S]*Already have an account\? Log in/, 'guest scan offers login');
     assert.match(appHtml, /Create your Mentally Prepare account/, 'signup screen has clear heading');
     assert.match(appHtml, /Welcome back/, 'login screen has clear heading');
     assert.match(appHtml, /Take Scan[\s\S]*Create Account[\s\S]*Get Matched[\s\S]*Write Daily[\s\S]*Reveal on Day 21/, 'journey preview shows scan before signup');

@@ -785,6 +785,8 @@ function go(id) {
     renderSharedReflectionInvite();
     const guestConfirm = document.getElementById('guest-scan-confirm');
     if (guestConfirm) guestConfirm.style.display = state ? 'none' : 'flex';
+    const loginLink = document.getElementById('scan-login-link');
+    if (loginLink) loginLink.style.display = state ? 'none' : 'block';
     const archiveLink = document.getElementById('scan-archive-link');
     if (archiveLink) archiveLink.style.display = state ? '' : 'none';
     const retry = document.getElementById('retry-pending-scan');
@@ -1223,7 +1225,8 @@ var aetherBackground = null;
   }
   if (!loggedIn) {
     if (window.location.pathname.indexOf('/app') === 0) {
-      startApp();
+      if (new URLSearchParams(window.location.search).get('return') === 'journal') openAuthScreen('s-login');
+      else startApp();
     }
     consumeVerificationQueryNotice();
     return;
@@ -1240,6 +1243,7 @@ window.addEventListener('popstate', function() {
     if (typeof consumeAuthScreenDeepLink === 'function' && consumeAuthScreenDeepLink()) return;
     if (typeof handleLandingHash === 'function' && handleLandingHash()) return;
     if (state) { if (typeof routeToScreen === 'function') routeToScreen(); }
+    else if (new URLSearchParams(window.location.search).get('return') === 'journal') openAuthScreen('s-login');
     else if (typeof startApp === 'function') startApp();
   } else {
     if (typeof showLanding === 'function') showLanding();

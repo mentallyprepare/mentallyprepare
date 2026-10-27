@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261027-scan-first-loading';
+const CACHE_NAME = 'mp-20261027-returning-login';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',

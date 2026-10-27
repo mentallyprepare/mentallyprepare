@@ -249,7 +249,7 @@ function dailyPromptReminderEmail(name, dayNumber, unsubscribeUrl) {
     ${dividerHtml(BRAND.purple, BRAND.violet)}
     <p style="margin:16px 0 16px;">${first}, if today has been full, you can pause here. Tonight's prompt is ready whenever you want to write.</p>
     <div style="text-align:center; margin:24px 0;">
-      <a href="${SITE_URL}/app" style="
+      <a href="${SITE_URL}/app?return=journal" style="
         display:inline-block;
         padding:10px 28px;
         border-radius:999px;
@@ -257,7 +257,7 @@ function dailyPromptReminderEmail(name, dayNumber, unsubscribeUrl) {
         color:${BRAND.text};
         font-weight:600;
         text-decoration:none;
-      ">View tonight's prompt →</a>
+      ">Open tonight's prompt →</a>
     </div>
     <p style="margin:16px 0 0; color:${BRAND.muted}; font-size:13px;">You can turn off email reminders at any time in your app's notification settings.${unsubscribeUrl ? ` <a href="${unsubscribeUrl}" style="color:${BRAND.rose};">Unsubscribe from these emails</a>.` : ''}</p>
   `;
