@@ -46,7 +46,7 @@
 <link rel="manifest" href="/manifest.json"/>
 <link rel="apple-touch-startup-image" href="/icon-512x512.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="/app.css?v=20261027-scan-first-loading"/>
+<link rel="stylesheet" href="/app.css?v=20261027-returning-login"/>
 <link rel="stylesheet" href="/refine.css"/>
 <link rel="stylesheet" href="/brand-buttons.css?v=20261011"/>
 <script>
@@ -702,6 +702,7 @@ html.mp-app-route #app-area{display:block}
     <label id="guest-scan-confirm" style="display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 18px;font-size:12px;color:var(--ink-m);"><input id="guest-scan-age" type="checkbox"/> I confirm I am 18 or older</label>
     <button class="btn-ghost" id="retry-pending-scan" onclick="retryPendingScan()" style="display:none;margin-bottom:12px;">Save my earlier result</button>
     <button class="btn" onclick="startScan()">Start the quiet scan</button>
+    <button class="btn-ghost" id="scan-login-link" onclick="openAuthScreen('s-login')" style="display:none;margin-top:12px;">Already have an account? Log in</button>
     <button class="btn-ghost" id="scan-archive-link" onclick="showJourneyArchive()" style="margin-top:12px;">Read a previous journey</button>
     <p style="font-size:10px;color:var(--ink-s);margin-top:16px;line-height:1.6;font-style:italic;">Free · Results appear instantly · Your responses stay private</p>
   </div>
@@ -878,6 +879,6 @@ html.mp-app-route #app-area{display:block}
 
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js"></script>
-<script src="/app.js?v=20261027-scan-first-loading" defer></script>
+<script src="/app.js?v=20261027-returning-login" defer></script>
 </body>
 </html>

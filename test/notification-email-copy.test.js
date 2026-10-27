@@ -21,6 +21,7 @@ assert.match(html, /mymentallyprepare\.com/);
 assert.doesNotMatch(html, /Private Partner Name|don't leave them waiting|within 24 hours|day 14 unlock/i);
 assert.match(templates.dailyPromptReminderEmail('<script>alert(1)</script>', 3), /&lt;script&gt;/);
 assert.doesNotMatch(templates.dailyPromptReminderEmail('<script>alert(1)</script>', 3), /<script>/);
+assert.match(templates.dailyPromptReminderEmail('Sam', 3), /\/app\?return=journal/, 'daily reminder should offer sign-in to returning users');
 for (const rows of Object.values(COPY)) {
   for (const row of rows) {
     assert.ok(['/app', '/'].includes(row.route), `unexpected route: ${row.route}`);
