@@ -5,9 +5,9 @@ const vm = require('vm');
 
 const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'public-analytics.js'), 'utf8');
 
-function page(pathname, storedChoice, storedRecording, search = '', storedMeta = null) {
+function page(pathname, storedChoice, storedRecording, search = '', storedMeta = null, referrer = '') {
   const storage = new Map();
-  if (storedChoice) storage.set('mp_public_analytics_consent_v1', storedChoice);
+  if (storedChoice) storage.set('mp_analytics_consent_v2', storedChoice);
   if (storedRecording) storage.set('mp_public_clarity_consent_v1', storedRecording);
   if (storedMeta) storage.set('mp_public_meta_ads_consent_v1', storedMeta);
   const elements = [];
@@ -27,12 +27,13 @@ function page(pathname, storedChoice, storedRecording, search = '', storedMeta =
   };
   const appendChild = (element) => { elements.push(element); return element; };
   const window = { location: { pathname, search, hash: '', reload: () => { reloads++; } } };
-  const document = { title: 'Public page', cookie: '', createElement: makeElement, head: { appendChild }, body: { appendChild }, addEventListener: (name, callback) => { documentListeners[name] = callback; } };
+  const document = { title: 'Public page', referrer, cookie: '', createElement: makeElement, head: { appendChild }, body: { appendChild }, addEventListener: (name, callback) => { documentListeners[name] = callback; } };
   vm.runInNewContext(source, {
     window,
     document,
     localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
-    Date
+    Date,
+    URL
   });
   return {
     window, storage, elements, documentListeners,
@@ -61,7 +62,7 @@ undecided.banner().listeners.click({ target: { getAttribute: () => 'denied' } })
 assert.equal(undecided.metaBanner(), undefined, 'rejecting analytics must not reveal a second prompt');
 assert.equal(undecided.tags().length, 0, 'declining must not load Google');
 assert.equal(undecided.clarityTags().length, 0, 'declining must not load recordings');
-assert.equal(undecided.storage.get('mp_public_analytics_consent_v1'), 'denied');
+assert.equal(undecided.storage.get('mp_analytics_consent_v2'), 'denied');
 
 const accepted = page('/privacy.html', 'granted', null, '?private=do-not-send');
 assert.equal(accepted.tags().length, 1, 'accepted public page loads one Google tag');
@@ -71,13 +72,18 @@ const config = accepted.window.dataLayer.find((entry) => entry[0] === 'config');
 assert.equal(config[2].page_location, 'https://mymentallyprepare.com/privacy', 'GA URL must omit query data and normalize the path');
 assert.equal(config[2].send_page_view, false, 'automatic page views must stay disabled');
 assert.equal(config[2].allow_google_signals, false, 'Google signals must stay disabled');
+const organic = page('/', 'granted', null, '', null, 'https://www.google.com/search?q=private+query');
+const organicConfig = organic.window.dataLayer.find((entry) => entry[0] === 'config');
+assert.equal(organicConfig[2].page_referrer, 'https://www.google.com/', 'organic referrer keeps the search engine but drops the query');
+const unrelated = page('/', 'granted', null, '', null, 'https://example.org/private/path');
+assert.equal(unrelated.window.dataLayer.find((entry) => entry[0] === 'config')[2].page_referrer, '', 'unrelated referrers remain hidden');
 accepted.settings().listeners.click();
 accepted.banner().listeners.click({ target: { getAttribute: () => 'denied' } });
-assert.equal(accepted.storage.get('mp_public_analytics_consent_v1'), 'denied', 'choice can be withdrawn');
+assert.equal(accepted.storage.get('mp_analytics_consent_v2'), 'denied', 'choice can be withdrawn');
 assert.equal(accepted.reloads(), 1, 'withdrawal reloads to stop the tag');
 
 const recordings = page('/', 'granted', 'granted');
-assert.equal(recordings.tags().length, 1, 'older analytics consent still loads Google Analytics');
+assert.equal(recordings.tags().length, 1, 'new analytics consent loads Google Analytics');
 assert.equal(recordings.clarityTags().length, 0, 'old recording consent no longer loads Clarity');
 assert.equal(recordings.banner(), undefined, 'old recording consent does not trigger a prompt');
 assert.equal(recordings.metaTags().length, 0, 'old recording consent never grants Meta');
@@ -140,5 +146,22 @@ for (const name of ['index', 'feeling-lonely-in-college']) {
   assert.ok(html.includes('/public-analytics.js'), `blog ${name} must include the consent script`);
 }
 assert.ok(!fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8').includes('/public-analytics.js'), 'private app must not include the consent script');
+assert.ok(fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8').includes('/private-analytics.js'), 'app includes consent-gated milestone tracking');
+
+const privateSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'private-analytics.js'), 'utf8');
+function privatePage(choice) {
+  const scripts = [];
+  const window = {};
+  const document = { head: { appendChild: (script) => scripts.push(script) }, createElement: () => ({}) };
+  vm.runInNewContext(privateSource, { window, document, localStorage: { getItem: () => choice }, Date, Set });
+  return { window, scripts };
+}
+const privateDenied = privatePage('denied');
+assert.equal(privateDenied.scripts.length, 0, 'private app sends nothing without consent');
+const privateGranted = privatePage('granted');
+assert.equal(privateGranted.scripts.length, 1, 'private app loads one tag with consent');
+privateGranted.window.mpGaTrack('sign_up');
+privateGranted.window.mpGaTrack('journal_text');
+assert.equal(privateGranted.window.dataLayer.filter((entry) => entry[0] === 'event').length, 1, 'private app sends only allowlisted milestone names');
 
 console.log('public analytics consent checks passed');

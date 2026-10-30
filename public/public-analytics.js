@@ -2,7 +2,7 @@
   'use strict';
 
   const measurementId = 'G-8Y96FYSR01';
-  const consentKey = 'mp_public_analytics_consent_v1';
+  const consentKey = 'mp_analytics_consent_v2';
   const publicPaths = {
     '/': '/',
     '/index.html': '/',
@@ -64,18 +64,26 @@
     });
     window.gtag('consent', 'update', { analytics_storage: 'granted' });
     window.gtag('js', new Date());
+    const searchReferrer = (function () {
+      try {
+        const referrer = new URL(document.referrer);
+        if (/^(?:www\.)?(?:google\.[a-z.]+|bing\.com|duckduckgo\.com|search\.yahoo\.com)$/.test(referrer.hostname)) {
+          return referrer.origin + '/';
+        }
+      } catch {}
+      return '';
+    })();
     window.gtag('config', measurementId, {
       send_page_view: false,
       page_location: 'https://mymentallyprepare.com' + canonicalPath,
-      page_referrer: '',
-      ignore_referrer: true,
+      page_referrer: searchReferrer,
       allow_google_signals: false,
       allow_ad_personalization_signals: false
     });
     window.gtag('event', 'page_view', {
       page_title: document.title,
       page_location: 'https://mymentallyprepare.com' + canonicalPath,
-      page_referrer: ''
+      page_referrer: searchReferrer
     });
 
     const script = document.createElement('script');
@@ -112,7 +120,7 @@
     banner.className = 'mp-analytics-choice mp-cookie-choice';
     banner.setAttribute('role', 'dialog');
     banner.setAttribute('aria-label', 'Cookie choices');
-    banner.innerHTML = '<div class="mp-cookie-brand">mentally prepare</div><div class="mp-cookie-copy"><h2>This website uses cookies</h2><p>We use an essential cookie to keep your account signed in. With your permission, Google Analytics uses cookies to count visits to public pages. It does not run in the private journal or sign-in screens. <a href="/privacy">Read our privacy policy</a>.</p></div><div class="mp-analytics-actions"><button type="button" data-choice="granted">Allow analytics cookies</button><button type="button" data-choice="denied">Deny optional cookies</button></div>';
+    banner.innerHTML = '<div class="mp-cookie-brand">mentally prepare</div><div class="mp-cookie-copy"><h2>This website uses cookies</h2><p>We use an essential cookie to keep your account signed in. With your permission, Google Analytics counts public-page visits and whether people start signup, complete signup, finish the scan, or write a note. Search-engine referrers are reduced to their domain. Journal text, quiz answers, names, and email addresses are never sent. <a href="/privacy">Read our privacy policy</a>.</p></div><div class="mp-analytics-actions"><button type="button" data-choice="granted">Allow analytics cookies</button><button type="button" data-choice="denied">Deny optional cookies</button></div>';
     banner.addEventListener('click', function (event) {
       const choice = event.target && event.target.getAttribute('data-choice');
       if (choice !== 'granted' && choice !== 'denied') return;

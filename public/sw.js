@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261027-returning-login';
+const CACHE_NAME = 'mp-20261030-organic-funnel';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',

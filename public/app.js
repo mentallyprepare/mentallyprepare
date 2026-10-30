@@ -26,6 +26,13 @@ const PENDING_SCAN_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 let mpTestStartedFired = false;
 function mpTrack(eventName, standard) {
   try {
+    if (typeof window.mpGaTrack === 'function') {
+      const gaEvents = {
+        TestStarted: 'quiz_started',
+        TestCompleted: 'quiz_completed'
+      };
+      if (gaEvents[eventName]) window.mpGaTrack(gaEvents[eventName]);
+    }
     if (typeof fbq === 'function' && META_PIXEL_ID) fbq(standard ? 'track' : 'trackCustom', eventName);
     else console.log('[track]', eventName);
   } catch {}
@@ -277,7 +284,7 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
       const hints = Object.assign({}, storedHints, getSignupGoogleProfileHints());
       authDebug('ID token sent to backend');
       const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
-      await api('POST', '/auth/firebase/google', {
+      const googleLoginResult = await api('POST', '/auth/firebase/google', {
         idToken,
         displayName: firebaseUser.displayName || '',
         email: firebaseUser.email || '',
@@ -288,6 +295,7 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
         timezone
       });
       authDebug('Backend login success');
+      if (googleLoginResult.created && window.mpGaTrack) window.mpGaTrack('sign_up');
       const loggedIn = await loadState();
       if (!loggedIn || !state || !state.user || !state.user.id) {
         throw new Error('Backend session was created, but the app could not restore it.');
@@ -839,6 +847,7 @@ function openAuthScreen(id) {
 }
 
 function startSignup() {
+  if (window.mpGaTrack) window.mpGaTrack('signup_started');
   if (state) { routeToScreen(); return; }
   if (getPendingScan()) { openAuthScreen('s-signup'); return; }
   showAppShell();
@@ -1493,6 +1502,7 @@ async function register() {
     setButtonLoading('registerSubmitBtn', true, 'Creating account...');
     const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
     const result = await api('POST', '/register', { name, email, password, college, year, gender: prefGender, matchGenderPref: prefMatchGender, matchYearPref: prefMatchYear, consentGiven, ageConfirmed: ageChecked, timezone });
+    if (window.mpGaTrack) window.mpGaTrack('sign_up');
     await loadState();
     // Make sure app area is visible
     showAppShell();
@@ -2214,6 +2224,7 @@ async function sealTonightsEntry() {
       if (!piiConfirmed) return;
     }
     var result = await api('POST', '/tonights-question', { text: text, mood: tqMood, piiConfirmed: piiConfirmed });
+    if (window.mpGaTrack) window.mpGaTrack('note_written');
     tqMood = null;
     sessionStorage.removeItem('mp-tq-draft');
 
@@ -2594,6 +2605,7 @@ async function sealEntry() {
 
   try {
     const result = await api('POST', '/entry', { text, mood: currentMood, selectedPrompt: selectedPrompt || null, piiConfirmed });
+    if (window.mpGaTrack) window.mpGaTrack('note_written');
     sessionStorage.removeItem('mp-draft');
     currentMood = null;
     await loadState();
