@@ -129,6 +129,12 @@ assert.equal(eventsNamed(blogPost, 'sign_up_start').length, 1, 'sign-up CTA reco
 blogPost.documentListeners.click(ctaLink('/safety', 'safety-link'));
 assert.equal(eventsNamed(blogPost, 'sign_up_start').length, 1, 'non-sign-up CTA does not record sign_up_start');
 
+const home = page('/', 'granted');
+home.documentListeners.click(ctaLink('/app?screen=s-signup', 'home-hero-signup'));
+home.documentListeners.click(ctaLink('/app', 'home-hero-scan'));
+assert.equal(eventsNamed(home, 'cta_click').length, 2, 'both homepage entry choices are measured');
+assert.equal(eventsNamed(home, 'sign_up_start').length, 1, 'only direct signup is counted as a signup start');
+
 const blogUndecided = page('/blog/feeling-lonely-in-college');
 blogUndecided.documentListeners.click(ctaLink('/app?screen=s-signup', 'blog-nav'));
 assert.equal(blogUndecided.window.dataLayer, undefined, 'CTA clicks send nothing before consent');
