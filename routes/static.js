@@ -1,5 +1,22 @@
 const path = require('path');
+const fs = require('fs');
 const { BLOG_POSTS, BLOG_SLUGS } = require('../lib/blog-posts');
+
+const appMeta = {
+  's-signup': ['Create an Account | Mentally Prepare', 'Join Mentally Prepare for 21 nights of anonymous matched journaling. Create your account, write one honest note each night, and choose what to reveal at the end.', 'Create an account to begin your 21-night journey'],
+  's-login': ['Sign In | Mentally Prepare', 'Sign in to Mentally Prepare to continue your private 21-night journaling journey, read your partner’s notes, and pick up where you left off.', 'Sign in to continue your 21-night journaling journey'],
+  default: ['Mentally Prepare — Start Your 21 Nights | Anonymous Matched Journaling', 'Begin a private 21-night writing journey with an anonymous partner. Exchange honest notes without public profiles, likes, or pressure to perform.', 'Begin a private 21-night journey, one note at a time.']
+};
+
+function sendAppPage(req, res, rootDir) {
+  const [title, description, heading] = appMeta[req.query.screen] || appMeta.default;
+  const html = fs.readFileSync(path.join(rootDir, 'public', 'app.html'), 'utf8')
+    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+    .replace(/<meta name="description" content="[^"]*"\/>/, `<meta name="description" content="${description}"/>`)
+    .replace(/<h1 class="hero-h1">[^<]*<\/h1>/, `<h1 class="hero-h1">${heading}</h1>`);
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.type('html').send(html);
+}
 
 function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
 
@@ -45,8 +62,7 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
   });
 
   app.get('/app', (req, res) => {
-    res.set('X-Robots-Tag', 'noindex, nofollow');
-    res.sendFile(path.join(rootDir, 'public', 'app.html'));
+    sendAppPage(req, res, rootDir);
   });
 
   app.get('/app/*', (req, res) => {
