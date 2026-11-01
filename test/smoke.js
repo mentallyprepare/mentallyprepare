@@ -192,7 +192,7 @@ async function run() {
     assert.match(indexHtml, /href="\/app\?screen=s-login"/, 'landing page links directly to login');
     assert.match(appHtml, /id="s-signup"/, 'dedicated signup screen exists');
     assert.match(appHtml, /id="scan-login-link"[\s\S]*Already have an account\? Log in/, 'guest scan offers login');
-    assert.match(appHtml, /Create your Mentally Prepare account/, 'signup screen has clear heading');
+    assert.match(appHtml, /Create an account to begin your 21-night journey/, 'signup screen has clear heading');
     assert.match(appHtml, /Welcome back/, 'login screen has clear heading');
     assert.match(appHtml, /Take Scan[\s\S]*Create Account[\s\S]*Get Matched[\s\S]*Write Daily[\s\S]*Reveal on Day 21/, 'journey preview shows scan before signup');
     assert.match(appJs, /consumeAuthScreenDeepLink/, 'app consumes auth screen deep links');
@@ -582,8 +582,8 @@ async function run() {
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
     assert.match(indexHtml, /For 21 nights, write to a stranger you may/, 'landing has global hero headline');
-    assert.match(indexHtml, /<meta name="description" content="[^"]*21 nights[^"]*stranger[^"]*"/i, 'landing meta description mentions 21 nights + stranger');
-    assert.match(appHtml, /Feel seen without performing\./, 'app shell has auth-screen subtitle');
+    assert.match(indexHtml, /<meta name="description" content="[^"]*stranger[^"]*21 nights[^"]*"/i, 'landing meta description mentions stranger + 21 nights');
+    assert.match(appHtml, /One honest line\./, 'app shell has the current opening message');
     ok('Global homepage positioning');
   } catch (e) { fail('Global homepage positioning', e); }
 
