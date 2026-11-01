@@ -184,6 +184,7 @@ const registerShelfRoutes = require('./routes/shelf');
 const { registerStaticRoutes } = require('./routes/static');
 const { registerWaitlistRoutes } = require('./routes/waitlist');
 const { registerAdminRoutes } = require('./routes/admin');
+const { registerReturnPromptRoutes } = require('./routes/return-prompt');
 const { registerAuthRoutes } = require('./routes/auth');
 const { registerAppRoutes } = require('./routes/app');
 const registerWaitingEntryRoute = require('./routes/waiting-entry');
@@ -481,6 +482,16 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS reauth_followup_deliveries (
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     campaign_id INTEGER NOT NULL REFERENCES reauth_campaigns(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    attempted_at TEXT,
+    next_attempt_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS return_prompt_deliveries (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -3484,6 +3495,16 @@ registerAdminRoutes(app, {
   broadcastPush,
   sendSignInAgain: require('./lib/email').sendSignInAgain,
   sendSignInFollowUp: require('./lib/email').sendSignInFollowUp,
+  emailServiceEnabled: require('./lib/smtp').smtpEnabled
+});
+
+registerReturnPromptRoutes(app, {
+  db,
+  rootDir: __dirname,
+  requireAdmin,
+  authLimiter: adminLimiter,
+  sendReturnPrompt: require('./lib/email').sendReturnPrompt,
+  getReminderUnsubscribeUrl: userId => `${BASE_URL.replace(/\/$/, '')}/email/reminders/unsubscribe/${userId}/${reminderUnsubscribeToken(userId)}`,
   emailServiceEnabled: require('./lib/smtp').smtpEnabled
 });
 

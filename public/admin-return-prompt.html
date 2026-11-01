@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Return prompt campaign · Mentally Prepare</title>
+  <style>
+    :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#0d0920;color:#f8f2ff;font:16px/1.6 Arial,sans-serif;padding:24px}main{max-width:760px;margin:5vh auto;background:#171127;border:1px solid #594271;padding:clamp(24px,5vw,42px)}h1{font:38px Georgia,serif;margin:0 0 12px}h2{font:25px Georgia,serif;margin-top:34px}p,.small{color:#d1c3dc}a{color:#ecb4c9}button{background:#ebb4c2;border:0;color:#0d0920;padding:14px 20px;font:inherit;font-weight:bold;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}input{background:#0d0920;border:1px solid #594271;color:#fff;font:inherit;padding:12px;width:100%;margin:12px 0}.counts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.counts div{padding:16px;border:1px solid #594271}.counts strong{display:block;font-size:27px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0d0920;padding:18px;border:1px solid #594271;font:14px/1.6 Arial,sans-serif}#message{min-height:24px}details{margin:20px 0}summary{cursor:pointer;color:#ecb4c9}@media(max-width:600px){.counts{grid-template-columns:1fr}}
+  </style>
+</head>
+<body><main>
+  <a href="/admin">← Founder dashboard</a>
+  <h1>One question for past users</h1>
+  <p>A new invitation for up to 100 earlier users who have not returned. The list includes only verified addresses with email reminders enabled. It excludes people who returned and anyone sent this question before. The previous follow-up must be at least seven days old.</p>
+  <div class="counts" aria-live="polite"><div><strong id="eligible">–</strong>Eligible now</div><div><strong id="sent">–</strong>Accepted by provider</div><div><strong id="pending">–</strong>Queued</div></div>
+  <p id="message" role="status">Checking…</p>
+  <h2>Exact email</h2>
+  <p class="small">The preview uses “friend” as the sample name. Each sent email has the recipient's own unsubscribe link.</p>
+  <pre id="copy">Loading…</pre>
+  <details><summary>Review recipient addresses</summary><pre id="recipients">Loading…</pre></details>
+  <label for="confirmation">Type <strong>SEND RETURN PROMPT</strong> after checking the copy and addresses</label>
+  <input id="confirmation" autocomplete="off" spellcheck="false">
+  <button id="send" type="button" disabled>Queue email</button>
+  <p class="small">The provider sends gradually and may pause at its limit. A message with an uncertain outcome is never retried automatically. “Accepted” does not prove inbox delivery.</p>
+</main><script>
+let hash='';
+async function request(url,options){const response=await fetch(url,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...options});const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body.error||'Request failed');return body}
+async function refresh(){const button=document.getElementById('send'),message=document.getElementById('message');try{const data=await request('/admin/return-prompt/preview');hash=data.recipientHash;const statuses=Object.fromEntries((data.statuses||[]).map(row=>[row.status,row.count]));document.getElementById('eligible').textContent=data.eligible;document.getElementById('sent').textContent=statuses.sent||0;document.getElementById('pending').textContent=statuses.pending||0;document.getElementById('copy').textContent=`Subject: ${data.sample.subject}\n\n${data.sample.text}`;document.getElementById('recipients').textContent=(data.recipients||[]).map(row=>`#${row.userId} ${row.email}`).join('\n')||'No eligible addresses';button.disabled=!data.canStart;button.textContent=`Queue ${data.eligible} emails`;message.textContent=data.nextAttemptAt?'Provider paused until '+data.nextAttemptAt+' UTC.':data.eligible?'Ready for review.':'No eligible past users remain.'}catch(error){button.disabled=true;message.textContent=error.message}}
+document.getElementById('send').addEventListener('click',async()=>{const button=document.getElementById('send'),message=document.getElementById('message');if(document.getElementById('confirmation').value.trim()!=='SEND RETURN PROMPT'){message.textContent='Type SEND RETURN PROMPT exactly.';return}button.disabled=true;try{const result=await request('/admin/return-prompt/start',{method:'POST',body:JSON.stringify({confirmation:'SEND RETURN PROMPT',recipientHash:hash})});message.textContent=result.queued+' emails queued. The provider is sending them gradually.';document.getElementById('confirmation').value='';await refresh()}catch(error){message.textContent=error.message;await refresh()}});
+refresh();
+</script></body></html>
