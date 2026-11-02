@@ -5,7 +5,7 @@ const { BLOG_POSTS, BLOG_SLUGS } = require('../lib/blog-posts');
 const appMeta = {
   's-signup': ['Create an Account | Mentally Prepare', 'Create your Mentally Prepare account and begin a private 21-day journey of anonymous journaling, honest reflection, and meaningful connection.', 'Create an account to begin your 21-night journey'],
   's-login': ['Sign In | Mentally Prepare', 'Log in to Mentally Prepare to enter your private room, continue your 21-day journaling journey, and reconnect with your anonymous partner.', 'Sign in to continue your 21-night journaling journey'],
-  default: ['Mentally Prepare — Start Your 21 Nights | Anonymous Matched Journaling', 'Feel seen without performing. Begin a private 21-day emotional reset through guided reflection and anonymous journaling with a matched partner.', 'Begin a private 21-night journey, one note at a time.']
+  default: ['21 Nights of Anonymous Journaling | Mentally Prepare', 'Feel seen without performing. Begin a private 21-day emotional reset through guided reflection and anonymous journaling with a matched partner.', 'Start your 21 nights of anonymous journaling.']
 };
 
 function sendAppPage(req, res, rootDir) {

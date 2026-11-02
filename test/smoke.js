@@ -601,6 +601,10 @@ async function run() {
     assert.match(indexHtml, /For 21 nights, write to a stranger you may/, 'landing has global hero headline');
     assert.match(indexHtml, /<meta name="description" content="[^"]*stranger[^"]*21 nights[^"]*"/i, 'landing meta description mentions stranger + 21 nights');
     assert.match(appHtml, /One honest line\./, 'app shell has the current opening message');
+    const appPage = await request('GET', '/app');
+    const appTitle = appPage.raw.match(/<title>([^<]*)<\/title>/)[1];
+    assert.ok(appTitle.length < 60, '/app title stays below 60 characters');
+    assert.match(appPage.raw, /<h1 class="hero-h1">Start your 21 nights of anonymous journaling\.<\/h1>/, '/app heading keeps the title promise');
     ok('Global homepage positioning');
   } catch (e) { fail('Global homepage positioning', e); }
 
@@ -892,6 +896,8 @@ async function run() {
       assert.ok(r.raw.includes(`<link rel="canonical" href="https://mymentallyprepare.com/blog/${post.slug}"/>`), `${post.slug} has its canonical`);
       assert.ok(r.raw.includes('"@type": "BlogPosting"'), `${post.slug} has article schema`);
       assert.ok(r.raw.includes('href="/safety"'), `${post.slug} links to the safety page`);
+      const postTitle = r.raw.match(/<title>([^<]*)<\/title>/)[1];
+      assert.ok(postTitle.length < 60, `${post.slug} title stays below 60 characters`);
       const postDescription = r.raw.match(/<meta name="description" content="([^"]*)"\/>/)[1];
       if (post.slug === 'how-to-make-friends-in-college') {
         assert.ok(postDescription.length >= 150 && postDescription.length <= 160, `${post.slug} description is 150–160 characters`);
@@ -904,6 +910,9 @@ async function run() {
     }
     const missing = await request('GET', '/blog/not-a-real-post');
     assert.strictEqual(missing.status, 404, 'unknown blog slug is a 404');
+    const safety = await request('GET', '/safety');
+    const safetyTitle = safety.raw.match(/<title>([^<]*)<\/title>/)[1];
+    assert.ok(safetyTitle.length < 60, '/safety title stays below 60 characters');
     ok('blog pages are public, indexable, and in the sitemap');
   } catch (e) { fail('blog pages are public, indexable, and in the sitemap', e); }
 
