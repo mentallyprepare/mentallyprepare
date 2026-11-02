@@ -881,6 +881,8 @@ async function run() {
     assert.strictEqual(index.status, 200);
     assert.ok(index.raw.includes('rel="canonical" href="https://mymentallyprepare.com/blog"'), 'blog index has canonical');
     assert.ok((index.headers['content-security-policy'] || '').includes('https://www.googletagmanager.com'), 'blog index uses public CSP');
+    const blogDescription = index.raw.match(/<meta name="description" content="([^"]*)"\/>/)[1];
+    assert.ok(blogDescription.length >= 150 && blogDescription.length <= 160, 'blog index description is 150–160 characters');
     const sitemap = await request('GET', '/sitemap.xml');
     assert.ok(sitemap.raw.includes('/blog</loc>'), 'sitemap lists blog index');
     for (const post of BLOG_POSTS) {
@@ -890,6 +892,11 @@ async function run() {
       assert.ok(r.raw.includes(`<link rel="canonical" href="https://mymentallyprepare.com/blog/${post.slug}"/>`), `${post.slug} has its canonical`);
       assert.ok(r.raw.includes('"@type": "BlogPosting"'), `${post.slug} has article schema`);
       assert.ok(r.raw.includes('href="/safety"'), `${post.slug} links to the safety page`);
+      const postDescription = r.raw.match(/<meta name="description" content="([^"]*)"\/>/)[1];
+      if (post.slug === 'how-to-make-friends-in-college') {
+        assert.ok(postDescription.length >= 150 && postDescription.length <= 160, `${post.slug} description is 150–160 characters`);
+        assert.notStrictEqual(postDescription, blogDescription, `${post.slug} description is distinct from the blog index`);
+      }
       assert.ok(index.raw.includes(`href="/blog/${post.slug}"`), `blog index links to ${post.slug}`);
       assert.ok(sitemap.raw.includes(`/blog/${post.slug}</loc>`), `sitemap lists ${post.slug}`);
       const image = await request('GET', post.image);
