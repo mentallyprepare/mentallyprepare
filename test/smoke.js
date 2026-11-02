@@ -185,6 +185,23 @@ async function run() {
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const appHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.html'), 'utf8');
     const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+    const appPages = await Promise.all([
+      request('GET', '/app'),
+      request('GET', '/app?screen=s-signup'),
+      request('GET', '/app?screen=s-login')
+    ]);
+    const descriptions = appPages.map((page) => {
+      assert.strictEqual(page.status, 200);
+      const match = page.raw.match(/<meta name="description" content="([^"]*)"\/>/);
+      assert.ok(match, 'app page has a meta description');
+      return match[1];
+    });
+    assert.strictEqual(new Set(descriptions).size, 3, 'app, signup, and login descriptions are distinct');
+    assert.deepStrictEqual(descriptions, [
+      'Feel seen without performing. Begin a private 21-day emotional reset through guided reflection and anonymous journaling with a matched partner.',
+      'Create your Mentally Prepare account and begin a private 21-day journey of anonymous journaling, honest reflection, and meaningful connection.',
+      'Log in to Mentally Prepare to enter your private room, continue your 21-day journaling journey, and reconnect with your anonymous partner.'
+    ]);
     assert.match(appHtml, /id="app-startup"[\s\S]*id="s-splash"/, 'the startup state is shown before any screen');
     assert.doesNotMatch(appHtml, /class="screen active" id="s-splash"/, 'the old welcome screen must not flash during session restore');
     assert.match(appJs, /else \{ go\('s-scan-intro'\); \}/, 'guests open the scan after loading');
