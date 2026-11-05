@@ -114,6 +114,7 @@ async function loadState() {
 
 let firebaseAuthClient = null;
 let firebaseInitPromise = null;
+let firebaseScriptsPromise = null;
 let firebaseAuthStateBound = false;
 let firebaseExchangeInFlight = false;
 let firebaseExchangePromise = null;
@@ -144,6 +145,7 @@ function firebaseLoginMessage(error) {
 async function initFirebaseAuth() {
   if (firebaseInitPromise) return firebaseInitPromise;
   firebaseInitPromise = (async function() {
+    await loadFirebaseScripts();
     if (!window.firebase || !firebase.auth) return null;
     const res = await fetch('/api/firebase-config', { credentials: 'same-origin' }).catch(() => null);
     if (!res || !res.ok) return null;
@@ -177,6 +179,20 @@ async function initFirebaseAuth() {
     return firebaseAuthClient;
   })();
   return firebaseInitPromise;
+}
+
+function loadFirebaseScripts() {
+  if (window.firebase && firebase.auth) return Promise.resolve();
+  if (firebaseScriptsPromise) return firebaseScriptsPromise;
+  firebaseScriptsPromise = ['https://www.gstatic.com/firebasejs/12.13.0/firebase-app-compat.js', 'https://www.gstatic.com/firebasejs/12.13.0/firebase-auth-compat.js']
+    .reduce((previous, src) => previous.then(() => new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Google sign-in could not load. Please try again.'));
+      document.head.appendChild(script);
+    })), Promise.resolve());
+  return firebaseScriptsPromise;
 }
 
 function bindFirebaseAuthState(auth) {
@@ -1222,8 +1238,10 @@ var aetherBackground = null;
     consumeVerificationQueryNotice();
     return;
   }
-  const firebaseRestored = await restoreFirebaseSession();
-  const loggedIn = firebaseRestored || await loadState();
+  const hasGoogleRedirect = hasPendingGoogleRedirectContext();
+  const loggedIn = hasGoogleRedirect
+    ? (await restoreFirebaseSession()) || await loadState()
+    : (await loadState()) || await restoreFirebaseSession();
   if (window.location.pathname.indexOf('/app') === 0 && consumeAuthScreenDeepLink()) {
     consumeVerificationQueryNotice();
     return;

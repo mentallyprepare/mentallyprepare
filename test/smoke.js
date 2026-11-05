@@ -217,7 +217,7 @@ async function run() {
     assert.match(appJs, /function shouldOpenAuthDeepLinkBeforeSessionRestore\(\)/, 'auth deep links are checked before session restore');
     assert.match(appJs, /function hasPendingGoogleRedirectContext\(\)/, 'Google redirect completion is preserved');
     assert.ok(
-      appJs.indexOf('shouldOpenAuthDeepLinkBeforeSessionRestore()') < appJs.indexOf('const firebaseRestored = await restoreFirebaseSession();'),
+      appJs.indexOf('shouldOpenAuthDeepLinkBeforeSessionRestore()') < appJs.indexOf('const hasGoogleRedirect = hasPendingGoogleRedirectContext();'),
       'auth deep links must win before logged-in users are routed to scan'
     );
     assert.match(appJs, /function getPostAuthDestination\(/, 'post-auth routing is centralized');
