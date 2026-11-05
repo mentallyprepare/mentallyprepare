@@ -954,7 +954,9 @@ async function run() {
     assert.ok(publicPage.raw.includes('/public-analytics.js'), 'homepage includes consent controller');
     assert.ok(!privatePage.raw.includes('/public-analytics.js'), 'private app excludes consent controller');
     assert.ok(publicCsp.includes('https://www.googletagmanager.com'), 'public CSP permits Google tag after consent');
-    assert.ok(!privateCsp.includes('https://www.googletagmanager.com'), 'private CSP blocks Google tag');
+    assert.ok(privateCsp.includes('https://www.googletagmanager.com'), 'app CSP permits the consent-gated milestone tag');
+    assert.ok(privateCsp.includes('https://www.google-analytics.com'), 'app CSP permits GA collection after consent');
+    assert.ok(!(await request('GET', '/admin')).headers['content-security-policy'].includes('https://www.googletagmanager.com'), 'admin CSP blocks Google tag');
     assert.ok(!publicCsp.includes('https://*.clarity.ms'), 'public CSP blocks retired Clarity recordings');
     assert.ok(!publicCsp.includes('https://c.bing.com'), 'public CSP blocks retired Clarity endpoint');
     assert.ok(!privateCsp.includes('https://*.clarity.ms'), 'private CSP blocks Clarity');

@@ -167,7 +167,8 @@ assert.equal(privateDenied.scripts.length, 0, 'private app sends nothing without
 const privateGranted = privatePage('granted');
 assert.equal(privateGranted.scripts.length, 1, 'private app loads one tag with consent');
 privateGranted.window.mpGaTrack('sign_up');
+privateGranted.window.mpGaTrack('sign_up');
 privateGranted.window.mpGaTrack('journal_text');
-assert.equal(privateGranted.window.dataLayer.filter((entry) => entry[0] === 'event').length, 1, 'private app sends only allowlisted milestone names');
+assert.equal(privateGranted.window.dataLayer.filter((entry) => entry[0] === 'event').length, 1, 'private app sends only allowlisted milestones and one signup per page');
 
 console.log('public analytics consent checks passed');

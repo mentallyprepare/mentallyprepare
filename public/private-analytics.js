@@ -26,8 +26,13 @@
   document.head.appendChild(script);
 
   const allowed = new Set(['signup_started', 'sign_up', 'quiz_started', 'quiz_completed', 'note_written']);
+  let signupTracked = false;
   window.mpGaTrack = function (name) {
     if (!allowed.has(name)) return;
+    if (name === 'sign_up') {
+      if (signupTracked) return;
+      signupTracked = true;
+    }
     window.gtag('event', name, {
       page_location: 'https://mymentallyprepare.com/app',
       page_referrer: '',

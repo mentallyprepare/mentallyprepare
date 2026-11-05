@@ -1601,7 +1601,7 @@ const appSecurityHeaders = helmet({
   ...sharedHelmetOptions,
   contentSecurityPolicy: { directives: baseContentSecurityDirectives }
 });
-const publicAnalyticsSecurityHeaders = helmet({
+const consentedAnalyticsSecurityHeaders = helmet({
   ...sharedHelmetOptions,
   contentSecurityPolicy: {
     directives: {
@@ -1613,11 +1613,15 @@ const publicAnalyticsSecurityHeaders = helmet({
   }
 });
 const publicAnalyticsPaths = new Set(['/', '/index.html', '/about', '/about.html', '/safety', '/safety.html', '/privacy', '/privacy.html', '/terms', '/terms.html']);
+const appShellPaths = new Set(['/app', '/signup', '/login', '/forgot', '/onboarding', '/scan', '/room']);
 
 app.use((req, res, next) => {
   if (isFirebaseAuthHelperPath(req)) return next();
-  const isPublicPage = publicAnalyticsPaths.has(req.path) || isBlogPath(req.path);
-  return (isPublicPage ? publicAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
+  // The app's consent-gated milestone tag needs the same GA endpoints as the
+  // public site. API, admin and other private responses keep the stricter CSP.
+  const usesAnalytics = publicAnalyticsPaths.has(req.path) || isBlogPath(req.path)
+    || appShellPaths.has(req.path) || req.path.startsWith('/app/');
+  return (usesAnalytics ? consentedAnalyticsSecurityHeaders : appSecurityHeaders)(req, res, next);
 });
 // --- Stripe webhook MUST be registered BEFORE express.json() ---
 // (Stripe needs the raw body for signature verification)
