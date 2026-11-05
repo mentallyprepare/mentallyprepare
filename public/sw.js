@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261030-organic-funnel';
+const CACHE_NAME = 'mp-20261105-ga4-signup';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',
