@@ -16,6 +16,18 @@ Increase relevant nonbrand search visibility and first notes completed by eligib
 4. **After the next Search Console export: choose the next page.** Only expand a topic when queries or user interviews show demand. Candidate: "journaling when you don't know what to write" as a section on the current page, or a new page if distinct questions and enough material justify it. Avoid a separate page for every near-identical keyword.
 5. **Review every two weeks.** Compare nonbrand impressions and clicks by landing page, then CTA clicks, signups and first notes. If impressions rise but CTR stays low, improve the title and description against the actual queries. If clicks rise but first notes do not, review the landing page to signup path and onboarding before publishing more articles.
 
+## Referring-domain work
+
+Broad searches currently surface established publishers, including BetterUp for starting a journal and The Jed Foundation for college loneliness. Their pages answer general questions thoroughly. We cannot infer their backlink counts or authority scores from search results alone; use a backlink tool to review the actual referring domains before treating any link gap as measured.
+
+Prioritize relevant student publications, campus organizations, wellbeing groups, and newsletters. Keep a small prospect list with the site's audience, relevant page, contact route, pitch angle, link earned, and referral visits. Offer the existing guides as useful resources. Aim for distinct, relevant referring domains rather than repeated links from one site.
+
+If a partner directory is created, list only real partners with accurate descriptions and links that help visitors. Invite partners to mention Mentally Prepare where it fits their audience, but do not make reciprocal links a condition of listing. Google's [spam policies](https://developers.google.com/search/docs/essentials/spam-policies) identify excessive exchanges and partner pages made solely for cross-linking as link spam.
+
+Pitch original guest articles to relevant publications already covering student life. Suggested angles are starting a journal when words will not come, feeling lonely even around people at college, and making friends when shy. Write for that publication's readers; link to a Mentally Prepare guide only where it provides a useful next step. Do not buy placements or distribute the same article widely.
+
+While links grow, test specific searches around existing pages: "I want to journal but don't know how," "what to write in a journal when you feel lonely at college," and "how to make friends in college when you are shy." Use Search Console queries and page data to decide whether to strengthen an existing guide or create a distinct new one. Review new referring domains, nonbrand impressions and clicks, organic signups, and first notes monthly.
+
 ## Decision points
 
 | Signal | Likely next action |
