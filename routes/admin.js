@@ -413,7 +413,7 @@ function registerAdminRoutes(app, deps) {
   app.get('/admin/reports', authLimiter, requireAdmin, (req, res) => {
     try {
       const rows = db.prepare(`
-        SELECT r.id, r.day, r.reason, r.created_at, r.updated_at, r.category, r.status
+        SELECT r.id, r.day, r.reason, r.reported_entry_text, r.created_at, r.updated_at, r.category, r.status
         FROM reports r
         ORDER BY r.created_at DESC
         LIMIT 20
@@ -424,6 +424,7 @@ function registerAdminRoutes(app, deps) {
         category: r.category,
         status: r.status,
         reason: r.reason,
+        reported_entry_text: r.reported_entry_text,
         date: r.created_at,
         updated_at: r.updated_at
       })));
@@ -926,10 +927,10 @@ function registerAdminRoutes(app, deps) {
         exported_at: new Date().toISOString(),
         users: db.prepare('SELECT id, name, email, college, year, archetype, consent_given, created_at, last_active_date FROM users ORDER BY id').all(),
         matches: db.prepare('SELECT * FROM matches ORDER BY id').all(),
-        entries: db.prepare('SELECT * FROM entries ORDER BY id').all(),
-        waiting_entries: db.prepare('SELECT * FROM waiting_entries ORDER BY id').all(),
+        entries: db.prepare('SELECT id, user_id, match_id, day, mood, created_at FROM entries ORDER BY id').all(),
+        waiting_entries: db.prepare('SELECT user_id, created_at, updated_at FROM waiting_entries ORDER BY user_id').all(),
         reveals: db.prepare('SELECT * FROM reveals ORDER BY id').all(),
-        comments: db.prepare('SELECT * FROM comments ORDER BY id').all(),
+        comments: db.prepare('SELECT id, user_id, match_id, day, created_at, updated_at FROM comments ORDER BY id').all(),
         reports: db.prepare('SELECT * FROM reports ORDER BY id').all(),
         report_status_history: db.prepare('SELECT * FROM report_status_history ORDER BY id').all(),
         payments: db.prepare('SELECT id, user_id, provider, provider_payment_id, provider_order_id, amount, currency, product, status, created_at, updated_at FROM payments ORDER BY id').all(),
@@ -937,6 +938,7 @@ function registerAdminRoutes(app, deps) {
       };
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', 'attachment; filename="mentally-prepare-admin-export.json"');
+      logAdminAction(db, req, 'data.bulk_export', { metadata: { includesJournalText: false } });
       res.json(exportData);
     } catch (e) {
       console.error('Admin export error:', e);

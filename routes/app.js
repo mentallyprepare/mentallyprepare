@@ -484,7 +484,8 @@ function registerAppRoutes(app, deps) {
         quietTonight = !!stmts.getQuietNight.get(userId, match.id, day);
 
         // Partner entries — show entries from previous days (midnight unsealing)
-        const allPartnerEntries = stmts.getPartnerEntries.all(partnerId, match.id, unlockedJourneyDay);
+        const partnerSharing = partner && partner.consent_given && !partner.consent_withdrawn_at;
+        const allPartnerEntries = partnerSharing ? stmts.getPartnerEntries.all(partnerId, match.id, unlockedJourneyDay) : [];
         partnerEntries = allPartnerEntries
           .filter((e) => isEntryUnlocked(e, match))
           .map((e) => ({ day: e.day, text: e.text, mood: e.mood, created_at: e.created_at }));
@@ -499,7 +500,7 @@ function registerAppRoutes(app, deps) {
         });
 
         const allComments = stmts.getComments.all(match.id, userId, partnerId);
-        comments = allComments.map((c) => ({
+        comments = allComments.filter(c => c.user_id === userId || partnerSharing).map((c) => ({
           day: c.day,
           text: c.text,
           from: c.user_id === userId ? 'me' : 'partner',
@@ -508,7 +509,7 @@ function registerAppRoutes(app, deps) {
 
         // Reactions
         const allReactions = stmts.getReactions.all(match.id);
-        reactions = allReactions.map(r => ({
+        reactions = allReactions.filter(r => r.user_id === userId || partnerSharing).map(r => ({
           day: r.day,
           emoji: r.emoji,
           from: r.user_id === userId ? 'me' : 'partner'
@@ -967,6 +968,9 @@ function registerAppRoutes(app, deps) {
       const { day, text } = req.body;
       if (!text || !text.trim()) return res.status(400).json({ error: 'Comment text required' });
       if (text.length > 500) return res.status(400).json({ error: 'Comment too long (max 500 chars)' });
+      const safety = scanForSafety(text.trim());
+      if (safety.pii) return res.status(400).json({ error: 'Remove contact details and identifying information from your reply.', code: 'pii_detected' });
+      if (safety.crisis) return res.status(400).json({ error: 'This reply needs support beyond a partner conversation. Please use the safety resources.', code: 'crisis_detected' });
       if (!day || day < 1 || day > 21) return res.status(400).json({ error: 'Invalid day' });
 
       const match = stmts.getMatch.get(userId, userId);
@@ -999,7 +1003,13 @@ function registerAppRoutes(app, deps) {
       const match = stmts.getMatch.get(userId, userId);
       const partnerId = match ? getPartnerId(match, userId) : null;
       const entryDay = Number.isInteger(Number(day)) ? Number(day) : 0;
-      stmts.insertReport.run(userId, match ? match.id : null, partnerId, entryDay, entryDay, cleanCategory, cleanReason);
+      const result = stmts.insertReport.run(userId, match ? match.id : null, partnerId, entryDay, entryDay, cleanCategory, cleanReason);
+      if (match && partnerId && cleanCategory === 'entry' && entryDay >= 1 && entryDay <= 21) {
+        const reportedEntry = stmts.getEntry.get(partnerId, match.id, entryDay);
+        if (reportedEntry && isEntryUnlocked(reportedEntry, match)) {
+          db.prepare('UPDATE reports SET reported_entry_text = ? WHERE id = ?').run(reportedEntry.text, result.lastInsertRowid);
+        }
+      }
       if (trackEvent) trackEvent(userId, 'report_clicked', { category: cleanCategory });
       res.json({ ok: true });
     } catch (e) {

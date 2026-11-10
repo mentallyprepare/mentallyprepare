@@ -271,6 +271,9 @@ function registerAuthRoutes(app, deps) {
           provider: GOOGLE_PROVIDER
         });
       } else {
+        if (req.body.ageConfirmed !== true || req.body.consentGiven !== true) {
+          return res.status(400).json({ error: 'Confirm you are 18 or older and accept the consent before creating an account.', code: 'consent_required' });
+        }
         const college = safeGoogleProfile(req.body.college) || 'Not provided';
         const year = YEARS.has(clean(req.body.year)) ? clean(req.body.year) : '3rd';
         const passwordHash = await bcrypt.hash(googlePlaceholderPassword({ uid: firebaseUid, email, crypto }), 12);

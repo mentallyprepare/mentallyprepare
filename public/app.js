@@ -235,7 +235,9 @@ function getSignupGoogleProfileHints() {
     name: valueOf('inp-name'),
     college: valueOf('inp-college'),
     email: valueOf('inp-email'),
-    year: yearEl ? yearEl.textContent.trim() : ''
+    year: yearEl ? yearEl.textContent.trim() : '',
+    ageConfirmed: !!document.getElementById('googleAgeCheckbox')?.checked,
+    consentGiven: !!document.getElementById('googleConsentCheckbox')?.checked
   };
 }
 
@@ -298,6 +300,8 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
       }
       const storedHints = redirectContext && redirectContext.hints ? redirectContext.hints : {};
       const hints = Object.assign({}, storedHints, getSignupGoogleProfileHints());
+      hints.ageConfirmed = storedHints.ageConfirmed === true || hints.ageConfirmed === true;
+      hints.consentGiven = storedHints.consentGiven === true || hints.consentGiven === true;
       authDebug('ID token sent to backend');
       const timezone = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
       const googleLoginResult = await api('POST', '/auth/firebase/google', {
@@ -308,6 +312,8 @@ async function completeFirebaseLogin(firebaseUser, quiet, redirectContext) {
         name: hints.name || '',
         college: hints.college,
         year: hints.year,
+        ageConfirmed: hints.ageConfirmed === true,
+        consentGiven: hints.consentGiven === true,
         timezone
       });
       authDebug('Backend login success');
@@ -367,6 +373,10 @@ function hasCachedFirebaseUser() {
 async function googleLogin(context) {
   const statusId = context === 'signup' ? 'signup-status' : 'login-status';
   const buttonId = context === 'signup' ? 'signupGoogleBtn' : 'loginGoogleBtn';
+  if (context === 'signup' && (!document.getElementById('googleAgeCheckbox').checked || !document.getElementById('googleConsentCheckbox').checked)) {
+    toast('Confirm you are 18 or older and accept the privacy consent before continuing.');
+    return;
+  }
   try {
     setAuthStatus(statusId, 'Opening Google sign in...', 'loading');
     setButtonLoading(buttonId, true, 'Opening Google...');
@@ -4549,7 +4559,7 @@ function renderNoteSealed() {
   return `<div class="note-sealed-inner">
     <div class="note-seal-ring"></div>
     <div class="note-seal-ico">✦</div>
-    <div class="note-sealed-arrived">arrived at 8:00 am · tap to open</div>
+    <div class="note-sealed-arrived">Written by the Mentally Prepare team · tap to open</div>
   </div>`;
 }
 

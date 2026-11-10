@@ -557,6 +557,7 @@ db.exec(`
     category TEXT DEFAULT 'entry',
     day INTEGER DEFAULT 0,
     reason TEXT NOT NULL,
+    reported_entry_text TEXT,
     status TEXT DEFAULT 'open',
     created_at TEXT DEFAULT (datetime('now'))
   );
@@ -793,6 +794,7 @@ ensureColumn('reports', 'reported_user_id', 'INTEGER');
 ensureColumn('reports', 'entry_day', 'INTEGER');
 ensureColumn('reports', 'category', "TEXT DEFAULT 'entry'");
 ensureColumn('reports', 'status', "TEXT DEFAULT 'open'");
+ensureColumn('reports', 'reported_entry_text', 'TEXT');
 ensureColumn('users', 'timezone', 'TEXT');
 ensureColumn('users', 'region', "TEXT NOT NULL DEFAULT 'IN'");
 
@@ -1964,6 +1966,12 @@ function requireAuth(req, res, next) {
     if (req.session && typeof req.session.destroy === 'function') req.session.destroy(() => {});
     return res.status(401).json({ error: 'Please sign in again.', reauthRequired: true });
   }
+  if (!user.consent_given || user.consent_withdrawn_at) {
+    const permitted = new Set(['/api/consent', '/api/consent/withdraw', '/api/my-data', '/api/account']);
+    if (!permitted.has(req.path)) {
+      return res.status(403).json({ error: 'Consent has been withdrawn. You can still export or delete your data.', code: 'consent_withdrawn' });
+    }
+  }
   next();
 }
 
@@ -2260,7 +2268,7 @@ const complementary = {
 
 function attemptMatch(userId) {
   const user = parseUser(stmts.getUserById.get(userId));
-  if (!user || !user.archetype) return null;
+  if (!user || !user.archetype || !user.consent_given || user.consent_withdrawn_at) return null;
   const targetType = complementary[user.archetype];
   if (!targetType) return null;
   const userCollegeKey = user.college_normalized || normalizeCollegeName(user.college);
@@ -2268,8 +2276,19 @@ function attemptMatch(userId) {
     SELECT CASE WHEN user1_id = ? THEN user2_id ELSE user1_id END AS partner_id
     FROM matches WHERE archived_at IS NOT NULL AND (user1_id = ? OR user2_id = ?)
   `).all(userId, userId, userId).map(row => row.partner_id));
+  const blockedPartners = new Set(db.prepare(`
+    SELECT CASE WHEN blocker_id = ? THEN blocked_user_id ELSE blocker_id END AS partner_id
+    FROM blocked_users WHERE blocker_id = ? OR blocked_user_id = ?
+  `).all(userId, userId, userId).map(row => row.partner_id));
+  const activeSince = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  const eligible = candidate => candidate && candidate.consent_given && !candidate.consent_withdrawn_at
+    && candidate.account_status !== 'deleted' && !previousPartners.has(candidate.id)
+    && !blockedPartners.has(candidate.id)
+    && candidate.last_active_date && Date.parse(candidate.last_active_date) >= activeSince
+    && (!user.match_gender_pref || user.match_gender_pref === 'any' || candidate.gender === user.match_gender_pref)
+    && (!candidate.match_gender_pref || candidate.match_gender_pref === 'any' || candidate.match_gender_pref === user.gender);
 
-  let candidates = stmts.findCandidates.all(targetType, userCollegeKey, userId).map(parseUser).filter(candidate => !previousPartners.has(candidate.id));
+  let candidates = stmts.findCandidates.all(targetType, userCollegeKey, userId).map(parseUser).filter(eligible);
 
   // Fallback if no complementary candidate is available: keep different-college rule hard.
   if (candidates.length === 0) {
@@ -2280,18 +2299,8 @@ function attemptMatch(userId) {
         AND id != ?
         AND id NOT IN (SELECT user1_id FROM matches WHERE archived_at IS NULL UNION SELECT user2_id FROM matches WHERE archived_at IS NULL)
     `);
-    candidates = fallbackStmt.all(userCollegeKey, userId).map(parseUser).filter(candidate => !previousPartners.has(candidate.id));
+    candidates = fallbackStmt.all(userCollegeKey, userId).map(parseUser).filter(eligible);
   }
-
-  // Gender preference filtering
-  if (user.match_gender_pref && user.match_gender_pref !== 'any') {
-    const filtered = candidates.filter(c => c.gender === user.match_gender_pref);
-    if (filtered.length > 0) candidates = filtered;
-  }
-  candidates = candidates.filter(c => {
-    if (!c.match_gender_pref || c.match_gender_pref === 'any') return true;
-    return c.match_gender_pref === user.gender;
-  });
 
   // Year preference filtering (soft)
   if (user.match_year_pref && user.match_year_pref !== 'any') {
@@ -2318,17 +2327,8 @@ function attemptMatch(userId) {
         AND id != ?
         AND archetype IS NOT NULL
         AND id NOT IN (SELECT user1_id FROM matches WHERE archived_at IS NULL UNION SELECT user2_id FROM matches WHERE archived_at IS NULL)
-    `).all(userCollegeKey, userId).map(parseUser).filter(candidate => !previousPartners.has(candidate.id));
+    `).all(userCollegeKey, userId).map(parseUser).filter(eligible);
 
-    // Respect gender preferences on fallback too
-    if (user.match_gender_pref && user.match_gender_pref !== 'any') {
-      const gf = fallback.filter(c => c.gender === user.match_gender_pref);
-      if (gf.length > 0) fallback = gf;
-    }
-    fallback = fallback.filter(c => {
-      if (!c.match_gender_pref || c.match_gender_pref === 'any') return true;
-      return c.match_gender_pref === user.gender;
-    });
     partner = fallback[0] || null;
   }
 
@@ -2488,6 +2488,15 @@ function attachWaitingEntriesToMatch(matchId, userIds) {
 }
 
 function deleteMatchData(matchId) {
+  const archiveEntry = db.prepare('INSERT INTO archived_user_records (user_id, source, content_json) VALUES (?, ?, ?)');
+  for (const entry of db.prepare('SELECT user_id, day, text, mood, prompt, created_at FROM entries WHERE match_id = ?').all(matchId)) {
+    archiveEntry.run(entry.user_id, 'match_entry', JSON.stringify({
+      match_id: matchId, day: entry.day, text: entry.text, mood: entry.mood,
+      prompt: entry.prompt, created_at: entry.created_at
+    }));
+  }
+  // Preserve the block relationship after its match is removed.
+  db.prepare('UPDATE blocked_users SET match_id = NULL WHERE match_id = ?').run(matchId);
   const tables = db.prepare(`
     SELECT name FROM sqlite_master
     WHERE type = 'table'

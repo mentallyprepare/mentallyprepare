@@ -452,8 +452,33 @@ async function run() {
     const r = await request('GET', '/admin/export', null, { 'x-admin-password': 'test-admin-pw' });
     assert.strictEqual(r.status, 200);
     assert.ok(Array.isArray(r.json.waiting_entries), 'admin export has waiting_entries');
+    assert.ok(!r.json.entries.some(entry => 'text' in entry), 'bulk export excludes journal text');
+    assert.ok(!r.json.comments.some(comment => 'text' in comment), 'bulk export excludes reply text');
     ok('GET /admin/export with valid header');
   } catch (e) { fail('GET /admin/export', e); }
+
+  try {
+    const firstEmail = uniqueEmail('block-first');
+    const secondEmail = uniqueEmail('block-second');
+    const hash = require('bcryptjs').hashSync('testpass123', 4);
+    const seed = db.prepare("INSERT INTO users (name, email, password, college, year, consent_given, consent_date) VALUES (?, ?, ?, 'Test University', '2nd', 1, datetime('now'))");
+    const firstId = seed.run('Block Tester', firstEmail, hash).lastInsertRowid;
+    const secondId = seed.run('Blocked Partner', secondEmail, hash).lastInsertRowid;
+    const login = await request('POST', '/api/login', { email: firstEmail, password: 'testpass123' });
+    assert.strictEqual(login.status, 200);
+    const firstCookie = extractCookie(login.headers);
+    const matchId = db.prepare("INSERT INTO matches (user1_id, user2_id, started_at) VALUES (?, ?, datetime('now', '-3 days'))").run(firstId, secondId).lastInsertRowid;
+    db.prepare("INSERT INTO entries (user_id, match_id, day, text, mood) VALUES (?, ?, 1, 'private entry', 'quiet')").run(firstId, matchId);
+    db.prepare("INSERT INTO entries (user_id, match_id, day, text, mood) VALUES (?, ?, 1, 'partner entry', 'quiet')").run(secondId, matchId);
+    const unsafeReply = await request('POST', '/api/comment', { day: 1, text: 'email me at hello@example.com' }, { cookie: firstCookie });
+    assert.strictEqual(unsafeReply.status, 400, 'reply with contact details is refused');
+    assert.strictEqual(unsafeReply.json.code, 'pii_detected');
+    const blocked = await request('POST', '/api/block-partner', { reason: 'test block' }, { cookie: firstCookie });
+    assert.strictEqual(blocked.status, 200, 'block succeeds');
+    assert.ok(db.prepare('SELECT 1 FROM blocked_users WHERE blocker_id = ? AND blocked_user_id = ?').get(firstId, secondId), 'block survives match deletion');
+    assert.ok(db.prepare("SELECT 1 FROM archived_user_records WHERE user_id = ? AND source = 'match_entry'").get(firstId), 'writer retains own entry');
+    ok('Blocked pairs stay blocked, replies are scanned, and entries are archived');
+  } catch (e) { fail('Block and reply safety', e); }
 
   // 8. Password reset sends a 6-character code, consumes it once, and supports legacy tokens
   try {
@@ -568,7 +593,7 @@ async function run() {
     const reportedEmail = uniqueEmail('reported');
     const reportedId = db.prepare("INSERT INTO users (name, email, password, college, year, consent_given, consent_date) VALUES ('Reported User', ?, 'seeded-password', 'Test University', '2nd', 1, datetime('now'))").run(reportedEmail).lastInsertRowid;
     const reportedRow = db.prepare('SELECT * FROM users WHERE id = ?').get(reportedId);
-    const matchId = db.prepare("INSERT INTO matches (user1_id, user2_id, matched_at) VALUES (?, ?, datetime('now'))").run(reporterRow.id, reportedRow.id).lastInsertRowid;
+    const matchId = db.prepare("INSERT INTO matches (user1_id, user2_id, matched_at, started_at) VALUES (?, ?, datetime('now'), datetime('now', '-3 days'))").run(reporterRow.id, reportedRow.id).lastInsertRowid;
     db.prepare("INSERT INTO entries (user_id, match_id, day, text) VALUES (?, ?, 1, 'reported entry')").run(reportedRow.id, matchId);
     const badCategory = await request('POST', '/api/report', { reason: 'unsafe details', category: 'freeform-admin-state' }, { cookie });
     assert.strictEqual(badCategory.status, 400, `bad report category got ${badCategory.status}: ${badCategory.raw}`);
@@ -578,6 +603,7 @@ async function run() {
     const report = await request('POST', '/api/report', { matchId, day: 1, reason: 'unsafe', category: 'entry' }, { cookie });
     assert.strictEqual(report.status, 200, `report got ${report.status}: ${report.raw}`);
     const reportRow = db.prepare('SELECT * FROM reports ORDER BY id DESC LIMIT 1').get();
+    assert.strictEqual(reportRow.reported_entry_text, 'reported entry', 'report preserves the entry under review');
     const blankReason = await request('POST', '/admin/report-status', { report_id: reportRow.id, status: 'reviewed', reason: '   ' }, { 'x-admin-password': 'test-admin-pw' });
     assert.strictEqual(blankReason.status, 400, `blank reason got ${blankReason.status}: ${blankReason.raw}`);
     assert.match(blankReason.json.error, /reason is required/i);
@@ -1197,6 +1223,13 @@ async function run() {
     assert.strictEqual(preferences.enabled, false, 'push preference preserved');
     ok('Daily email unsubscribe requires a click and preserves push choice');
   } catch (e) { fail('Daily email unsubscribe', e); }
+
+  try {
+    assert.strictEqual((await request('POST', '/api/consent/withdraw', {}, { cookie })).status, 200);
+    assert.strictEqual((await request('GET', '/api/me', null, { cookie })).status, 403, 'withdrawn account cannot load shared journey');
+    assert.strictEqual((await request('GET', '/api/my-data', null, { cookie })).status, 200, 'withdrawn account can export data');
+    ok('Consent withdrawal pauses journey while preserving export');
+  } catch (e) { fail('Consent withdrawal', e); }
 
   db.close();
   for (const ext of ['', '-wal', '-shm']) {
