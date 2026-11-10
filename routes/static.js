@@ -105,7 +105,8 @@ ${blogUrls}
       'Disallow: /admin/',
       'Disallow: /api/',
       '',
-      `Sitemap: ${baseUrl}/sitemap.xml`
+      `Sitemap: ${baseUrl}/sitemap.xml`,
+      `Sitemap: ${baseUrl}/blog/sitemap.xml`
     ].join('\n'));
   });
 }
