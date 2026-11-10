@@ -116,7 +116,7 @@ test('bootstrapFirstAdmin is a no-op when an admin already exists', () => {
   assert.strictEqual(row.c, 1);
 });
 
-test('bootstrapFirstAdmin without env is a silent no-op — legacy ADMIN_PASSWORD path remains', () => {
+test('bootstrapFirstAdmin without env is a silent no-op', () => {
   const db = freshDb();
   const result = withEnv(
     { ADMIN_BOOTSTRAP_EMAIL: undefined, ADMIN_BOOTSTRAP_PASSWORD: undefined },

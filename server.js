@@ -1139,8 +1139,7 @@ try {
 // If admin_users has zero active rows and ADMIN_BOOTSTRAP_EMAIL/
 // ADMIN_BOOTSTRAP_PASSWORD are set, create the first named admin. Idempotent
 // — once any active admin exists, this is a no-op and the bootstrap env
-// vars can be removed. The legacy ADMIN_PASSWORD header path in
-// requireAdmin below stays working as a grace fallback either way.
+// vars can be removed. Admin API access requires a named session.
 try {
   adminAuth.bootstrapFirstAdmin(db, { log: (msg) => console.log(msg) });
 } catch (err) {
@@ -3328,49 +3327,17 @@ function loadAdminFromSession(req) {
   return { id: row.id, email: row.email, role: row.role };
 }
 
-// One-shot deprecation warning so we know when the legacy path is still in
-// use without spamming logs on every request.
-let legacyAdminWarned = false;
-
 function requireAdmin(req, res, next) {
-  // Preferred path: a named admin session established via POST /admin/login.
   const sessionAdmin = loadAdminFromSession(req);
   if (sessionAdmin) {
     req.admin = sessionAdmin;
     return next();
   }
-
-  // Grace-period fallback: the legacy shared ADMIN_PASSWORD header. Kept so
-  // the current admin dashboard + existing ops scripts keep working while
-  // the UI is migrated. Every use is annotated in req.admin so the audit
-  // trail can distinguish "legacy shared" from a real named actor.
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  const rawHeader = req.headers['x-admin-password'] || req.headers['x-admin-key'];
-  const supplied = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
-  if (adminPassword && typeof supplied === 'string' && supplied) {
-    const expectedHash = crypto.createHash('sha256').update(String(adminPassword)).digest();
-    const suppliedHash = crypto.createHash('sha256').update(supplied).digest();
-    if (crypto.timingSafeEqual(expectedHash, suppliedHash)) {
-      req.admin = { id: null, email: 'legacy-shared', role: 'admin', legacy: true };
-      if (!legacyAdminWarned) {
-        legacyAdminWarned = true;
-        console.warn(
-          '⚠  Deprecated: an admin request used the legacy ADMIN_PASSWORD header path. ' +
-          'Migrate to a named admin (POST /admin/login) and remove ADMIN_PASSWORD from the environment ' +
-          'once every operator has an admin_users row.',
-        );
-      }
-      return next();
-    }
-  }
-
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
 // --- Admin login/logout/me ---------------------------------------------------
-// Session-backed named-admin auth on top of admin_users. Sits alongside the
-// legacy header path above; a successful login sets req.session.adminId,
-// which requireAdmin then prefers over the shared-password fallback.
+// Session-backed named-admin auth on top of admin_users.
 app.post('/admin/login', authLimiter, (req, res) => {
   const { email, password } = req.body || {};
   if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
@@ -3412,7 +3379,7 @@ app.post('/admin/logout', requireAdmin, (req, res) => {
 
 app.get('/admin/me', requireAdmin, (req, res) => {
   res.json({
-    admin: { email: req.admin.email, role: req.admin.role, legacy: !!req.admin.legacy },
+    admin: { email: req.admin.email, role: req.admin.role },
   });
 });
 

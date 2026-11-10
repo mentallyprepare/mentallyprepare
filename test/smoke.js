@@ -28,7 +28,8 @@ legacySessionDb.close();
 process.env.PORT = PORT;
 process.env.NODE_ENV = 'test';
 process.env.SESSION_SECRET = 'test-secret-for-smoke';
-process.env.ADMIN_PASSWORD = 'test-admin-pw';
+process.env.ADMIN_BOOTSTRAP_EMAIL = 'admin@test.example';
+process.env.ADMIN_BOOTSTRAP_PASSWORD = 'test-admin-password-123';
 process.env.DB_PATH = DB_PATH;
 process.env.FIREBASE_USE_SAME_ORIGIN_AUTH_DOMAIN = 'false';
 
@@ -127,6 +128,9 @@ async function run() {
   // Wait for server to be ready
   await new Promise(resolve => setTimeout(resolve, 2000));
   const db = new Database(DB_PATH);
+  const adminLogin = await request('POST', '/admin/login', { email: process.env.ADMIN_BOOTSTRAP_EMAIL, password: process.env.ADMIN_BOOTSTRAP_PASSWORD });
+  assert.strictEqual(adminLogin.status, 200, 'named admin login succeeds');
+  const adminCookie = extractCookie(adminLogin.headers);
 
   // 1. Health check
   try {
@@ -441,6 +445,8 @@ async function run() {
     // Wrong password via header
     const r2 = await request('GET', '/admin/export', null, { 'x-admin-password': 'wrong-password' });
     assert.strictEqual(r2.status, 401, 'wrong creds -> 401');
+    const oldPassword = await request('GET', '/admin/export', null, { 'x-admin-password': 'test-admin-pw' });
+    assert.strictEqual(oldPassword.status, 401, 'shared admin password is no longer accepted');
     // Query string should NOT work (removed)
     const r3 = await request('GET', '/admin/export?key=test-admin-pw');
     assert.strictEqual(r3.status, 401, 'query string key -> 401');
@@ -449,7 +455,7 @@ async function run() {
 
   // 7. Admin export works with valid header
   try {
-    const r = await request('GET', '/admin/export', null, { 'x-admin-password': 'test-admin-pw' });
+    const r = await request('GET', '/admin/export', null, { cookie: adminCookie });
     assert.strictEqual(r.status, 200);
     assert.ok(Array.isArray(r.json.waiting_entries), 'admin export has waiting_entries');
     assert.ok(!r.json.entries.some(entry => 'text' in entry), 'bulk export excludes journal text');
@@ -578,7 +584,7 @@ async function run() {
     const account = await registerUser({ name: 'Admin Remove User', email: uniqueEmail('admin-remove'), password: 'remove123' });
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(account.email);
     db.prepare("INSERT INTO waiting_entries (user_id, text) VALUES (?, 'waiting')").run(user.id);
-    const removed = await request('POST', '/admin/remove-user', { user_id: account.email }, { 'x-admin-password': 'test-admin-pw' });
+    const removed = await request('POST', '/admin/remove-user', { user_id: account.email }, { cookie: adminCookie });
     assert.strictEqual(removed.status, 200, `admin remove got ${removed.status}: ${removed.raw}`);
     assert.strictEqual(db.prepare('SELECT * FROM users WHERE email = ?').get(account.email), undefined, 'original email removed after admin removal');
     assert.ok(db.prepare("SELECT * FROM deletion_log WHERE reason = 'admin_removed'").get(), 'admin deletion log preserved');
@@ -604,17 +610,17 @@ async function run() {
     assert.strictEqual(report.status, 200, `report got ${report.status}: ${report.raw}`);
     const reportRow = db.prepare('SELECT * FROM reports ORDER BY id DESC LIMIT 1').get();
     assert.strictEqual(reportRow.reported_entry_text, 'reported entry', 'report preserves the entry under review');
-    const blankReason = await request('POST', '/admin/report-status', { report_id: reportRow.id, status: 'reviewed', reason: '   ' }, { 'x-admin-password': 'test-admin-pw' });
+    const blankReason = await request('POST', '/admin/report-status', { report_id: reportRow.id, status: 'reviewed', reason: '   ' }, { cookie: adminCookie });
     assert.strictEqual(blankReason.status, 400, `blank reason got ${blankReason.status}: ${blankReason.raw}`);
     assert.match(blankReason.json.error, /reason is required/i);
     for (const status of ['reviewed', 'dismissed', 'escalated', 'resolved']) {
-      const r = await request('POST', '/admin/report-status', { report_id: reportRow.id, status, reason: `mark ${status}` }, { 'x-admin-password': 'test-admin-pw' });
+      const r = await request('POST', '/admin/report-status', { report_id: reportRow.id, status, reason: `mark ${status}` }, { cookie: adminCookie });
       assert.strictEqual(r.status, 200, `mark ${status} got ${r.status}: ${r.raw}`);
     }
     assert.strictEqual(db.prepare('SELECT status FROM reports WHERE id = ?').get(reportRow.id).status, 'resolved');
     assert.strictEqual(db.prepare('SELECT COUNT(*) as c FROM report_status_history WHERE report_id = ?').get(reportRow.id).c, 4);
     assert.ok(db.prepare("SELECT * FROM report_status_history WHERE report_id = ? AND old_status = 'open' AND new_status = 'reviewed' AND actor = 'admin' AND reason = 'mark reviewed'").get(reportRow.id));
-    const dismiss = await request('POST', '/admin/dismiss-report', { report_id: reportRow.id, reason: 'compat dismiss' }, { 'x-admin-password': 'test-admin-pw' });
+    const dismiss = await request('POST', '/admin/dismiss-report', { report_id: reportRow.id, reason: 'compat dismiss' }, { cookie: adminCookie });
     assert.strictEqual(dismiss.status, 200, `compat dismiss got ${dismiss.status}: ${dismiss.raw}`);
     assert.ok(db.prepare('SELECT * FROM reports WHERE id = ?').get(reportRow.id), 'report still exists after dismiss endpoint');
     ok('Report status history');

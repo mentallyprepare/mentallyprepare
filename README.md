@@ -26,7 +26,7 @@ Anonymous 21-day journaling webapp for college students, built with Node.js, Exp
 
 ## Railway deployment
 - Deploys via `railway.toml` → Dockerfile (Node 20-slim + native deps)
-- Set `SESSION_SECRET`, `ADMIN_PASSWORD`, Firebase vars, optional SMTP/payment keys
+- Set `SESSION_SECRET`, Firebase vars, optional SMTP/payment keys. Before deploying this change, verify a named admin can sign in at `/admin`; on an empty database, set `ADMIN_BOOTSTRAP_EMAIL` and `ADMIN_BOOTSTRAP_PASSWORD` for the first start.
 - Mount a persistent volume at `/data/db` and keep `DATA_DIR=/data/db`
 - Do not set `PORT` — Railway injects it automatically
 - Verify after deploy: `/api/ready`, `/api/health`
