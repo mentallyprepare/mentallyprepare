@@ -5,16 +5,26 @@ const { BLOG_POSTS, BLOG_SLUGS } = require('../lib/blog-posts');
 const appMeta = {
   's-signup': ['Create an Account | Mentally Prepare', 'Create your Mentally Prepare account and begin a private 21-day journey of anonymous journaling, honest reflection, and meaningful connection.', 'Create an account to begin your 21-night journey'],
   's-login': ['Sign In | Mentally Prepare', 'Log in to Mentally Prepare to enter your private room, continue your 21-day journaling journey, and reconnect with your anonymous partner.', 'Sign in to continue your 21-night journaling journey'],
-  default: ['21 Nights of Anonymous Journaling | Mentally Prepare', 'Feel seen without performing. Begin a private 21-day emotional reset through guided reflection and anonymous journaling with a matched partner.', 'Start your 21 nights of anonymous journaling.']
+  default: ['Mentally Prepare App | Anonymous Journaling', 'Open the Mentally Prepare web app, take the short reflection scan, and start a private 21-night writing journey when a match is available.', 'Start your 21 nights of anonymous journaling.']
 };
 
-function sendAppPage(req, res, rootDir) {
-  const [title, description, heading] = appMeta[req.query.screen] || appMeta.default;
+function sendAppPage(req, res, rootDir, baseUrl) {
+  const screen = req.query.screen;
+  const [title, description, heading] = typeof screen === 'string' && Object.hasOwn(appMeta, screen)
+    ? appMeta[screen]
+    : appMeta.default;
   const html = fs.readFileSync(path.join(rootDir, 'public', 'app.html'), 'utf8')
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
     .replace(/<meta name="description" content="[^"]*"\/>/, `<meta name="description" content="${description}"/>`)
     .replace(/<h1 class="hero-h1">[^<]*<\/h1>/, `<h1 class="hero-h1">${heading}</h1>`);
-  res.set('X-Robots-Tag', 'noindex, nofollow');
+  if (req.originalUrl === '/app') {
+    res.removeHeader('X-Robots-Tag');
+    return res.type('html').send(html.replace(
+      '<meta name="robots" content="noindex, nofollow"/>',
+      `<link rel="canonical" href="${baseUrl}/app"/>`
+    ));
+  }
+
   res.type('html').send(html);
 }
 
@@ -62,7 +72,7 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
   });
 
   app.get('/app', (req, res) => {
-    sendAppPage(req, res, rootDir);
+    sendAppPage(req, res, rootDir, baseUrl);
   });
 
   app.get('/app/*', (req, res) => {
@@ -86,6 +96,7 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${baseUrl}/</loc><priority>1.0</priority></url>
+  <url><loc>${baseUrl}/app</loc><priority>0.8</priority></url>
   <url><loc>${baseUrl}/about</loc><priority>0.8</priority></url>
   <url><loc>${baseUrl}/blog</loc>${blogLastmod}<priority>0.8</priority></url>
 ${blogUrls}

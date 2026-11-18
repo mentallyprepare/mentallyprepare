@@ -198,14 +198,14 @@ async function run() {
     });
     assert.strictEqual(new Set(descriptions).size, 3, 'app, signup, and login descriptions are distinct');
     assert.deepStrictEqual(descriptions, [
-      'Feel seen without performing. Begin a private 21-day emotional reset through guided reflection and anonymous journaling with a matched partner.',
+      'Open the Mentally Prepare web app, take the short reflection scan, and start a private 21-night writing journey when a match is available.',
       'Create your Mentally Prepare account and begin a private 21-day journey of anonymous journaling, honest reflection, and meaningful connection.',
       'Log in to Mentally Prepare to enter your private room, continue your 21-day journaling journey, and reconnect with your anonymous partner.'
     ]);
     assert.match(appHtml, /id="app-startup"[\s\S]*id="s-splash"/, 'the startup state is shown before any screen');
     assert.doesNotMatch(appHtml, /class="screen active" id="s-splash"/, 'the old welcome screen must not flash during session restore');
     assert.match(appJs, /else \{ go\('s-scan-intro'\); \}/, 'guests open the scan after loading');
-    assert.match(indexHtml, /href="\/app"[^>]*>Begin tonight/, 'landing page begins the public scan');
+    assert.match(indexHtml, /href="\/app"[^>]*>Open App<\/a>/, 'landing page links directly to the public app');
     assert.match(indexHtml, /href="\/app\?screen=s-login"/, 'landing page links directly to login');
     assert.match(appHtml, /id="s-signup"/, 'dedicated signup screen exists');
     assert.match(appHtml, /id="scan-login-link"[\s\S]*Already have an account\? Log in/, 'guest scan offers login');
@@ -845,23 +845,28 @@ async function run() {
     ok('/api 404 returns JSON not HTML');
   } catch (e) { fail('/api 404 returns JSON not HTML', e); }
 
-  // R-2: X-Robots-Tag headers correct
+  // R-2: The public app can be indexed, while other app URLs retain noindex.
   try {
     const appR = await request('GET', '/app');
-    assert.match(appR.headers['x-robots-tag'] || '', /noindex/, '/app has noindex');
-    assert.match(appR.raw, /<meta name="robots" content="noindex, nofollow"\/>/, '/app HTML has noindex');
-    for (const route of ['/login', '/signup', '/forgot', '/onboarding', '/scan', '/room']) {
+    assert.strictEqual(appR.status, 200);
+    assert.doesNotMatch(appR.headers['x-robots-tag'] || '', /noindex/, '/app has no noindex header');
+    assert.doesNotMatch(appR.raw, /<meta name="robots"[^>]*noindex/, '/app has no noindex meta tag');
+    assert.match(appR.raw, /<link rel="canonical" href="https:\/\/mymentallyprepare\.com\/app"\/>/);
+    for (const route of ['/app?screen=s-login', '/app?screen=s-signup', '/app?screen=constructor', '/app/', '/app/room', '/login', '/signup', '/forgot', '/onboarding', '/scan', '/room']) {
       const alias = await request('GET', route);
+      assert.strictEqual(alias.status, 200, `${route} remains reachable`);
       assert.match(alias.headers['x-robots-tag'] || '', /noindex/, `${route} has noindex`);
+      assert.match(alias.raw, /<meta name="robots"[^>]*noindex/, `${route} HTML has noindex`);
     }
-    ok('X-Robots-Tag headers correct');
-  } catch (e) { fail('X-Robots-Tag headers correct', e); }
+    ok('The public app is indexable and other app URLs are excluded');
+  } catch (e) { fail('The public app is indexable and other app URLs are excluded', e); }
 
   // R-3: /sitemap.xml lists only marketing pages
   try {
     const r = await request('GET', '/sitemap.xml');
     assert.strictEqual(r.status, 200);
-    assert.ok(!r.raw.includes('/app'), 'sitemap does not list /app');
+    assert.match(r.raw, /<loc>https:\/\/mymentallyprepare\.com\/app<\/loc>/, 'sitemap lists the public app');
+    assert.doesNotMatch(r.raw, /<loc>[^<]*\/app[/?]/, 'sitemap excludes app subpaths and screen variants');
     assert.ok(!r.raw.includes('/admin'), 'sitemap does not list /admin');
     assert.ok(!r.raw.includes('/api'), 'sitemap does not list /api');
     assert.ok(r.raw.includes('/about</loc>'), 'sitemap lists about page');
@@ -916,7 +921,7 @@ async function run() {
     ok('blog pages are public, indexable, and in the sitemap');
   } catch (e) { fail('blog pages are public, indexable, and in the sitemap', e); }
 
-  // R-4: /robots.txt lets crawlers see /app noindex while blocking admin and API routes.
+  // R-4: /robots.txt permits crawling app URLs and blocks admin and API routes.
   try {
     const r = await request('GET', '/robots.txt');
     assert.strictEqual(r.status, 200);
