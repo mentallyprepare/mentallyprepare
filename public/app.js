@@ -24,6 +24,7 @@ const META_PIXEL_ID = ''; // TODO: set real Meta pixel ID before ad launch
 const PENDING_SCAN_KEY = 'mp_pending_scan';
 const PENDING_SCAN_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 let mpTestStartedFired = false;
+let mpTestCompletedFired = false;
 function mpTrack(eventName, standard) {
   try {
     if (typeof window.mpGaTrack === 'function') {
@@ -820,6 +821,7 @@ function go(id) {
   if (prev) prev.classList.remove('active','entering');
   if (id !== 's-waiting' && id !== 's-journal') clearInterval(matchPollTimer);
   el.classList.add('active','entering');
+  if ((id === 's-signup' || id.startsWith('s-ob')) && window.mpGaTrack) window.mpGaTrack('signup_started');
   syncAetherBackground(el);
   const authTarget = id === 's-login' ? 's-login' :
     (id === 's-signup' || id.startsWith('s-ob')) ? 's-signup' : '';
@@ -863,7 +865,6 @@ function openAuthScreen(id) {
 }
 
 function startSignup() {
-  if (window.mpGaTrack) window.mpGaTrack('signup_started');
   if (state) { routeToScreen(); return; }
   if (getPendingScan()) { openAuthScreen('s-signup'); return; }
   showAppShell();
@@ -1766,6 +1767,10 @@ function startScan() {
   }
   scanIndex = 0;
   scanAnswers = Array(questions.length).fill(null);
+  mpTestCompletedFired = false;
+  mpTestStartedFired = true;
+  mpTrack('TestStarted');
+  if (state && state.user) api('POST', '/scan/start', {}).catch(() => {});
   renderScan(); go('s-scan');
 }
 
@@ -1860,21 +1865,28 @@ function calculateScoresLocal() {
   else localArchetype = 'disconnector';
 }
 
+function trackScanCompleted() {
+  if (mpTestCompletedFired) return;
+  mpTestCompletedFired = true;
+  mpTrack('TestCompleted');
+}
+
 async function submitScan() {
   if (scanAnswers.some(v => v === null)) { toast('Please answer every scan question before continuing.'); return; }
   calculateScoresLocal();
-  mpTrack('TestCompleted');
   if (!state || !state.user || !state.user.id) {
     if (!savePendingScan()) {
       toast('Your browser could not keep this result. Please allow session storage and try again.');
       return;
     }
     renderScanPartial();
+    trackScanCompleted();
     go('s-scan-partial');
     return;
   }
   try {
     const { matched } = await api('POST', '/scan', { scores: localScores, archetype: localArchetype, answers: scanAnswers });
+    trackScanCompleted();
     await loadState();
     renderArchetypeReveal(matched);
     go('s-archetype-reveal');
