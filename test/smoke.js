@@ -957,7 +957,8 @@ async function run() {
     const publicCsp = publicPage.headers['content-security-policy'] || '';
     const privateCsp = privatePage.headers['content-security-policy'] || '';
     assert.ok(publicPage.raw.includes('/public-analytics.js'), 'homepage includes consent controller');
-    assert.ok(!privatePage.raw.includes('/public-analytics.js'), 'private app excludes consent controller');
+    assert.ok(privatePage.raw.includes('/public-analytics.js'), 'app includes the shared consent controller for direct visitors');
+    assert.ok(!privatePage.raw.includes('/private-analytics.js'), 'app does not load the retired tracker');
     assert.ok(publicCsp.includes('https://www.googletagmanager.com'), 'public CSP permits Google tag after consent');
     assert.ok(privateCsp.includes('https://www.googletagmanager.com'), 'app CSP permits the consent-gated milestone tag');
     assert.ok(privateCsp.includes('https://www.google-analytics.com'), 'app CSP permits GA collection after consent');
@@ -1216,3 +1217,4 @@ run().catch(e => {
   console.error('Smoke test crashed:', e);
   process.exit(1);
 });
+
