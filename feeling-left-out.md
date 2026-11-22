@@ -50,7 +50,7 @@ For more on confronting friends and deciding whether to rebuild a friendship, se
 
 You can feel like a third wheel when you're included in a plan but the closeness runs between the other two people. You might be sitting with them while they make plans in front of you that don't include you.
 
-For more on that dynamic and what to do, see Third Wheel: What It Really Means and What to Do When You Feel Like One.
+For more on that dynamic and what to do, see [Third Wheel: What It Really Means and What to Do When You Feel Like One](https://mymentallyprepare.com/third-wheeling-meaning/).
 
 ## Feeling left out at university
 
