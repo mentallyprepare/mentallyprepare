@@ -400,7 +400,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
 }
 </style>
 <link rel="stylesheet" href="/brand-buttons.css?v=20261011"/>
-<script defer src="/public-analytics.js?v=20261119-growth-funnel"></script>
+<script defer src="/public-analytics.js?v=20261124-onboarding"></script>
 </head>
 <body>
 
@@ -445,14 +445,14 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
         <h1 class="reveal">For 21 nights, write to a stranger you may <em>never meet.</em></h1>
         <p class="hero-sub reveal">Mentally Prepare is a free, private writing ritual for university and college students 18+. Write one honest note each night with an anonymous partner when an eligible match is available. On day 21, you both decide whether to reveal who you are.</p>
         <div class="hero-actions reveal">
-          <a class="btn" href="/app" data-mp-cta="home-hero-scan">Try the 3-minute scan</a>
+          <a class="btn" href="/app" data-mp-cta="home-hero-scan">Start your 21 nights</a>
           <a class="btn-ghost" href="/app?screen=s-signup" data-mp-cta="home-hero-signup">Create free account</a>
           <a class="btn-ghost" href="#how">How it works</a>
         </div>
         <div class="trust-band reveal">18+ only &middot; every match can be blocked or reported &middot; one &ldquo;stay anonymous&rdquo; keeps you anonymous forever</div>
-        <p class="hero-micro reveal">Free during early access. Anonymous. 18+. The starting scan takes about 3 minutes.</p>
+        <p class="hero-micro reveal">Begin with a free, 3-minute matching scan. See your result before creating an account. 18+.</p>
         <div class="presence-line reveal" id="presence-line"></div>
-        <div class="countdown-line reveal" id="countdown-line"></div>
+        <p class="countdown-line reveal">You can write while we look for a match. Your 21 nights together begin when you are paired.</p>
       </div>
       <div class="phone-wrap reveal">
         <canvas id="hero-canvas"></canvas>
@@ -487,7 +487,7 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
         Mentally Prepare is a private pen pal journal for university and college students aged 18 and over. For 21 nights, you and one matched stranger each write one honest note a day. You can write about what happened, what you are carrying, or something you have not found a way to say out loud. There are no public profiles, likes, or audience to impress.
       </p>
       <p class="entity-para reveal" style="font-family:var(--body);font-size:13px;line-height:1.75;color:var(--ink-secondary);max-width:65ch;margin:16px auto 0;text-align:left;">
-        Your notes are private to your match and unlock after midnight India time, which may be a different local time for you. On night 21, you each choose whether to reveal who you are. If either person chooses to stay anonymous, both identities remain private. There is no pressure to turn the exchange into anything more.
+        Your notes are private to your match and open after your match's scheduled midnight. The app shows the next unlock time in your local time. On night 21, you each choose whether to reveal who you are. If either person chooses to stay anonymous, both identities remain private. There is no pressure to turn the exchange into anything more.
       </p>
       <p class="entity-para reveal" style="font-family:var(--body);font-size:13px;line-height:1.75;color:var(--ink-secondary);max-width:65ch;margin:16px auto 0;text-align:left;">
         It is a small way to make space for reflection and connection, one note at a time. Mentally Prepare is free during early access. It offers peer connection, not therapy or emergency support.
@@ -802,10 +802,10 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
       <h2 class="section-title">Write one honest thing <em>tonight.</em></h2>
       <p class="section-sub">Worst case, you spend 3 minutes being real with yourself. Best case, someone understands.</p>
       <div class="final-actions">
-        <a class="btn" href="/app?screen=s-signup" data-mp-cta="home-final-signup">Create free account</a>
-        <a class="btn-ghost" href="/app" data-mp-cta="home-final-scan">Try the 3-minute scan</a>
+        <a class="btn" href="/app" data-mp-cta="home-final-scan">Start your 21 nights</a>
+        <a class="btn-ghost" href="/app?screen=s-signup" data-mp-cta="home-final-signup">Create free account</a>
       </div>
-      <p class="hero-micro" style="margin-top:var(--gap-sm)">Currently free during early access. Anonymous. No public profile.</p>
+      <p class="hero-micro" style="margin-top:var(--gap-sm)">Start with the free, 3-minute matching scan. See your result before creating an account.</p>
     </div>
   </section>
 
@@ -920,26 +920,6 @@ button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(-
       else return;
       el.textContent=text;
     }).catch(function(){});
-  })();
-
-  // --- Countdown to 9 pm IST (15:30 UTC) ---
-  (function(){
-    var el=document.getElementById('countdown-line');
-    if(!el)return;
-    function u(){
-      var now=new Date(),t=new Date(now);
-      t.setUTCHours(15,30,0,0);
-      var d=t.getTime()-now.getTime();
-      if(d<=0){
-        el.innerHTML='&#10022; Tonight&#8217;s prompt is live &mdash; <span class="cd-label">9 pm IST schedule</span>';
-      }else{
-        var h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000),p=[];
-        if(h>0)p.push(h+' hour'+(h===1?'':'s'));
-        if(m>0||h===0)p.push(m+' min');
-        el.innerHTML='&#10022; Tonight&#8217;s prompt opens in '+p.join(' ')+' <span class="cd-label">&middot; 9 pm IST</span>';
-      }
-    }
-    u();setInterval(u,30000);
   })();
 
   // --- Mobile menu ---

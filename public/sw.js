@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════
 // MENTALLY PREPARE — Service Worker
 // ═══════════════════════════════════════
-const CACHE_NAME = 'mp-20261119-growth-funnel';
+const CACHE_NAME = 'mp-20261124-onboarding';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/site.webmanifest',

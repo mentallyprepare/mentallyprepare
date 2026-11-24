@@ -1149,14 +1149,15 @@ async function run() {
     ok('auth-smoke.js default app.js version is current');
   } catch (e) { fail('auth-smoke.js default app.js version is current', e); }
 
-  // R-27: Homepage countdown tied to 9pm IST (15:30 UTC)
+  // R-27: Visitors can begin without waiting for an advertised opening hour.
   try {
     const idx = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-    assert.ok(idx.includes('id="countdown-line"'), 'countdown-line element exists');
-    assert.ok(idx.includes('setUTCHours(15,30,0,0)'), 'countdown targets 15:30 UTC');
-    assert.ok(idx.includes('cd-label'), 'countdown uses cd-label styling');
-    ok('Homepage countdown tied to 9pm IST (15:30 UTC)');
-  } catch (e) { fail('Homepage countdown tied to 9pm IST (15:30 UTC)', e); }
+    assert.ok(idx.includes('Start your 21 nights'), 'the main invitation describes the writing experience');
+    assert.ok(idx.includes('See your result before creating an account'), 'visitors understand the first step');
+    assert.ok(idx.includes('You can write while we look for a match'), 'waiting does not prevent writing');
+    assert.ok(!idx.includes('setUTCHours(15,30,0,0)'), 'no unsupported 9 PM opening countdown');
+    ok('Homepage explains starting and matching without a false opening time');
+  } catch (e) { fail('Homepage explains starting and matching without a false opening time', e); }
 
   // R-28: Homepage buttons use rose-purple, not gold
   try {
