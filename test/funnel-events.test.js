@@ -76,6 +76,46 @@ async function run() {
   goContext.go('s-ob4');
   goContext.go('s-login');
   assert.deepEqual(hooks, ['signup_started', 'signup_started'], 'signup screens use one event name; login is excluded');
+
+  // Execute each real writing path: validation and failed saves cannot become conversions.
+  for (const [name, end, endpoint] of [
+    ['saveReturnWrite', '// ═', '/waiting-entry'],
+    ['sealTonightsEntry', 'function renderTQSealed(', '/tonights-question'],
+    ['sealEntry', 'function startCountdown(', '/entry']
+  ]) {
+    const emitted = [];
+    const calls = [];
+    const area = { value: 'A test note', disabled: false };
+    const scope = vm.createContext({
+      window: { mpGaTrack: (...args) => emitted.push(args) },
+      document: { getElementById: () => area },
+      state: { waitingInfo: {} }, tqMood: 'moon', currentMood: 'moon', selectedPrompt: null, tqData: {},
+      api: async (...args) => { calls.push(args); throw Error('Save failed'); },
+      detectClientPii: () => false, confirm: () => true,
+      sessionStorage: { removeItem() {} }, toast() {}, showSafety() {},
+      loadState: async () => {}, loadTonightsQuestion: async () => {}, renderTQSealed() {},
+      maybeShowNotificationNudge() {}, celebrateStreak() {}, renderSealed() {}, go() {}
+    });
+    vm.runInContext(block('async function ' + name + '() {', end), scope);
+    await scope[name]();
+    assert.equal(calls[0][1], endpoint);
+    assert.equal(emitted.length, 0, name + ': failed saves do not count');
+    scope.api = async () => ({ ok: true });
+    await scope[name]();
+    assert.equal(emitted.length, 1, name + ': a saved note counts');
+    assert.deepEqual(Array.from(emitted[0]), ['note_written'], 'no text, mood, identity or prompt enters analytics');
+    area.value = '';
+    await scope[name]();
+    assert.equal(emitted.length, 1, name + ': empty notes do not count');
+  }
+
+  const unsealScope = vm.createContext({ Date });
+  vm.runInContext(block('function formatUnsealAt(', 'function renderSealed()'), unsealScope);
+  assert.equal(unsealScope.formatUnsealAt('invalid'), 'midnight');
+  const unlock = '2026-11-24T05:00:00Z';
+  assert.equal(unsealScope.formatUnsealAt(unlock), new Date(unlock).toLocaleString(undefined, {
+    hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric', timeZoneName: 'short'
+  }), 'unlock display uses the visitor clock without changing the server unlock instant');
   console.log('App scan start, save failure, retake and signup-screen checks passed');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

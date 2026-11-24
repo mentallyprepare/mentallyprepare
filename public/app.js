@@ -1628,6 +1628,7 @@ async function saveReturnWrite() {
     const result = await api('POST', '/waiting-entry', {
       text: note, mood: '🌓', selectedPrompt: 'What is one thing on your mind today?', piiConfirmed
     });
+    if (window.mpGaTrack) window.mpGaTrack('note_written');
     if (state && state.waitingInfo) state.waitingInfo.savedEntry = note;
     if (status) status.textContent = 'Saved. Take the scan whenever you are ready to find a new partner.';
     if (result.safety && result.safety.crisis) showSafety();
@@ -2684,7 +2685,7 @@ function formatUnsealAt(value) {
   if (!value) return 'midnight';
   const date = new Date(value);
   if (isNaN(date.getTime())) return 'midnight';
-  return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric' }) + ' IST';
+  return date.toLocaleString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true, month: 'short', day: 'numeric', timeZoneName: 'short' });
 }
 
 function renderSealed() {

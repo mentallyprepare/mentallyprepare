@@ -32,6 +32,9 @@
   // tokens, scan sharing codes and all other query parameters stay out of GA4.
   const campaign = new URLSearchParams();
   const incoming = new URLSearchParams(window.location.search);
+  // Explicit QA visits must never appear as acquisition or conversion activity.
+  // Keep this in the URL only; a tester's later ordinary visit is counted normally.
+  const isTestVisit = incoming.get('mp_test') === '1';
   for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_id']) {
     const value = incoming.get(key) || '';
     if (/^[a-zA-Z][a-zA-Z0-9_.-]{0,79}$/.test(value) && !/\d{7}/.test(value)) {
@@ -48,7 +51,7 @@
   })();
 
   window.mpGaTrack = function (name) {
-    if (!analyticsAllowed || !tagLoaded || !allowedMilestones.has(name)) return;
+    if (isTestVisit || !analyticsAllowed || !tagLoaded || !allowedMilestones.has(name)) return;
     if (oncePerPage.has(name) && trackedMilestones.has(name)) return;
     trackedMilestones.add(name);
     window.gtag('event', name, {
@@ -88,7 +91,7 @@
   }
 
   function loadTag() {
-    if (tagLoaded) return;
+    if (isTestVisit || tagLoaded) return;
     analyticsAllowed = true;
     window['ga-disable-' + measurementId] = false;
     tagLoaded = true;
@@ -131,13 +134,14 @@
   // visitor chooses analytics. No campaign data is stored or sent before consent.
   function decorateLink(link) {
     const href = link.getAttribute('href');
-    if (!href || href.startsWith('#') || !campaign.size) return;
+    if (!href || href.startsWith('#') || (!campaign.size && !isTestVisit)) return;
     try {
       const target = new URL(href, window.location.href);
       if (target.origin !== window.location.origin) return;
       if (!publicPaths[target.pathname] && !appPaths.has(target.pathname) && !/^\/blog(\/[a-z0-9-]+)?\/?$/.test(target.pathname)) return;
       // Internal navigation must retain the landing campaign, not start a new one.
       for (const [key, value] of campaign) target.searchParams.set(key, value);
+      if (isTestVisit) target.searchParams.set('mp_test', '1');
       link.setAttribute('href', target.pathname + target.search + target.hash);
     } catch {}
   }
@@ -152,7 +156,7 @@
     if (!event.target || !event.target.closest) return;
     const destination = event.target.closest('a[href]');
     if (destination) decorateLink(destination);
-    if (!analyticsAllowed || !tagLoaded) return;
+    if (isTestVisit || !analyticsAllowed || !tagLoaded) return;
     const link = event.target.closest('a[data-mp-cta]');
     if (!link) return;
     const ctaId = link.getAttribute('data-mp-cta') || '';
@@ -191,6 +195,8 @@
     document.body.appendChild(banner);
     settings.hidden = true;
   }
+
+  if (isTestVisit) return;
 
   const style = document.createElement('style');
   style.textContent = '.mp-analytics-choice{position:fixed;z-index:10000;left:16px;right:16px;bottom:16px;max-width:560px;margin:auto;padding:18px 20px;background:#0E0A18;color:#F8F2FF;border:1px solid rgba(248,242,255,.2);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.55);font:14px/1.5 system-ui,sans-serif}.mp-analytics-choice h2{margin:0 0 8px;font:700 16px/1.3 system-ui,sans-serif}.mp-analytics-choice p{margin:0 0 14px;color:#F8F2FF}.mp-analytics-choice a{color:#EBB4C2}.mp-analytics-actions{display:flex;flex-wrap:wrap;gap:10px}.mp-analytics-actions button,.mp-analytics-settings{cursor:pointer;border:1px solid rgba(248,242,255,.35);border-radius:8px;background:#0E0A18;color:#F8F2FF;padding:9px 13px;font:600 13px system-ui,sans-serif}.mp-analytics-actions button[data-choice="granted"]{background:#EBB4C2;color:#08050F;border-color:#EBB4C2}.mp-analytics-actions button:focus-visible,.mp-analytics-settings:focus-visible{outline:2px solid #ECC885;outline-offset:2px}.mp-analytics-settings{position:fixed;z-index:9999;left:16px;bottom:16px;font-size:12px}.mp-analytics-settings[hidden]{display:none}';

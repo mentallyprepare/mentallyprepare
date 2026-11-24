@@ -88,6 +88,27 @@ assert.equal(changedMind.events('app_open').length, 1);
 assert.equal(page('/admin', 'granted').tags().length, 0, 'admin and unknown paths are excluded');
 assert.equal(page('/blogs/private', 'granted').tags().length, 0);
 
+for (const choice of [undefined, 'granted', 'denied']) {
+  const target = link('/app?screen=s-signup', 'home-hero-signup');
+  const outside = link('https://external.example/app');
+  const qa = page('/', choice, { search: '?mp_test=1&utm_source=release_check&utm_medium=referral', links: [target, outside] });
+  assert.equal(qa.tags().length, 0, 'QA visits never load Google Analytics, including with existing consent');
+  assert.equal(qa.banner(), undefined, 'QA mode does not change the consent choice');
+  qa.window.mpGaTrack('sign_up');
+  qa.window.mpGaTrack('note_written');
+  qa.listeners.click({ target });
+  assert.equal(qa.window.dataLayer, undefined, 'QA clicks and conversions send nothing');
+  assert.ok(target.getAttribute('href').includes('mp_test=1'), 'QA exclusion follows internal navigation');
+  assert.equal(outside.getAttribute('href'), 'https://external.example/app');
+  const dynamicQa = link('/blog/how-to-start-journaling');
+  qa.listeners.contextmenu({ target: dynamicQa });
+  assert.ok(dynamicQa.getAttribute('href').includes('mp_test=1'));
+}
+const qaWithoutCampaign = link('/app');
+page('/', undefined, { search: '?mp_test=1', links: [qaWithoutCampaign] });
+assert.equal(qaWithoutCampaign.getAttribute('href'), '/app?mp_test=1', 'QA exclusion also works without campaign labels');
+assert.equal(page('/app', 'granted').tags().length, 1, 'QA mode does not persist into normal visits');
+
 const accepted = page('/privacy.html', 'granted', { search: '?email=private&token=secret' });
 assert.equal(accepted.config().page_location, 'https://mymentallyprepare.com/privacy');
 assert.equal(accepted.config().send_page_view, false);
@@ -180,11 +201,11 @@ assert.ok(oldGrant.tags()[0].src.startsWith('https://www.googletagmanager.com/gt
 for (const dir of ['public', 'content/blog']) {
   for (const filename of fs.readdirSync(path.join(root, dir)).filter(f => f.endsWith('.html'))) {
     const html = fs.readFileSync(path.join(root, dir, filename), 'utf8');
-    if (html.includes('/public-analytics.js')) assert.ok(html.includes('/public-analytics.js?v=20261119-growth-funnel'), filename + ' must use the new version');
+    if (html.includes('/public-analytics.js')) assert.ok(html.includes('/public-analytics.js?v=20261124-onboarding'), filename + ' must use the new version');
     assert.ok(!html.includes('/private-analytics.js'), 'retired tracker must not be loaded');
   }
 }
 const appHtml = fs.readFileSync(path.join(root, 'public/app.html'), 'utf8');
-assert.ok(appHtml.includes('/public-analytics.js?v=20261119-growth-funnel'));
+assert.ok(appHtml.includes('/public-analytics.js?v=20261124-onboarding'));
 assert.ok(appHtml.indexOf('/public-analytics.js') < appHtml.indexOf('/app.js?v='));
 console.log('Analytics consent, attribution, navigation and funnel checks passed');
