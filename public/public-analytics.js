@@ -18,7 +18,8 @@
   const appPaths = new Set(['/app', '/app/', '/app.html', '/signup', '/login', '/forgot', '/onboarding', '/scan', '/room']);
   const isApp = appPaths.has(window.location.pathname);
   const blogMatch = /^\/blog(\/[a-z0-9-]+)?\/?$/.exec(window.location.pathname);
-  const canonicalPath = isApp ? '/app' : publicPaths[window.location.pathname] || (blogMatch ? '/blog' + (blogMatch[1] || '') : null);
+  const isBlogAuthor = /^\/blog\/author\/anushka\/?$/.test(window.location.pathname);
+  const canonicalPath = isApp ? '/app' : publicPaths[window.location.pathname] || (isBlogAuthor ? '/blog/author/anushka' : blogMatch ? '/blog' + (blogMatch[1] || '') : null);
   if (!canonicalPath) return;
 
   let tagLoaded = false;
@@ -138,7 +139,7 @@
     try {
       const target = new URL(href, window.location.href);
       if (target.origin !== window.location.origin) return;
-      if (!publicPaths[target.pathname] && !appPaths.has(target.pathname) && !/^\/blog(\/[a-z0-9-]+)?\/?$/.test(target.pathname)) return;
+        if (!publicPaths[target.pathname] && !appPaths.has(target.pathname) && !/^\/blog(\/[a-z0-9-]+)?\/?$/.test(target.pathname) && !/^\/blog\/author\/anushka\/?$/.test(target.pathname)) return;
       // Internal navigation must retain the landing campaign, not start a new one.
       for (const [key, value] of campaign) target.searchParams.set(key, value);
       if (isTestVisit) target.searchParams.set('mp_test', '1');

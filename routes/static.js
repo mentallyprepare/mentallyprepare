@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const { BLOG_POSTS, BLOG_SLUGS } = require('../lib/blog-posts');
+const { BLOG_POSTS } = require('../lib/blog-posts');
+const registerBlogRoutes = require('./blog');
 
 const appMeta = {
   's-signup': ['Create an Account | Mentally Prepare', 'Create your Mentally Prepare account and begin a private 21-day journey of anonymous journaling, honest reflection, and meaningful connection.', 'Create an account to begin your 21-night journey'],
@@ -58,14 +59,7 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
     });
   }
 
-  app.get('/blog', (req, res) => {
-    res.sendFile(path.join(rootDir, 'content', 'blog', 'index.html'));
-  });
-
-  app.get('/blog/:slug', (req, res, next) => {
-    if (!BLOG_SLUGS.has(req.params.slug)) return next();
-    res.sendFile(path.join(rootDir, 'content', 'blog', `${req.params.slug}.html`));
-  });
+  registerBlogRoutes(app, { rootDir, baseUrl });
 
   app.get('/waitlist', (req, res) => {
     res.redirect(301, '/');
@@ -92,13 +86,14 @@ function registerStaticRoutes(app, { baseUrl, rootDir, requireAdmin }) {
     const blogUrls = BLOG_POSTS
       .map((post) => `  <url><loc>${baseUrl}/blog/${post.slug}</loc><lastmod>${post.updated}</lastmod><priority>0.7</priority></url>`)
       .join('\n');
-    const blogLastmod = BLOG_POSTS.length ? `<lastmod>${BLOG_POSTS[0].updated}</lastmod>` : '';
+    const blogLastmod = BLOG_POSTS.length ? `<lastmod>${BLOG_POSTS.reduce((max, post) => post.updated > max ? post.updated : max, '')}</lastmod>` : '';
     res.send(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>${baseUrl}/</loc><priority>1.0</priority></url>
   <url><loc>${baseUrl}/app</loc><priority>0.8</priority></url>
   <url><loc>${baseUrl}/about</loc><priority>0.8</priority></url>
   <url><loc>${baseUrl}/blog</loc>${blogLastmod}<priority>0.8</priority></url>
+  <url><loc>${baseUrl}/blog/author/anushka</loc><priority>0.5</priority></url>
 ${blogUrls}
   <url><loc>${baseUrl}/safety</loc><priority>0.7</priority></url>
   <url><loc>${baseUrl}/privacy</loc><priority>0.5</priority></url>

@@ -64,7 +64,7 @@ function page(pathname = '/', choice, options = {}) {
   };
 }
 
-for (const pathname of ['/', '/app', '/app/', '/app.html', '/signup', '/scan', '/onboarding', '/blog/feeling-lonely-in-college']) {
+for (const pathname of ['/', '/app', '/app/', '/app.html', '/signup', '/scan', '/onboarding', '/blog/feeling-lonely-in-college', '/blog/author/anushka']) {
   const undecided = page(pathname);
   assert.ok(undecided.banner(), pathname + ' offers first-visit consent');
   assert.equal(undecided.tags().length, 0, 'no tag before consent');
