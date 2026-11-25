@@ -80,3 +80,9 @@ app.json
 # Standalone reminder script (superseded by server.js cron)
 send-daily-reminders.js
 funnel-batch1.js
+
+# Local native blog review artifacts
+preview-data/
+journal-preview.html
+rankbench-export.json
+review/
