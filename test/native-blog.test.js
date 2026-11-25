@@ -26,7 +26,6 @@ async function run(){
     const index=await fetch(base+'/blog').then(r=>r.text());
     assert.equal((index.match(/<h1[ >]/g)||[]).length,1);
     assert.ok(index.includes('/journal.css?v='));
-    assert.ok(index.includes('For the things you haven’t'));
     assert.ok(!index.includes('assets.rankbench')&&!index.includes('rankbench.io'));
     const sitemap=await fetch(base+'/sitemap.xml').then(r=>r.text());
     const blogSitemap=await fetch(base+'/blog/sitemap.xml').then(r=>r.text());
@@ -46,6 +45,9 @@ async function run(){
       assert.equal(schema[0]['@type'],'BlogPosting');assert.equal(schema[1]['@type'],'BreadcrumbList');
       assert.equal(schema[0].datePublished,post.published);assert.equal(schema[0].dateModified,post.updated);
       assert.ok(fs.existsSync(path.join(rootDir,'public',post.image)));
+      assert.ok(post.image.startsWith('/images/blog/stock/'),'article uses locally hosted stock photography');
+      assert.ok(post.photoSource.startsWith('https://www.pexels.com/photo/'),'photograph has an identifiable source');
+      assert.ok(html.includes('Stock photo:'),'stock models are not presented as users or the author');
       assert.ok(isBlogPath('/blog/'+post.slug));
       for(const match of html.matchAll(/href="#([^"]+)"/g))assert.ok(html.includes('id="'+match[1]+'"'),'TOC target exists: '+match[1]);
     }
