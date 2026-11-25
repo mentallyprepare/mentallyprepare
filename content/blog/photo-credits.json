@@ -1,0 +1,110 @@
+[
+  {
+    "key": "writing-at-desk",
+    "id": 4841704,
+    "photographer": "Tima Miroshnichenko",
+    "source": "https://www.pexels.com/photo/close-up-shot-of-a-person-writing-on-a-notebook-on-a-wooden-desk-4841704/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/writing-at-desk.webp",
+    "alt": "A hand writing in a notebook on a wooden desk",
+    "width": 960,
+    "height": 1440,
+    "bytes": 29044
+  },
+  {
+    "key": "open-notebook",
+    "id": 6779632,
+    "photographer": "Artem Podrez",
+    "source": "https://www.pexels.com/photo/a-person-writing-on-a-notepad-6779632/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/open-notebook.webp",
+    "alt": "Hands writing in a spiral notebook on a desk",
+    "width": 1440,
+    "height": 810,
+    "bytes": 24064
+  },
+  {
+    "key": "phone-and-notebook",
+    "id": 5712529,
+    "photographer": "Arina Krasnikova",
+    "source": "https://www.pexels.com/photo/notebook-with-pen-next-to-laptop-on-coffee-table-5712529/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/phone-and-notebook.webp",
+    "alt": "A notebook, phone and laptop on a round table",
+    "width": 1440,
+    "height": 961,
+    "bytes": 39036
+  },
+  {
+    "key": "handwritten-letter",
+    "id": 8715976,
+    "photographer": "Katya Wolf",
+    "source": "https://www.pexels.com/photo/a-paper-in-an-envelope-8715976/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/handwritten-letter.webp",
+    "alt": "A handwritten note inside a paper envelope",
+    "width": 960,
+    "height": 1440,
+    "bytes": 58900
+  },
+  {
+    "key": "campus-study-space",
+    "id": 17154532,
+    "photographer": "Lucas Paterson",
+    "source": "https://www.pexels.com/photo/tables-and-chairs-in-empty-hall-17154532/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/campus-study-space.webp",
+    "alt": "An empty campus study room beside large windows",
+    "width": 1440,
+    "height": 804,
+    "bytes": 66318
+  },
+  {
+    "key": "walking-between-classes",
+    "id": 7972502,
+    "photographer": "George Pak",
+    "source": "https://www.pexels.com/photo/students-walking-by-an-university-building-7972502/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/walking-between-classes.webp",
+    "alt": "Two students talking as they walk past a university building",
+    "width": 960,
+    "height": 1440,
+    "bytes": 117364
+  },
+  {
+    "key": "campus-conversation",
+    "id": 5553959,
+    "photographer": "Armin Rimoldi",
+    "source": "https://www.pexels.com/photo/cheerful-multiethnic-students-discussing-university-studies-in-campus-5553959/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/campus-conversation.webp",
+    "alt": "Two students talking outside on campus",
+    "width": 1440,
+    "height": 960,
+    "bytes": 118012
+  },
+  {
+    "key": "writing-by-window",
+    "id": 9159671,
+    "photographer": "Mikhail Nilov",
+    "source": "https://www.pexels.com/photo/a-woman-doing-her-homework-9159671/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/writing-by-window.webp",
+    "alt": "A student sitting by a window with a notebook",
+    "width": 1440,
+    "height": 960,
+    "bytes": 37850
+  },
+  {
+    "key": "friends-on-campus",
+    "id": 7972533,
+    "photographer": "George Pak",
+    "source": "https://www.pexels.com/photo/photograph-of-a-group-of-friends-having-a-conversation-7972533/",
+    "license": "https://www.pexels.com/license/",
+    "image": "/images/blog/stock/friends-on-campus.webp",
+    "alt": "A group of students talking outside on campus",
+    "width": 1440,
+    "height": 960,
+    "bytes": 120946
+  }
+]

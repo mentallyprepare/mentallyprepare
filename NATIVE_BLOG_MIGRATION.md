@@ -4,10 +4,10 @@ The public custom-domain `/blog` currently comes from Rankbench, while the Railw
 
 ## Content and design
 
-- The hub, articles, author profile, topic filters, search, related reading, RSS and blog sitemap share a dark rose/purple design with the site's own Instrument Serif and Manrope fonts.
+- The hub, articles and author profile use a light editorial layout with Manrope type, plain headings and locally hosted stock photography. Topic filters, search, related reading, RSS and the blog sitemap share the same templates.
 - Imported article text is in `content/blog/imported-posts.json`. Publication dates are retained; the editorial revision date is 24 November 2026. Original native article bodies remain in their existing HTML files.
 - The imported copy removes promises about rewiring anxiety, resetting the brain, guaranteed recovery and fixed habit timelines. It keeps practical questions, student examples and appropriate source links. Original illustrative quotations are explicitly identified as original writing.
-- Images and fonts are served by the application. Rendering never calls Rankbench. Search input is escaped; search/filter views are excluded from indexing. Analytics keeps its existing consent requirements, and search terms are not added to analytics URLs.
+- Images and fonts are served by the application. Rendering never calls Rankbench. Photographs are credited to their Pexels contributors on article pages; the source URLs and license are recorded in `content/blog/photo-credits.json`. Stock models are not identified as users or authors. Search input is escaped; search/filter views are excluded from indexing. Analytics keeps its existing consent requirements, and search terms are not added to analytics URLs.
 - The main sitemap and `/blog/sitemap.xml` include all articles and the author page. Old page-two listings redirect to the complete journal listing. Unknown articles and authors continue to return 404.
 
 ## Source archive and maintenance
@@ -24,7 +24,7 @@ const originalPosts = JSON.parse(zlib.gunzipSync(
 ));
 ```
 
-The one-time editorial build script is `scripts/prepare-native-blog.py`. It regenerates imported copy from the archived publication metadata and the reviewed text in that script. Edit the script as well as the JSON if it will be regenerated. New native posts need no publishing service: add an entry to the imported JSON with a unique slug, dates, category, text and source links. Use one of its existing categories (`Journaling`, `Connection`, `Digital life`) to select a local illustration. For legacy HTML articles, register metadata in `lib/blog-posts.js`.
+The one-time editorial build script is `scripts/prepare-native-blog.py`. It regenerates imported copy from the archived publication metadata and the reviewed text in that script. Edit the script as well as the JSON if it will be regenerated. New native posts need no publishing service: add an entry to the imported JSON with a unique slug, dates, category, text and source links. Register a matching photo and card summary in `lib/blog-posts.js`; photo metadata belongs in `content/blog/photo-credits.json`. For legacy HTML articles, register metadata in `lib/blog-posts.js`.
 
 ## Release and routing
 
