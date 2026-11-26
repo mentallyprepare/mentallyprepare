@@ -2062,3 +2062,28 @@ body[data-mp-mode="writing"] .star{animation:none;opacity:var(--a2,.4)}
 .wall-crisis-number{color:var(--rose);font-size:17px;font-weight:800;}
 .wall-crisis-alt{color:rgba(248,242,255,.4);font-size:12px;}
 .wall-crisis-hours{color:rgba(248,242,255,.35);font-size:11.5px;}
+
+/* Scan entry: the 18+ confirmation must be impossible to miss.
+   A guest who presses "Start the quiet scan" without ticking the box
+   gets the row highlighted and explained in place, not only a toast. */
+#guest-scan-confirm.needs-confirm {
+  outline: 2px solid rgba(248, 113, 113, .75);
+  outline-offset: 6px;
+  border-radius: 10px;
+  animation: mp-confirm-pulse 1.4s ease-in-out 2;
+}
+#guest-scan-confirm .confirm-hint {
+  display: block;
+  flex-basis: 100%;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #fca5a5;
+}
+@keyframes mp-confirm-pulse {
+  0%, 100% { outline-color: rgba(248, 113, 113, .35); }
+  50% { outline-color: rgba(248, 113, 113, .95); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #guest-scan-confirm.needs-confirm { animation: none; }
+}
