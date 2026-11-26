@@ -1,10 +1,25 @@
 // ═══════════════════════════════════════
 // API HELPER
 // ═══════════════════════════════════════
-async function api(method, path, body) {
+async function api(method, path, body, options) {
   const opts = { method, headers: {}, credentials: 'same-origin' };
   if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  const res = await fetch('/api' + path, opts);
+  const timeoutMs = options && Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 0;
+  let timeoutTimer = null;
+  if (timeoutMs && typeof AbortController === 'function') {
+    const controller = new AbortController();
+    opts.signal = controller.signal;
+    timeoutTimer = setTimeout(function () { controller.abort(); }, timeoutMs);
+  }
+  let res;
+  try {
+    res = await fetch('/api' + path, opts);
+  } catch (error) {
+    if (timeoutTimer) clearTimeout(timeoutTimer);
+    if (error && error.name === 'AbortError') throw new Error('The app took too long to answer. Check your connection and try again.');
+    throw error;
+  }
+  if (timeoutTimer) clearTimeout(timeoutTimer);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const error = new Error(data.error || 'Something did not save. Try once more.');
@@ -109,7 +124,7 @@ function normalizeState(data) {
   return data;
 }
 async function loadState() {
-  try { state = normalizeState(await api('GET', '/me')); return true; }
+  try { state = normalizeState(await api('GET', '/me', null, { timeoutMs: 5000 })); return true; }
   catch { state = null; return false; }
 }
 
@@ -806,10 +821,12 @@ function go(id) {
   }
   const startup = document.getElementById('app-startup');
   if (startup) startup.hidden = true;
+  if (typeof clearBootFailsafe === 'function') clearBootFailsafe();
   if (id === 's-scan-intro') {
     renderSharedReflectionInvite();
     const guestConfirm = document.getElementById('guest-scan-confirm');
     if (guestConfirm) guestConfirm.style.display = state ? 'none' : 'flex';
+    bindGuestScanConfirm();
     const loginLink = document.getElementById('scan-login-link');
     if (loginLink) loginLink.style.display = state ? 'none' : 'block';
     const archiveLink = document.getElementById('scan-archive-link');
@@ -1229,41 +1246,85 @@ function updateSky() {
 
 // Initialise before the startup routine can open signup and start its canvas.
 var aetherBackground = null;
+// ── Boot safety net ───────────────────────────────────────────────
+// The startup moon is only hidden by go(), and go() only runs after the
+// session restore finishes. A cold server, a blocked gstatic script or a
+// slow network therefore left a guest staring at a moon with no way in.
+// Every boot path now ends in a screen, and the failsafe below guarantees
+// it even when a promise never settles.
+const BOOT_FAILSAFE_MS = 6000;
+let bootFailsafeTimer = null;
+
+function clearBootFailsafe() {
+  if (bootFailsafeTimer) { clearTimeout(bootFailsafeTimer); bootFailsafeTimer = null; }
+}
+
+function revealAppShellWithoutSession() {
+  try {
+    if (state && state.user) { routeToScreen(); return; }
+    startApp();
+  } catch (error) {
+    console.error('[Boot] fallback failed:', error);
+    const startup = document.getElementById('app-startup');
+    if (startup) startup.hidden = true;
+    if (typeof showAppError === 'function') showAppError();
+  }
+}
+
+function scheduleBootFailsafe() {
+  if (window.location.pathname.indexOf('/app') !== 0) return;
+  clearBootFailsafe();
+  bootFailsafeTimer = setTimeout(function () {
+    bootFailsafeTimer = null;
+    if (document.querySelector('.screen.active')) return;
+    console.warn('[Boot] no screen after ' + BOOT_FAILSAFE_MS + 'ms — opening the scan entry');
+    revealAppShellWithoutSession();
+  }, BOOT_FAILSAFE_MS);
+}
+
 (async function init() {
   updateSky();
   setInterval(updateSky, 600000);
   if (typeof injectUrgentHelpButton === 'function') injectUrgentHelpButton();
   bindStaticUi();
-  if (shouldOpenAuthDeepLinkBeforeSessionRestore()) {
-    consumeAuthScreenDeepLink();
-    consumeVerificationQueryNotice();
-    return;
-  }
-  const hasGoogleRedirect = hasPendingGoogleRedirectContext();
-  const loggedIn = hasGoogleRedirect
-    ? (await restoreFirebaseSession()) || await loadState()
-    : (await loadState()) || await restoreFirebaseSession();
-  if (window.location.pathname.indexOf('/app') === 0 && consumeAuthScreenDeepLink()) {
-    consumeVerificationQueryNotice();
-    return;
-  }
-  if (window.location.pathname.indexOf('/app') === 0 && handleLandingHash()) {
-    consumeVerificationQueryNotice();
-    return;
-  }
-  if (!loggedIn) {
-    if (window.location.pathname.indexOf('/app') === 0) {
-      if (new URLSearchParams(window.location.search).get('return') === 'journal') openAuthScreen('s-login');
-      else startApp();
+  scheduleBootFailsafe();
+  try {
+    if (shouldOpenAuthDeepLinkBeforeSessionRestore()) {
+      consumeAuthScreenDeepLink();
+      consumeVerificationQueryNotice();
+      return;
     }
-    consumeVerificationQueryNotice();
-    return;
-  }
+    const hasGoogleRedirect = hasPendingGoogleRedirectContext();
+    const loggedIn = hasGoogleRedirect
+      ? (await restoreFirebaseSession()) || await loadState()
+      : (await loadState()) || await restoreFirebaseSession();
+    if (window.location.pathname.indexOf('/app') === 0 && consumeAuthScreenDeepLink()) {
+      consumeVerificationQueryNotice();
+      return;
+    }
+    if (window.location.pathname.indexOf('/app') === 0 && handleLandingHash()) {
+      consumeVerificationQueryNotice();
+      return;
+    }
+    if (!loggedIn) {
+      if (window.location.pathname.indexOf('/app') === 0) {
+        if (new URLSearchParams(window.location.search).get('return') === 'journal') openAuthScreen('s-login');
+        else startApp();
+      }
+      consumeVerificationQueryNotice();
+      return;
+    }
 
-  // Auto-start app for logged-in users
-  startApp();
-  consumeVerificationQueryNotice();
-  maybeShowRoomsInvite();
+    // Auto-start app for logged-in users
+    startApp();
+    consumeVerificationQueryNotice();
+    maybeShowRoomsInvite();
+  } catch (error) {
+    console.error('[Boot] app shell failed to start:', error);
+    if (window.location.pathname.indexOf('/app') === 0) revealAppShellWithoutSession();
+  } finally {
+    if (document.querySelector('.screen.active')) clearBootFailsafe();
+  }
 })();
 
 window.addEventListener('popstate', function() {
@@ -1756,10 +1817,37 @@ injectUrgentHelpButton();
 // ═══════════════════════════════════════
 // SCAN
 // ═══════════════════════════════════════
+function bindGuestScanConfirm() {
+  const ageConfirm = document.getElementById('guest-scan-age');
+  const row = document.getElementById('guest-scan-confirm');
+  if (!ageConfirm || !row || !row.dataset || row.dataset.bound === '1') return;
+  if (!ageConfirm.addEventListener) return;
+  row.dataset.bound = '1';
+  ageConfirm.addEventListener('change', function () {
+    if (!ageConfirm.checked) return;
+    if (row.classList) row.classList.remove('needs-confirm');
+    const hint = row.querySelector ? row.querySelector('.confirm-hint') : null;
+    if (hint && hint.remove) hint.remove();
+  });
+}
+
 function startScan() {
   if (!state) {
     const ageConfirm = document.getElementById('guest-scan-age');
     if (!ageConfirm || !ageConfirm.checked) {
+      const row = document.getElementById('guest-scan-confirm');
+      if (row && row.classList) {
+        row.classList.add('needs-confirm');
+        let hint = row.querySelector ? row.querySelector('.confirm-hint') : null;
+        if (!hint && row.appendChild && document.createElement) {
+          hint = document.createElement('span');
+          hint.className = 'confirm-hint';
+          hint.setAttribute('role', 'alert');
+          hint.textContent = 'Tick the box above to start';
+          row.appendChild(hint);
+        }
+        if (row.scrollIntoView) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
       toast('Please confirm that you are 18 or older before starting.');
       if (ageConfirm) ageConfirm.focus();
       return;
