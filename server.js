@@ -183,6 +183,7 @@ const registerShelfRoutes = require('./routes/shelf');
 
 const { registerStaticRoutes } = require('./routes/static');
 const { registerWaitlistRoutes } = require('./routes/waitlist');
+const { registerPromptListRoutes } = require('./routes/prompt-list');
 const { registerAdminRoutes } = require('./routes/admin');
 const { registerReturnPromptRoutes } = require('./routes/return-prompt');
 const { registerAuthRoutes } = require('./routes/auth');
@@ -2012,6 +2013,18 @@ const apiLimiter = rateLimit({
   validate: { xForwardedForHeader: false }
 });
 
+// The blog's one-prompt-a-week list. Public and unauthenticated, so it gets a
+// tighter budget than the API: ten addresses an hour from one address is more
+// than any real reader needs.
+const promptLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many sign-ups from this connection. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false }
+});
+
 // --- Prompts ----------------------------
 const prompts = [
   '"What\'s one thing you wish someone would just ask you about?"',
@@ -3518,6 +3531,13 @@ registerWaitlistRoutes(app, {
   db,
   requireAdmin,
   sendWaitlistConfirmation
+});
+
+registerPromptListRoutes(app, {
+  db,
+  requireAdmin,
+  authLimiter: adminLimiter,
+  promptLimiter
 });
 
 // ─── Presence signal (public, privacy-safe) ─────────────────
